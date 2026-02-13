@@ -1,0 +1,79 @@
+import { createBrowserRouter } from 'react-router-dom'
+import { AppLayout } from './ui/AppLayout'
+import ProtectedRoute from './components/ProtectedRoute'
+import LandingPage from './pages/LandingPage'
+import AboutPage from './pages/AboutPage'
+import ContactPage from './pages/ContactPage'
+import LoginPage from './pages/auth/LoginPage'
+import SignupPage from './pages/auth/SignupPage'
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from './pages/auth/ResetPasswordPage'
+import PatientProfile from './pages/profile/PatientProfile'
+import AdminProfile from './pages/profile/AdminProfile'
+import ProviderProfile from './pages/profile/ProviderProfile'
+import Dashboard from './pages/Dashboard'
+import DrugInteractionChecker from './pages/DrugInteractionChecker'
+import DrugFoodInteractionChecker from './pages/DrugFoodInteractionChecker'
+import DrugAlternatives from './pages/DrugAlternatives'
+import MedicationReminder from './pages/MedicationReminder'
+import AIChatbot from './pages/AIChatbot'
+import HealthRecordSummarization from './pages/HealthRecordSummarization'
+import Notifications from './pages/Notifications'
+import Profile from './pages/Profile'
+import AdminPanel from './pages/AdminPanel'
+import DoctorDashboard from './pages/DoctorDashboard'
+import ProviderDashboard from './pages/ProviderDashboard'
+import Appointments from './pages/Appointments'
+import DoctorProfile from './pages/DoctorProfile'
+
+// Helper to wrap protected routes
+const protect = (element: React.ReactElement) => (
+  <ProtectedRoute>{element}</ProtectedRoute>
+)
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <AppLayout />,
+    children: [
+      // Public routes (no protection needed)
+      { index: true, element: <LandingPage /> },
+      { path: 'about', element: <AboutPage /> },
+      { path: 'contact', element: <ContactPage /> },
+      { path: 'login', element: <LoginPage /> },
+      { path: 'signup', element: <SignupPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
+      { path: 'reset-password', element: <ResetPasswordPage /> },
+      
+      // Protected routes - Patient
+      { path: 'dashboard', element: protect(<Dashboard />) },
+      { path: 'tools/medication-reminder', element: protect(<MedicationReminder />) },
+      { path: 'tools/ai-chatbot', element: protect(<AIChatbot />) },
+      { path: 'tools/health-summary', element: protect(<HealthRecordSummarization />) },
+      { path: 'profile/patient', element: protect(<PatientProfile />) },
+      
+      // Protected routes - Doctor
+      { path: 'doctor-dashboard', element: protect(<DoctorDashboard />) },
+      { path: 'doctor-profile', element: protect(<DoctorProfile />) },
+      
+      // Protected routes - Admin
+      { path: 'admin', element: protect(<AdminPanel />) },
+      { path: 'profile/admin', element: protect(<AdminProfile />) },
+      
+      // Protected routes - Provider
+      { path: 'provider-dashboard', element: protect(<ProviderDashboard />) },
+      { path: 'profile/provider', element: protect(<ProviderProfile />) },
+      
+      // Protected routes - Shared (multiple roles)
+      { path: 'tools/drug-interactions', element: protect(<DrugInteractionChecker />) },
+      { path: 'tools/drug-food-interactions', element: protect(<DrugFoodInteractionChecker />) },
+      { path: 'tools/drug-alternatives', element: protect(<DrugAlternatives />) },
+      { path: 'tools/appointments', element: protect(<Appointments />) },
+      { path: 'tools/notifications', element: protect(<Notifications />) },
+      { path: 'tools/profile', element: protect(<Profile />) },
+    ],
+  },
+])
+
+
+

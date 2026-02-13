@@ -1,0 +1,48 @@
+import mongoose from 'mongoose';
+
+const notificationSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'User ID is required'],
+    index: true
+  },
+  userEmail: {
+    type: String,
+    required: [true, 'User email is required']
+  },
+  type: {
+    type: String,
+    enum: ['appointment_request', 'appointment_approved', 'appointment_rejected', 'appointment_cancelled'],
+    required: [true, 'Notification type is required']
+  },
+  title: {
+    type: String,
+    required: [true, 'Title is required']
+  },
+  message: {
+    type: String,
+    required: [true, 'Message is required']
+  },
+  appointmentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Appointment',
+    default: null
+  },
+  read: {
+    type: Boolean,
+    default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Index for efficient queries
+notificationSchema.index({ userId: 1, read: 1, createdAt: -1 });
+
+const Notification = mongoose.model('Notification', notificationSchema);
+
+export default Notification;
+

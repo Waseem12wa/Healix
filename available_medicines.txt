@@ -1,0 +1,76 @@
+================================================================================
+AVAILABLE MEDICINES IN PUBCHEM DATABASE
+================================================================================
+
+Total Available: 50/50
+
+AVAILABLE MEDICINES:
+--------------------------------------------------------------------------------
+[OK] Aspirin                   SMILES: CC(=O)OC1=CC=CC=C1C(=O)O
+[OK] Ibuprofen                 SMILES: CC(C)CC1=CC=C(C=C1)C(C)C(=O)O
+[OK] Acetaminophen             SMILES: CC(=O)NC1=CC=C(C=C1)O
+[OK] Naproxen                  SMILES: CC(C1=CC2=C(C=C1)C=C(C=C2)OC)C(=O)O
+[OK] Diclofenac                SMILES: C1=CC=C(C(=C1)CC(=O)O)NC2=C(C=CC=C2Cl)Cl
+[OK] Celecoxib                 SMILES: CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F
+[OK] Indomethacin              SMILES: CC1=C(C2=C(N1C(=O)C3=CC=C(C=C3)Cl)C=CC(=C2)OC)CC(=O)O
+[OK] Ketorolac                 SMILES: C1CN2C(=CC=C2C(=O)C3=CC=CC=C3)C1C(=O)O
+[OK] Meloxicam                 SMILES: CC1=CN=C(S1)NC(=O)C2=C(C3=CC=CC=C3S(=O)(=O)N2C)O
+[OK] Piroxicam                 SMILES: CN1C(=C(C2=CC=CC=C2S1(=O)=O)O)C(=O)NC3=CC=CC=N3
+[OK] Amoxicillin               SMILES: CC1(C(N2C(S1)C(C2=O)NC(=O)C(C3=CC=C(C=C3)O)N)C(=O)O)C
+[OK] Azithromycin              SMILES: CCC1C(C(C(N(CC(CC(C(C(C(C(C(=O)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)C)O)(C)O
+[OK] Ciprofloxacin             SMILES: C1CC1N2C=C(C(=O)C3=CC(=C(C=C32)N4CCNCC4)F)C(=O)O
+[OK] Doxycycline               SMILES: CC1C2C(C3C(C(=O)C(=C(C3(C(=O)C2=C(C4=C1C=CC=C4O)O)O)O)C(=O)N)N(C)C)O
+[OK] Levofloxacin              SMILES: CC1COC2=C3N1C=C(C(=O)C3=CC(=C2N4CCN(CC4)C)F)C(=O)O
+[OK] Metronidazole             SMILES: CC1=NC=C(N1CCO)[N+](=O)[O-]
+[OK] Penicillin                SMILES: CC1(C(N2C(S1)C(C2=O)NC(=O)CC3=CC=CC=C3)C(=O)O)C
+[OK] Cephalexin                SMILES: CC1=C(N2C(C(C2=O)NC(=O)C(C3=CC=CC=C3)N)SC1)C(=O)O
+[OK] Clarithromycin            SMILES: CCC1C(C(C(C(=O)C(CC(C(C(C(C(C(=O)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)OC)C)C)O)(C)O
+[OK] Erythromycin              SMILES: CCC1C(C(C(C(=O)C(CC(C(C(C(C(C(=O)O1)C)OC2CC(C(C(O2)C)O)(C)OC)C)OC3C(C(CC(O3)C)N(C)C)O)(C)O)C)C)O)(C)O
+[OK] Atorvastatin              SMILES: CC(C)C1=C(C(=C(N1CCC(CC(CC(=O)O)O)O)C2=CC=C(C=C2)F)C3=CC=CC=C3)C(=O)NC4=CC=CC=C4
+[OK] Simvastatin               SMILES: CCC(C)(C)C(=O)OC1CC(C=C2C1C(C(C=C2)C)CCC3CC(CC(=O)O3)O)C
+[OK] Lisinopril                SMILES: C1CC(N(C1)C(=O)C(CCCCN)NC(CCC2=CC=CC=C2)C(=O)O)C(=O)O
+[OK] Losartan                  SMILES: CCCCC1=NC(=C(N1CC2=CC=C(C=C2)C3=CC=CC=C3C4=NNN=N4)CO)Cl
+[OK] Amlodipine                SMILES: CCOC(=O)C1=C(NC(=C(C1C2=CC=CC=C2Cl)C(=O)OC)C)COCCN
+[OK] Metoprolol                SMILES: CC(C)NCC(COC1=CC=C(C=C1)CCOC)O
+[OK] Carvedilol                SMILES: COC1=CC=CC=C1OCCNCC(COC2=CC=CC3=C2C4=CC=CC=C4N3)O
+[OK] Warfarin                  SMILES: CC(=O)CC(C1=CC=CC=C1)C2=C(C3=CC=CC=C3OC2=O)O
+[OK] Clopidogrel               SMILES: COC(=O)C(C1=CC=CC=C1Cl)N2CCC3=C(C2)C=CS3
+[OK] Digoxin                   SMILES: CC1C(C(CC(O1)OC2C(OC(CC2O)OC3C(OC(CC3O)OC4CCC5(C(C4)CCC6C5CC(C7(C6(CCC7C8=CC(=O)OC8)O)C)O)C)C)C)O)O
+[OK] Metformin                 SMILES: CN(C)C(=N)N=C(N)N
+[OK] Glipizide                 SMILES: CC1=CN=C(C=N1)C(=O)NCCC2=CC=C(C=C2)S(=O)(=O)NC(=O)NC3CCCCC3
+[OK] Glyburide                 SMILES: COC1=C(C=C(C=C1)Cl)C(=O)NCCC2=CC=C(C=C2)S(=O)(=O)NC(=O)NC3CCCCC3
+[OK] Insulin                   SMILES: CCC(C)C1C(=O)NC2CSSCC(C(=O)NC(CSSCC(C(=O)NCC(=O)NC(C(=O)NC(C(=O)NC(C(=O)NC(C(=O)NC(C(=O)NC(C(=O)NC(C(=O)NC(C(=O)NC(C(=O)NC(C(=O)NC(CSSCC(NC(=O)C(NC(=O)C(NC(=O)C(NC(=O)C(NC(=O)C(NC(=O)C(NC(=O)C(NC(=O)C(NC2=O)CO)CC(C)C)CC3=CC=C(C=C3)O)CCC(=O)N)CC(C)C)CCC(=O)O)CC(=O)N)CC4=CC=C(C=C4)O)C(=O)NC(CC(=O)N)C(=O)O)C(=O)NCC(=O)NC(CCC(=O)O)C(=O)NC(CCCNC(=N)N)C(=O)NCC(=O)NC(CC5=CC=CC=C5)C(=O)NC(CC6=CC=CC=C6)C(=O)NC(CC7=CC=C(C=C7)O)C(=O)NC(C(C)O)C(=O)N8CCCC8C(=O)NC(CCCCN)C(=O)NC(C(C)O)C(=O)O)C(C)C)CC(C)C)CC9=CC=C(C=C9)O)CC(C)C)C)CCC(=O)O)C(C)C)CC(C)C)CC2=CNC=N2)CO)NC(=O)C(CC(C)C)NC(=O)C(CC2=CNC=N2)NC(=O)C(CCC(=O)N)NC(=O)C(C(=O)N)NC(=O)C(C(C)C)NC(=O)C(CC2=CC=CC=C2)N)C(=O)NC(C(=O)NC(C(=O)N1)CO)C(C)O)NC(=O)C(CCC(=O)N)NC(=O)C(CCC(=O)O)NC(=O)C(C(C)C)NC(=O)C(C(C)CC)NC(=O)CN
+[OK] Sitagliptin               SMILES: C1CN2C(=NN=C2C(F)(F)F)CN1C(=O)CC(CC3=CC(=C(C=C3F)F)F)N
+[OK] Sertraline                SMILES: CNC1CCC(C2=CC=CC=C12)C3=CC(=C(C=C3)Cl)Cl
+[OK] Fluoxetine                SMILES: CNCCC(C1=CC=CC=C1)OC2=CC=C(C=C2)C(F)(F)F
+[OK] Escitalopram              SMILES: CN(C)CCCC1(C2=C(CO1)C=C(C=C2)C#N)C3=CC=C(C=C3)F
+[OK] Venlafaxine               SMILES: CN(C)CC(C1=CC=C(C=C1)OC)C2(CCCCC2)O
+[OK] Bupropion                 SMILES: CC(C(=O)C1=CC(=CC=C1)Cl)NC(C)(C)C
+[OK] Alprazolam                SMILES: CC1=NN=C2N1C3=C(C=C(C=C3)Cl)C(=NC2)C4=CC=CC=C4
+[OK] Lorazepam                 SMILES: C1=CC=C(C(=C1)C2=NC(C(=O)NC3=C2C=C(C=C3)Cl)O)Cl
+[OK] Diazepam                  SMILES: CN1C(=O)CN=C(C2=C1C=CC(=C2)Cl)C3=CC=CC=C3
+[OK] Clonazepam                SMILES: C1C(=O)NC2=C(C=C(C=C2)[N+](=O)[O-])C(=N1)C3=CC=CC=C3Cl
+[OK] Zolpidem                  SMILES: CC1=CC=C(C=C1)C2=C(N3C=C(C=CC3=N2)C)CC(=O)N(C)C
+[OK] Omeprazole                SMILES: CC1=CN=C(C(=C1OC)C)CS(=O)C2=NC3=C(N2)C=C(C=C3)OC
+[OK] Ranitidine                SMILES: CNC(=C[N+](=O)[O-])NCCSCC1=CC=C(O1)CN(C)C
+[OK] Levothyroxine             SMILES: C1=C(C=C(C(=C1I)OC2=CC(=C(C(=C2)I)O)I)I)CC(C(=O)O)N
+[OK] Prednisone                SMILES: CC12CC(=O)C3C(C1CCC2(C(=O)CO)O)CCC4=CC(=O)C=CC34C
+[OK] Albuterol                 SMILES: CC(C)(C)NCC(C1=CC(=C(C=C1)O)CO)O
+
+
+================================================================================
+TESTING RECOMMENDATIONS
+================================================================================
+
+Good drug pairs to test for interactions:
+
+1. Aspirin + Warfarin (bleeding risk)
+2. Metformin + Lisinopril (diabetes + hypertension)
+3. Simvastatin + Amlodipine (cholesterol + blood pressure)
+4. Sertraline + Alprazolam (antidepressant + anxiety)
+5. Omeprazole + Clopidogrel (acid reducer + blood thinner)
+6. Warfarin + Aspirin (anticoagulants)
+7. Metoprolol + Digoxin (heart medications)
+8. Ciprofloxacin + Warfarin (antibiotic + anticoagulant)
+9. Fluoxetine + Tramadol (SSRI + pain reliever)
+10. Lisinopril + Losartan (ACE inhibitor + ARB)

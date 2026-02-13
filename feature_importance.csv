@@ -1,0 +1,49 @@
+feature,importance
+level4_x,12.891166995788065
+level4_y,12.584679443861862
+level2_y,7.987691215228601
+level1_x,7.704005044289685
+level1_y,7.663098154006796
+state_x,7.132382081799952
+state_y,7.102038427249056
+level2_x,6.428170362017115
+level3_x,4.115694399605113
+logP_x,3.0885165799278145
+Polar Surface Area (PSA)_x,2.4948551115874125
+logP_y,2.0898350350095605
+Polar Surface Area (PSA)_y,1.7563891140288104
+pKa (strongest acidic)_x,1.5659618355721132
+pKa (strongest acidic)_y,1.368825749165937
+Refractivity_x,0.9688058297284702
+level3_y,0.9402335808870235
+Physiological Charge_y,0.8591045304818785
+pKa (strongest basic)_y,0.8460083289989139
+Physiological Charge_x,0.8377626180552421
+Number of Rings_x,0.8190676798285205
+Number of Rings_y,0.7958139193134064
+Polarizability_x,0.771354670391774
+pKa (strongest basic)_x,0.7623141346284089
+Polarizability_y,0.6677121300790183
+Rotatable Bond Count_x,0.6221551344934445
+Water Solubility_x,0.6170226653913131
+Water Solubility_y,0.5484579899874155
+logS_x,0.51833185265802
+Monoisotopic Weight_x,0.48851703017582326
+Monoisotopic Weight_y,0.4728152375384172
+Refractivity_y,0.40651502457053673
+Molecular Weight_x,0.36188244249663937
+logS_y,0.3601484497909373
+Rotatable Bond Count_y,0.33644567264330444
+H Bond Acceptor Count_x,0.29695893563241993
+Molecular Weight_y,0.2540449922202221
+Ghose Filter_x,0.18721683858028634
+Ghose Filter_y,0.14691390704195745
+H Bond Acceptor Count_y,0.06455249766568648
+H Bond Donor Count_x,0.04606530376048856
+H Bond Donor Count_y,0.02622960238495029
+MDDR-Like Rule_x,0.004239451437604161
+Bioavailability_x,0.0
+Rule of Five_x,0.0
+Bioavailability_y,0.0
+MDDR-Like Rule_y,0.0
+Rule of Five_y,0.0

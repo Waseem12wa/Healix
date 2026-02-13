@@ -1,0 +1,50 @@
+Total features: 48
+
+1. state_x
+2. level4_x
+3. level3_x
+4. level2_x
+5. level1_x
+6. Molecular Weight_x
+7. logP_x
+8. Water Solubility_x
+9. logS_x
+10. Bioavailability_x
+11. pKa (strongest acidic)_x
+12. Refractivity_x
+13. Number of Rings_x
+14. H Bond Donor Count_x
+15. Rotatable Bond Count_x
+16. Polar Surface Area (PSA)_x
+17. pKa (strongest basic)_x
+18. Ghose Filter_x
+19. Monoisotopic Weight_x
+20. MDDR-Like Rule_x
+21. Polarizability_x
+22. H Bond Acceptor Count_x
+23. Physiological Charge_x
+24. Rule of Five_x
+25. state_y
+26. level4_y
+27. level3_y
+28. level2_y
+29. level1_y
+30. Molecular Weight_y
+31. logP_y
+32. Water Solubility_y
+33. logS_y
+34. Bioavailability_y
+35. pKa (strongest acidic)_y
+36. Refractivity_y
+37. Number of Rings_y
+38. H Bond Donor Count_y
+39. Rotatable Bond Count_y
+40. Polar Surface Area (PSA)_y
+41. pKa (strongest basic)_y
+42. Ghose Filter_y
+43. Monoisotopic Weight_y
+44. MDDR-Like Rule_y
+45. Polarizability_y
+46. H Bond Acceptor Count_y
+47. Physiological Charge_y
+48. Rule of Five_y

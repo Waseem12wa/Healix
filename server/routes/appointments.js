@@ -1,0 +1,403 @@
+import express from 'express';
+import mongoose from 'mongoose';
+import Appointment from '../models/Appointment.js';
+import Notification from '../models/Notification.js';
+import User from '../models/User.js';
+
+const router = express.Router();
+
+/**
+ * @route   POST /api/appointments
+ * @desc    Create a new appointment (Patient)
+ * @access  Private
+ */
+router.post('/', async (req, res) => {
+  try {
+    console.log('📅 Appointment creation request received');
+    console.log('   Request body:', JSON.stringify(req.body));
+    
+    const { patientEmail, doctorId, date, time, consultationType, notes } = req.body;
+
+    if (!patientEmail || !doctorId || !date || !time) {
+      console.log('❌ Missing required fields');
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: patientEmail, doctorId, date, time'
+      });
+    }
+
+    console.log('   Patient Email:', patientEmail);
+    console.log('   Doctor ID:', doctorId);
+    console.log('   Date:', date);
+    console.log('   Time:', time);
+
+    // Get patient info
+    const patient = await User.findOne({ email: patientEmail.toLowerCase().trim(), role: 'patient' });
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found'
+      });
+    }
+
+    // Get doctor info
+    console.log('🔍 Searching for doctor with ID:', doctorId);
+    console.log('   ID type:', typeof doctorId);
+    console.log('   Is valid ObjectId?', mongoose.Types.ObjectId.isValid(doctorId));
+    
+    let doctor = null;
+    
+    // Try to find doctor by ID
+    if (mongoose.Types.ObjectId.isValid(doctorId)) {
+      try {
+        // Try direct findById first
+        doctor = await User.findById(doctorId);
+        console.log('   Found by findById:', doctor ? 'Yes' : 'No');
+        
+        // If not found, try with role filter
+        if (!doctor) {
+          doctor = await User.findOne({ 
+            _id: new mongoose.Types.ObjectId(doctorId), 
+            role: 'doctor' 
+          });
+          console.log('   Found by ObjectId with role filter:', doctor ? 'Yes' : 'No');
+        }
+      } catch (error) {
+        console.error('   Error finding doctor:', error.message);
+      }
+    } else {
+      console.log('❌ Invalid ObjectId format:', doctorId);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid doctor ID format'
+      });
+    }
+    
+    if (!doctor) {
+      console.log('❌ Doctor not found with ID:', doctorId);
+      // Try to find any doctor to debug
+      const allDoctors = await User.find({ role: 'doctor' }).select('_id email doctorProfile.profileCompleted');
+      console.log('   Available doctors:', allDoctors.map(d => ({ 
+        id: d._id.toString(), 
+        email: d.email, 
+        profileCompleted: d.doctorProfile?.profileCompleted 
+      })));
+      return res.status(404).json({
+        success: false,
+        message: 'Doctor not found. Please ensure the doctor has completed their profile.'
+      });
+    }
+    
+    if (doctor.role !== 'doctor') {
+      console.log('❌ User is not a doctor:', doctor.role);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid doctor account'
+      });
+    }
+    
+    console.log('✅ Doctor found:', doctor.email);
+
+    if (!doctor.doctorProfile?.profileCompleted) {
+      return res.status(400).json({
+        success: false,
+        message: 'Doctor profile is not completed'
+      });
+    }
+
+    // Determine fee based on consultation type
+    const fee = consultationType === 'online' 
+      ? (doctor.doctorProfile.onlineFee || doctor.doctorProfile.inPersonFee)
+      : doctor.doctorProfile.inPersonFee;
+
+    // Create appointment
+    const appointment = new Appointment({
+      patientId: patient._id,
+      patientEmail: patient.email,
+      patientName: patient.userName || patient.email.split('@')[0],
+      doctorId: doctor._id,
+      doctorEmail: doctor.email,
+      doctorName: doctor.doctorProfile.fullName || doctor.userName || doctor.email.split('@')[0],
+      specialization: doctor.doctorProfile.specialization,
+      date,
+      time,
+      location: `${doctor.doctorProfile.clinicName}, ${doctor.doctorProfile.city}`,
+      consultationType: consultationType || 'in-person',
+      fee,
+      notes: notes || '',
+      status: 'pending'
+    });
+
+    await appointment.save();
+
+    // Create notification for doctor
+    const doctorNotification = new Notification({
+      userId: doctor._id,
+      userEmail: doctor.email,
+      type: 'appointment_request',
+      title: 'New Appointment Request',
+      message: `${patient.userName || patient.email} has requested an appointment on ${date} at ${time}`,
+      appointmentId: appointment._id
+    });
+    await doctorNotification.save();
+
+    console.log(`✅ Appointment created: ${appointment._id}`);
+    console.log(`📧 Notification sent to doctor: ${doctor.email}`);
+
+    res.json({
+      success: true,
+      message: 'Appointment requested successfully. Waiting for doctor approval.',
+      data: appointment
+    });
+  } catch (error) {
+    console.error('❌ Error creating appointment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating appointment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   GET /api/appointments/patient
+ * @desc    Get appointments for a patient
+ * @access  Private
+ */
+router.get('/patient', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    const patient = await User.findOne({ email: email.toLowerCase().trim(), role: 'patient' });
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found'
+      });
+    }
+
+    const appointments = await Appointment.find({ patientId: patient._id })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: appointments.length,
+      data: appointments
+    });
+  } catch (error) {
+    console.error('❌ Error fetching patient appointments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching appointments',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   GET /api/appointments/doctor
+ * @desc    Get appointments for a doctor
+ * @access  Private
+ */
+router.get('/doctor', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    const doctor = await User.findOne({ email: email.toLowerCase().trim(), role: 'doctor' });
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Doctor not found'
+      });
+    }
+
+    const appointments = await Appointment.find({ doctorId: doctor._id })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: appointments.length,
+      data: appointments
+    });
+  } catch (error) {
+    console.error('❌ Error fetching doctor appointments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching appointments',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   PUT /api/appointments/:id/status
+ * @desc    Update appointment status (Doctor: approve/reject)
+ * @access  Private
+ */
+router.put('/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, doctorEmail } = req.body;
+
+    if (!status || !['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be "approved" or "rejected"'
+      });
+    }
+
+    if (!doctorEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'Doctor email is required'
+      });
+    }
+
+    const appointment = await Appointment.findById(id);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Verify doctor owns this appointment
+    if (appointment.doctorEmail.toLowerCase() !== doctorEmail.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You can only update your own appointments'
+      });
+    }
+
+    // Update appointment status
+    appointment.status = status;
+    await appointment.save();
+
+    // Get patient info for notification
+    const patient = await User.findById(appointment.patientId);
+
+    // Create notification for patient
+    const notificationType = status === 'approved' ? 'appointment_approved' : 'appointment_rejected';
+    const notificationTitle = status === 'approved' 
+      ? 'Appointment Approved'
+      : 'Appointment Rejected';
+    const notificationMessage = status === 'approved'
+      ? `Your appointment with ${appointment.doctorName} on ${appointment.date} at ${appointment.time} has been approved.`
+      : `Your appointment with ${appointment.doctorName} on ${appointment.date} at ${appointment.time} has been rejected.`;
+
+    const patientNotification = new Notification({
+      userId: appointment.patientId,
+      userEmail: appointment.patientEmail,
+      type: notificationType,
+      title: notificationTitle,
+      message: notificationMessage,
+      appointmentId: appointment._id
+    });
+    await patientNotification.save();
+
+    console.log(`✅ Appointment ${status}: ${appointment._id}`);
+    console.log(`📧 Notification sent to patient: ${appointment.patientEmail}`);
+
+    res.json({
+      success: true,
+      message: `Appointment ${status} successfully`,
+      data: appointment
+    });
+  } catch (error) {
+    console.error('❌ Error updating appointment status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating appointment status',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   DELETE /api/appointments/:id
+ * @desc    Cancel/delete an appointment
+ * @access  Private
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userEmail } = req.query;
+
+    if (!userEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'User email is required'
+      });
+    }
+
+    const appointment = await Appointment.findById(id);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Verify user owns this appointment (patient or doctor)
+    const isOwner = appointment.patientEmail.toLowerCase() === userEmail.toLowerCase() ||
+                    appointment.doctorEmail.toLowerCase() === userEmail.toLowerCase();
+
+    if (!isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You can only cancel your own appointments'
+      });
+    }
+
+    // Create cancellation notification for the other party
+    const otherPartyEmail = appointment.patientEmail.toLowerCase() === userEmail.toLowerCase()
+      ? appointment.doctorEmail
+      : appointment.patientEmail;
+    
+    const otherParty = await User.findOne({ email: otherPartyEmail });
+    if (otherParty) {
+      const cancelNotification = new Notification({
+        userId: otherParty._id,
+        userEmail: otherPartyEmail,
+        type: 'appointment_cancelled',
+        title: 'Appointment Cancelled',
+        message: `Appointment on ${appointment.date} at ${appointment.time} has been cancelled.`,
+        appointmentId: appointment._id
+      });
+      await cancelNotification.save();
+    }
+
+    await Appointment.findByIdAndDelete(id);
+
+    console.log(`✅ Appointment cancelled: ${id}`);
+
+    res.json({
+      success: true,
+      message: 'Appointment cancelled successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error cancelling appointment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error cancelling appointment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+export default router;
+
