@@ -163,7 +163,7 @@ export default function AIChatbot() {
               border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
             }}>
               <CardContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <Typography sx={{ p: 3, pb: 2 }} variant="h6" fontWeight={700} sx={{
+                <Typography variant="h6" fontWeight={700} sx={{
                   background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',

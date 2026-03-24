@@ -1,5 +1,6 @@
-import { Box, Button, Card, CardContent, Stack, TextField, Typography, InputAdornment, Grid } from '@mui/material'
+import { Box, Button, Card, CardContent, Stack, TextField, Typography, InputAdornment } from '@mui/material'
 import BackButton from '../../ui/BackButton'
+import Grid from '@mui/material/GridLegacy'
 import PersonIcon from '@mui/icons-material/Person'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
 import EmailIcon from '@mui/icons-material/Email'

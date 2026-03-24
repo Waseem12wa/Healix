@@ -1,6 +1,6 @@
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
 import BackButton from '../../ui/BackButton'
-import Grid from '@mui/material/Grid'
+import Grid from '@mui/material/GridLegacy'
 
 export default function AdminProfile() {
   return (

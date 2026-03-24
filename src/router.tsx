@@ -15,6 +15,7 @@ import Dashboard from './pages/Dashboard'
 import DrugInteractionChecker from './pages/DrugInteractionChecker'
 import DrugFoodInteractionChecker from './pages/DrugFoodInteractionChecker'
 import DrugAlternatives from './pages/DrugAlternatives'
+import SideEffectPredictor from './pages/SideEffectPredictor'
 import MedicationReminder from './pages/MedicationReminder'
 import AIChatbot from './pages/AIChatbot'
 import HealthRecordSummarization from './pages/HealthRecordSummarization'
@@ -25,6 +26,8 @@ import DoctorDashboard from './pages/DoctorDashboard'
 import ProviderDashboard from './pages/ProviderDashboard'
 import Appointments from './pages/Appointments'
 import DoctorProfile from './pages/DoctorProfile'
+import MedicineShop from './pages/MedicineShop'
+import OrderHistory from './pages/OrderHistory'
 
 // Helper to wrap protected routes
 const protect = (element: React.ReactElement) => (
@@ -68,9 +71,14 @@ export const router = createBrowserRouter([
       { path: 'tools/drug-interactions', element: protect(<DrugInteractionChecker />) },
       { path: 'tools/drug-food-interactions', element: protect(<DrugFoodInteractionChecker />) },
       { path: 'tools/drug-alternatives', element: protect(<DrugAlternatives />) },
+      { path: 'tools/side-effects', element: protect(<SideEffectPredictor />) },
       { path: 'tools/appointments', element: protect(<Appointments />) },
       { path: 'tools/notifications', element: protect(<Notifications />) },
       { path: 'tools/profile', element: protect(<Profile />) },
+      
+      // Protected routes - Payment & Shopping
+      { path: 'shop/medicines', element: protect(<MedicineShop />) },
+      { path: 'shop/orders', element: protect(<OrderHistory />) },
     ],
   },
 ])

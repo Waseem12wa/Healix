@@ -21,8 +21,11 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import SearchIcon from '@mui/icons-material/Search'
 import InfoIcon from '@mui/icons-material/Info'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import { motion, AnimatePresence } from 'framer-motion'
 import BackButton from '../ui/BackButton'
+import PaymentModal from '../components/PaymentModal'
+import type { Medicine } from '../services/paymentService'
 
 type Alternative = {
     name: string
@@ -49,6 +52,8 @@ export default function DrugAlternatives() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [result, setResult] = useState<ApiResponse | null>(null)
+    const [paymentOpen, setPaymentOpen] = useState(false)
+    const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null)
 
     const handleSearch = async () => {
         if (!query.trim()) return
@@ -412,6 +417,34 @@ export default function DrugAlternatives() {
                                                                 </Stack>
                                                             </AccordionDetails>
                                                         </Accordion>
+
+                                                        {/* Action Buttons */}
+                                                        <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+                                                            <Button
+                                                                variant="contained"
+                                                                fullWidth
+                                                                startIcon={<ShoppingCartIcon />}
+                                                                onClick={() => {
+                                                                    setSelectedMedicine({
+                                                                        _id: alt.name.replace(/\s+/g, '-').toLowerCase(),
+                                                                        medicineName: alt.name,
+                                                                        quantity: 100,
+                                                                        sellingPrice: 25,
+                                                                        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                                                                        batchNumber: 'ALT-' + Math.random().toString(36).substr(2, 9)
+                                                                    })
+                                                                    setPaymentOpen(true)
+                                                                }}
+                                                                sx={{
+                                                                    background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                                                                    '&:hover': {
+                                                                        background: 'linear-gradient(135deg, #0096C7 0%, #05B586 100%)',
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Buy Now
+                                                            </Button>
+                                                        </Stack>
                                                     </CardContent>
                                                 </Card>
                                             </motion.div>
@@ -430,6 +463,21 @@ export default function DrugAlternatives() {
                     )}
                 </Stack>
             </Box>
+
+            {/* Payment Modal */}
+            {selectedMedicine && (
+                <PaymentModal
+                    open={paymentOpen}
+                    onClose={() => setPaymentOpen(false)}
+                    medicines={[selectedMedicine]}
+                    totalAmount={selectedMedicine.sellingPrice}
+                    onSuccess={(orderId) => {
+                        alert(`Order placed successfully! Order ID: ${orderId}\n\nYou will receive your medicine shortly.`)
+                        setPaymentOpen(false)
+                        setSelectedMedicine(null)
+                    }}
+                />
+            )}
         </Box>
     )
 }

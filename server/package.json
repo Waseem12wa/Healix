@@ -5,7 +5,7 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "concurrently -k -n API,ALT,DDI,DFI,SIDE,HEALTH,MEDREC \"node server.js\" \"py services/alternative_service.py\" \"py services/ddi_service.py\" \"py services/dfi_service.py\" \"py services/side_effect_service.py\" \"py services/health_assistant_service.py\" \"py services/medical_record_service.py\"",
     "dev": "nodemon server.js",
     "seed:doctors": "node scripts/seed-doctors.js"
   },
@@ -25,9 +25,11 @@
     "mongoose": "^8.0.0",
     "node-cron": "^4.2.1",
     "nodemailer": "^6.10.1",
-    "resend": "^6.6.0"
+    "resend": "^6.6.0",
+    "stripe": "^14.25.0"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "nodemon": "^3.0.2"
   }
 }

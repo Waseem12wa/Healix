@@ -6,7 +6,6 @@ import {
   CardContent,
   Chip,
   FormControl,
-  Grid,
   InputLabel,
   MenuItem,
   Select,
@@ -16,6 +15,7 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material'
+import Grid from '@mui/material/GridLegacy'
 import PersonIcon from '@mui/icons-material/Person'
 import SaveIcon from '@mui/icons-material/Save'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'

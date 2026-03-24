@@ -11,7 +11,10 @@ import notificationRoutes from './routes/notifications.js';
 import ddiRoutes from './routes/ddi.js';
 import dfiRoutes from './routes/dfi.js';
 import alternativeRoutes from './routes/alternative.js';
+import sideEffectsRoutes from './routes/sideEffects.js';
 import reminderRoutes from './routes/reminders.js';
+import healthAssistantRoutes from './routes/healthAssistant.js';
+import paymentRoutes from './routes/payments.js';
 import { reminderEmailJob } from './jobs/reminderEmailJob.js';
 
 dotenv.config();
@@ -36,7 +39,10 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/ddi', ddiRoutes);
 app.use('/api/dfi', dfiRoutes);
 app.use('/api/alternative', alternativeRoutes);
+app.use('/api/side-effects', sideEffectsRoutes);
 app.use('/api/reminders', reminderRoutes);
+app.use('/api/assistant', healthAssistantRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Test endpoint
 app.get('/', (req, res) => {

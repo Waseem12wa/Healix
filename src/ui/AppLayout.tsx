@@ -2,6 +2,7 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { AppBar, Box, Container, Toolbar, Typography, Button, Stack } from '@mui/material'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
 import Footer from './Footer'
+import HealthAssistant from '../pages/HealthAssistant'
 import footerBg from '../images/footer.jpg'
 import { useEffect, useRef } from 'react'
 import { getCurrentUserRole, isRouteAllowed, getDashboardPath } from '../utils/roleRoutes'
@@ -265,6 +266,9 @@ export function AppLayout() {
       </Container>
 
       <Footer />
+      
+      {/* AI Health Assistant - Always Available */}
+      <HealthAssistant />
     </Box>
   )
 }

@@ -14,6 +14,7 @@ import SummarizeIcon from '@mui/icons-material/Summarize'
 import LogoutIcon from '@mui/icons-material/Logout'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import EventIcon from '@mui/icons-material/Event'
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import { useMemo } from 'react'
 import { useNotifications } from '../hooks/useNotifications'
 import { Area, AreaChart, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line } from 'recharts'
@@ -35,10 +36,13 @@ export default function Dashboard() {
     { label: 'Drug Interaction Checker', description: 'Check interactions between medications in seconds.', icon: <ScienceIcon sx={{ color: '#00B4D8' }} />, href: '/tools/drug-interactions' },
     { label: 'Drug-Food Interaction', description: 'See how foods may affect your prescriptions.', icon: <FastfoodIcon sx={{ color: '#06D6A0' }} />, href: '/tools/drug-food-interactions' },
     { label: 'Drug Alternatives', description: 'Explore safer or more affordable alternatives.', icon: <SwapHorizIcon sx={{ color: '#0096C7' }} />, href: '/tools/drug-alternatives' },
+    { label: 'Side Effect Predictor', description: 'Predict potential side effects from medications.', icon: <TrendingUpIcon sx={{ color: '#EF476F' }} />, href: '/tools/side-effects' },
+    { label: 'Medicine Shop', description: 'Purchase medicines directly from our store.', icon: <ShoppingCartIcon sx={{ color: '#FFB703' }} />, href: '/shop/medicines' },
     { label: 'Medication Reminder', description: 'Stay on track with intelligent reminders.', icon: <AccessAlarmIcon sx={{ color: '#FFD166' }} />, href: '/tools/medication-reminder' },
     { label: 'AI Health Assistant', description: 'Chat with an AI to understand your health data.', icon: <SmartToyIcon sx={{ color: '#90E0EF' }} />, href: '/tools/ai-chatbot' },
     { label: 'Record Summarization', description: 'Turn complex reports into clear summaries.', icon: <SummarizeIcon sx={{ color: '#00B4D8' }} />, href: '/tools/health-summary' },
     { label: 'Doctor Appointments', description: 'Manage and review upcoming visits.', icon: <EventIcon sx={{ color: '#06D6A0' }} />, href: '/tools/appointments' },
+    { label: 'Order History', description: 'View and track your past medicine purchases.', icon: <TrendingUpIcon sx={{ color: '#0096C7' }} />, href: '/shop/orders' },
     { label: 'Notifications', description: 'View important alerts and updates.', icon: <NotificationsIcon sx={{ color: '#EF476F' }} />, href: '/tools/notifications' },
     { label: 'Profile', description: 'Review and update your personal details.', icon: <PersonIcon sx={{ color: '#0096C7' }} />, href: '/tools/profile' },
     { label: 'Logout', description: 'Securely sign out of your Healix account.', icon: <LogoutIcon sx={{ color: '#64748B' }} />, href: '/login' },
