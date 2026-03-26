@@ -21,6 +21,7 @@ import SendIcon from '@mui/icons-material/Send'
 import PersonIcon from '@mui/icons-material/Person'
 import { motion, AnimatePresence } from 'framer-motion'
 import BackButton from '../ui/BackButton'
+import { sendChatMessage } from '../utils/healthAssistantClient'
 
 type Msg = { id: string; role: 'user' | 'bot'; text: string }
 
@@ -31,16 +32,46 @@ export default function AIChatbot() {
   ])
   const [input, setInput] = useState('')
   const [urdu, setUrdu] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
   const endRef = useRef<HTMLDivElement | null>(null)
 
-  const send = () => {
+  const send = async () => {
     const content = input.trim()
     if (!content) return
+
     const userMsg: Msg = { id: Math.random().toString(36).slice(2), role: 'user', text: content }
-    const placeholder = urdu ? 'ہم فی الحال ماڈل کو بہتر بنا رہے ہیں۔ براہ کرم کچھ دیر بعد دوبارہ کوشش کریں۔' : 'We are improving our model. Please try again later.'
-    const botMsg: Msg = { id: Math.random().toString(36).slice(2), role: 'bot', text: placeholder }
-    setMessages((prev) => [...prev, userMsg, botMsg])
+    setMessages((prev) => [...prev, userMsg])
     setInput('')
+    setIsTyping(true)
+
+    try {
+      const result = await sendChatMessage(content)
+      if (result.success) {
+        const botMsg: Msg = {
+          id: Math.random().toString(36).slice(2),
+          role: 'bot',
+          text: result.response || 'I received your message but couldn\'t generate a response.'
+        }
+        setMessages((prev) => [...prev, botMsg])
+      } else {
+        const errorMsg: Msg = {
+          id: Math.random().toString(36).slice(2),
+          role: 'bot',
+          text: `Sorry, I encountered an error: ${result.error || 'Unknown error'}`
+        }
+        setMessages((prev) => [...prev, errorMsg])
+      }
+    } catch (error: any) {
+      const errorMsg: Msg = {
+        id: Math.random().toString(36).slice(2),
+        role: 'bot',
+        text: `Sorry, I'm having trouble connecting to the AI service. Please try again later.`
+      }
+      setMessages((prev) => [...prev, errorMsg])
+    } finally {
+      setIsTyping(false)
+    }
+
     setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
   }
 
@@ -245,6 +276,64 @@ export default function AIChatbot() {
                       </motion.div>
                     ))}
                   </AnimatePresence>
+
+                  {/* Typing Indicator */}
+                  <AnimatePresence>
+                    {isTyping && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <Box sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <SmartToyIcon sx={{ fontSize: 20, color: '#fff' }} />
+                          </Box>
+                          <Box sx={{
+                            px: 2,
+                            py: 1.5,
+                            borderRadius: 3,
+                            bgcolor: alpha('#00B4D8', 0.1),
+                            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                          }}>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Typography sx={{ lineHeight: 1.6, mr: 1 }}>AI is thinking</Typography>
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                {[0, 1, 2].map((i) => (
+                                  <Box
+                                    key={i}
+                                    sx={{
+                                      width: 4,
+                                      height: 4,
+                                      borderRadius: '50%',
+                                      bgcolor: '#00B4D8',
+                                      animation: 'typing 1.4s infinite ease-in-out',
+                                      animationDelay: `${i * 0.2}s`,
+                                      '@keyframes typing': {
+                                        '0%, 60%, 100%': { transform: 'translateY(0)' },
+                                        '30%': { transform: 'translateY(-8px)' }
+                                      }
+                                    }}
+                                  />
+                                ))}
+                              </Box>
+                            </Stack>
+                          </Box>
+                        </Box>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <div ref={endRef} />
                 </Stack>
               </CardContent>
@@ -262,7 +351,7 @@ export default function AIChatbot() {
                       <InputAdornment position="end">
                         <IconButton
                           onClick={send}
-                          disabled={!input.trim()}
+                          disabled={!input.trim() || isTyping}
                           sx={{
                             background: input.trim() ? 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)' : undefined,
                             color: input.trim() ? '#fff' : undefined,

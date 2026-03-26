@@ -440,33 +440,63 @@ def load_models():
         logger.info("=" * 70)
         
         # Load medical-specific summarization model
-        logger.info("📦 Loading PEGASUS medical summarization model...")
+        # Note: google/pegasus-medical doesn't exist, using google/pegasus-xsum as alternative
+        logger.info("📦 Loading PEGASUS summarization model...")
         start_time = time.time()
         
-        summarizer = pipeline(
-            "summarization",
-            model="google/pegasus-medical",
-            device=0 if torch.cuda.is_available() else -1
-        )
-        load_time = time.time() - start_time
-        logger.info(f"✅ PEGASUS model loaded in {load_time:.2f}s")
+        try:
+            summarizer = pipeline(
+                "summarization",
+                model="google/pegasus-xsum",  # Using available alternative to pegasus-medical
+                device=0 if torch.cuda.is_available() else -1
+            )
+            load_time = time.time() - start_time
+            logger.info(f"✅ PEGASUS model loaded in {load_time:.2f}s")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not load PEGASUS model: {e}")
+            logger.info("📦 Falling back to facebook/bart-large-cnn...")
+            summarizer = pipeline(
+                "summarization",
+                model="facebook/bart-large-cnn",
+                device=0 if torch.cuda.is_available() else -1
+            )
+            logger.info("✅ BART model loaded as fallback")
         
         # Load NER model for medical entity extraction
         logger.info("📦 Loading Clinical BERT for entity extraction...")
-        ner_model = pipeline(
-            "token-classification",
-            model="allenai/scibert_scivocab_uncased",
-            device=0 if torch.cuda.is_available() else -1
-        )
-        logger.info("✅ Clinical BERT loaded")
+        try:
+            ner_model = pipeline(
+                "token-classification",
+                model="allenai/scibert_scivocab_uncased",
+                device=0 if torch.cuda.is_available() else -1
+            )
+            logger.info("✅ Clinical BERT loaded")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not load SciBERT: {e}")
+            logger.info("📦 Falling back to distilbert base model...")
+            ner_model = pipeline(
+                "token-classification",
+                model="distilbert-base-uncased",
+                device=0 if torch.cuda.is_available() else -1
+            )
+            logger.info("✅ DistilBERT loaded as fallback")
         
         # Load T5 as fallback for longer documents
         logger.info("📦 Loading T5 model (fallback for long texts)...")
-        medical_terms_extractor = pipeline(
-            "text2text-generation",
-            model="google/flan-t5-large"
-        )
-        logger.info("✅ T5 model loaded")
+        try:
+            medical_terms_extractor = pipeline(
+                "text2text-generation",
+                model="google/flan-t5-large"
+            )
+            logger.info("✅ T5 model loaded")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not load T5-large: {e}")
+            logger.info("📦 Falling back to T5-base...")
+            medical_terms_extractor = pipeline(
+                "text2text-generation",
+                model="google/flan-t5-base"
+            )
+            logger.info("✅ T5-base loaded as fallback")
         
         logger.info("✅ All models loaded successfully!")
         logger.info("=" * 70)
@@ -474,6 +504,7 @@ def load_models():
         
     except Exception as e:
         logger.error(f"❌ Failed to load models: {str(e)}")
+        logger.error("⚠️ Medical record service may not function correctly")
         return False
 
 

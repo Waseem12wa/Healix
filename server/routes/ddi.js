@@ -47,39 +47,38 @@ router.post('/check-interactions', async (req, res) => {
         const interactions = [];
         const errors = [];
 
+        const pairJobs = [];
+
         for (let i = 0; i < sanitizedDrugs.length; i++) {
             for (let j = i + 1; j < sanitizedDrugs.length; j++) {
                 const drug1 = sanitizedDrugs[i];
                 const drug2 = sanitizedDrugs[j];
 
-                try {
-                    const result = await checkInteraction(drug1, drug2);
-
-                    if (result.success) {
-                        interactions.push({
-                            drug1: result.drug1,
-                            drug2: result.drug2,
-                            probability: result.probability,
-                            percentage: result.percentage,
-                            severity: result.severity,
-                            severityLabel: result.severity_label,
-                        });
-                    } else {
-                        errors.push({
-                            drug1,
-                            drug2,
-                            error: result.error,
-                        });
-                    }
-                } catch (error) {
-                    errors.push({
-                        drug1,
-                        drug2,
-                        error: error.message,
-                    });
-                }
+                pairJobs.push(
+                    checkInteraction(drug1, drug2)
+                        .then((result) => {
+                            if (result.success) {
+                                interactions.push({
+                                    drug1: result.drug1,
+                                    drug2: result.drug2,
+                                    probability: result.probability,
+                                    percentage: result.percentage,
+                                    severity: result.severity,
+                                    severityLabel: result.severity_label,
+                                    details: result.details,
+                                });
+                            } else {
+                                errors.push({ drug1, drug2, error: result.error });
+                            }
+                        })
+                        .catch((error) => {
+                            errors.push({ drug1, drug2, error: error.message || String(error) });
+                        })
+                );
             }
         }
+
+        await Promise.all(pairJobs);
 
         // Return results
         return res.json({

@@ -15,8 +15,10 @@ import {
     Accordion,
     AccordionSummary,
     AccordionDetails,
-    Divider
+    Divider,
+    Snackbar
 } from '@mui/material'
+import { addToCart as addAlternativeToCart } from '../services/cartService'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import SearchIcon from '@mui/icons-material/Search'
 import InfoIcon from '@mui/icons-material/Info'
@@ -29,6 +31,9 @@ import type { Medicine } from '../services/paymentService'
 
 type Alternative = {
     name: string
+    generic_name?: string
+    composition?: string
+    price?: number
     similarity: number
     mechanism: string
     indications: string
@@ -42,7 +47,7 @@ type ApiResponse = {
     matched_name?: string
     alternatives: Alternative[]
     explanation?: string
-    source: 'model' | 'llm_fallback'
+    source: 'model' | 'llm_fallback' | 'huggingface_nlp'
     error?: string
 }
 
@@ -54,6 +59,7 @@ export default function DrugAlternatives() {
     const [result, setResult] = useState<ApiResponse | null>(null)
     const [paymentOpen, setPaymentOpen] = useState(false)
     const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null)
+    const [toastMessage, setToastMessage] = useState<string | null>(null)
 
     const handleSearch = async () => {
         if (!query.trim()) return
@@ -95,6 +101,21 @@ export default function DrugAlternatives() {
         if (similarity >= 60) return theme.palette.info.main
         if (similarity >= 40) return theme.palette.warning.main
         return theme.palette.error.main
+    }
+
+    const handleAddToCart = (alternative: Alternative) => {
+        const medicineToCart: Medicine = {
+            _id: alternative.name.toLowerCase().replace(/\s+/g, '-'),
+            medicineName: alternative.name,
+            quantity: 100,
+            sellingPrice: alternative.price || 25,
+            expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            batchNumber: `ALT-${Math.random().toString(36).substr(2, 9)}`,
+            supplierName: 'Alternative Medicine'
+        }
+
+        addAlternativeToCart(medicineToCart)
+        setToastMessage(`Added ${alternative.name} to cart.`)
     }
 
     return (
@@ -344,6 +365,22 @@ export default function DrugAlternatives() {
                                                                         />
                                                                     )}
                                                                 </Stack>
+                                                                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                                                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>
+                                                                        Composition:
+                                                                    </Typography>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                                        {alt.composition || alt.generic_name || 'N/A'}
+                                                                    </Typography>
+                                                                </Stack>
+                                                                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                                                                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>
+                                                                        Price:
+                                                                    </Typography>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                                                                        ${alt.price?.toFixed(2) ?? 'N/A'}
+                                                                    </Typography>
+                                                                </Stack>
                                                             </Box>
                                                         </Stack>
 
@@ -421,6 +458,15 @@ export default function DrugAlternatives() {
                                                         {/* Action Buttons */}
                                                         <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
                                                             <Button
+                                                                variant="outlined"
+                                                                fullWidth
+                                                                onClick={() => handleAddToCart(alt)}
+                                                                startIcon={<ShoppingCartIcon />}
+                                                            >
+                                                                Add to Cart
+                                                            </Button>
+
+                                                            <Button
                                                                 variant="contained"
                                                                 fullWidth
                                                                 startIcon={<ShoppingCartIcon />}
@@ -429,9 +475,10 @@ export default function DrugAlternatives() {
                                                                         _id: alt.name.replace(/\s+/g, '-').toLowerCase(),
                                                                         medicineName: alt.name,
                                                                         quantity: 100,
-                                                                        sellingPrice: 25,
+                                                                        sellingPrice: alt.price || 25,
                                                                         expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-                                                                        batchNumber: 'ALT-' + Math.random().toString(36).substr(2, 9)
+                                                                        batchNumber: 'ALT-' + Math.random().toString(36).substr(2, 9),
+                                                                        supplierName: 'Alternative Medicine'
                                                                     })
                                                                     setPaymentOpen(true)
                                                                 }}
@@ -478,6 +525,13 @@ export default function DrugAlternatives() {
                     }}
                 />
             )}
+
+            <Snackbar
+                open={Boolean(toastMessage)}
+                autoHideDuration={3000}
+                onClose={() => setToastMessage(null)}
+                message={toastMessage}
+            />
         </Box>
     )
 }

@@ -44,6 +44,25 @@ type FoodInteraction = {
   }
 }
 
+const DRUG_SPELL_CORRECTIONS: Record<string, string> = {
+  asprin: 'aspirin',
+  ibuprophen: 'ibuprofen',
+  paracetmol: 'paracetamol',
+  metphormin: 'metformin',
+  amoxcillin: 'amoxicillin',
+}
+
+function normalizeName(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ')
+}
+
+function fuzzyCorrectName(name: string): string {
+  const key = normalizeName(name)
+  if (!key) return name
+  if (DRUG_SPELL_CORRECTIONS[key]) return DRUG_SPELL_CORRECTIONS[key]
+  return name
+}
+
 export default function DrugFoodInteractionChecker() {
   const theme = useTheme()
   const [medicineInput, setMedicineInput] = useState('')
@@ -55,16 +74,23 @@ export default function DrugFoodInteractionChecker() {
   const [error, setError] = useState<string | null>(null)
 
   const addMedicine = () => {
-    const name = medicineInput.trim()
-    if (!name) return
-    if (!medicines.includes(name)) setMedicines([...medicines, name])
+    const raw = medicineInput.trim()
+    if (!raw) return
+    const corrected = fuzzyCorrectName(raw)
+    const value = corrected || raw
+
+    if (!medicines.includes(value)) {
+      setMedicines([...medicines, value])
+      if (value !== raw) setError(`Corrected '${raw}' to '${value}'`)
+    }
+
     setMedicineInput('')
   }
 
   const addFood = (food?: string) => {
-    const name = (food || foodInput).trim()
-    if (!name) return
-    if (!foods.includes(name)) setFoods([...foods, name])
+    const raw = (food || foodInput).trim()
+    if (!raw) return
+    if (!foods.includes(raw)) setFoods([...foods, raw])
     setFoodInput('')
   }
 
@@ -180,7 +206,16 @@ export default function DrugFoodInteractionChecker() {
                 placeholder="Enter medicine name (e.g., Warfarin)"
                 value={medicineInput}
                 onChange={(e) => setMedicineInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addMedicine()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    if (medicineInput.trim()) {
+                      addMedicine()
+                    } else if (medicines.length > 0 && foods.length > 0) {
+                      handleCheck()
+                    }
+                  }
+                }}
               />
               <Button
                 variant="contained"
@@ -219,7 +254,16 @@ export default function DrugFoodInteractionChecker() {
                 placeholder="Enter food name (e.g., Grapefruit, Alcohol, Dairy)"
                 value={foodInput}
                 onChange={(e) => setFoodInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addFood()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    if (foodInput.trim()) {
+                      addFood()
+                    } else if (medicines.length > 0 && foods.length > 0) {
+                      handleCheck()
+                    }
+                  }
+                }}
               />
               <Button
                 variant="contained"

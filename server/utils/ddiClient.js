@@ -5,7 +5,16 @@
 import axios from 'axios';
 
 const DDI_SERVICE_URL = process.env.DDI_SERVICE_URL || 'http://localhost:5001';
-const TIMEOUT = 120000; // 120 seconds (LLM generation can take time)
+const TIMEOUT = 120000; // 120 seconds (model can take time)
+
+// Create axios instance with default config
+const ddiClient = axios.create({
+    baseURL: DDI_SERVICE_URL,
+    timeout: TIMEOUT,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
 
 /**
  * Check interaction between two drugs
@@ -15,33 +24,33 @@ const TIMEOUT = 120000; // 120 seconds (LLM generation can take time)
  */
 async function checkInteraction(drug1, drug2) {
     try {
-        const response = await fetch(`${DDI_SERVICE_URL}/predict`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ drug1, drug2 }),
-            signal: AbortSignal.timeout(TIMEOUT), // 90 second timeout for LLM
+        const response = await ddiClient.post('/predict', {
+            drug1,
+            drug2,
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        return data;
+        return response.data;
     } catch (error) {
         // Handle specific error types
-        if (error.name === 'AbortError' || error.name === 'TimeoutError') {
-            throw new Error('DDI service request timeout - the service may be processing a complex request');
-        }
-
         if (error.code === 'ECONNREFUSED') {
             throw new Error('DDI service is not running. Please start the Python microservice.');
         }
 
-        throw error;
+        if (error.code === 'ENOTFOUND') {
+            throw new Error('DDI service host not found. Check your configuration.');
+        }
+
+        if (error.response) {
+            // Server responded with error status
+            throw new Error(error.response.data?.error || `HTTP ${error.response.status}: ${error.response.statusText}`);
+        }
+
+        if (error.message === 'timeout of ' + TIMEOUT + 'ms exceeded') {
+            throw new Error(`DDI service request timeout (${TIMEOUT}ms) - the service may be busy or unresponsive`);
+        }
+
+        // Generic network error
+        throw new Error(`Failed to connect to DDI service: ${error.message}`);
     }
 }
 
@@ -51,16 +60,15 @@ async function checkInteraction(drug1, drug2) {
  */
 async function checkHealth() {
     try {
-        const response = await fetch(`${DDI_SERVICE_URL}/health`, {
-            method: 'GET',
-            signal: AbortSignal.timeout(5000), // 5 second timeout
+        const response = await ddiClient.get('/health', {
+            timeout: 5000, // 5 second timeout for health check
         });
 
-        return await response.json();
+        return response.data;
     } catch (error) {
         return {
             status: 'unhealthy',
-            error: error.message,
+            error: error.message || 'Connection failed',
         };
     }
 }

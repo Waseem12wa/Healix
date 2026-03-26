@@ -19,6 +19,12 @@ import numpy as np
 # Hugging Face models
 from sentence_transformers import SentenceTransformer, util
 
+# Use local helper utilities
+try:
+    from drug_utils import correct_drug_name
+except ImportError:
+    from .drug_utils import correct_drug_name
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -242,79 +248,113 @@ def generate_alternatives(medicine_name: str, top_n: int = 5) -> Tuple[List[Dict
     Generate medicine alternatives based on therapeutic equivalence
     and active ingredients
     """
-    
     try:
         # Find the medicine
         matched_name, med_info = find_medicine_info(medicine_name)
-        
+
         if not med_info:
             return None, f"Medicine '{medicine_name}' not found in database"
-        
+
         alternatives_list = []
-        
-        # Get therapeutic equivalents
-        if matched_name in THERAPEUTIC_EQUIVALENTS:
-            equiv_medicines = THERAPEUTIC_EQUIVALENTS[matched_name]
-            
-            for alt_name in equiv_medicines:
-                alt_info = MEDICINE_DATABASE.get(alt_name)
-                if alt_info:
-                    # Calculate similarity
-                    similarity = 85.0  # Base similarity for therapeutic equivalents
-                    
-                    # Increase if same category
-                    if alt_info.get('category') == med_info.get('category'):
-                        similarity += 10.0
-                    
-                    # Adjust based on class overlap
-                    common_classes = set(alt_info.get('classes', [])) & set(med_info.get('classes', []))
-                    if common_classes:
-                        similarity += len(common_classes) * 5.0
-                    
-                    similarity = min(similarity, 99.0)  # Cap at 99
-                    
-                    alternatives_list.append({
-                        'name': alt_name.capitalize(),
-                        'generic_name': alt_info.get('generic_name'),
-                        'similarity': similarity,
-                        'category': alt_info.get('category'),
-                        'therapeutic_use': alt_info.get('therapeutic_use'),
-                        'dosage': alt_info.get('common_dosage'),
-                        'differences': generate_differences(med_info, alt_info),
-                        'advantage': generate_advantage(matched_name, alt_name),
-                        'atc_code': 'N/A'
-                    })
-        
-        # If not enough alternatives, add other drugs in same category
-        if len(alternatives_list) < top_n:
+
+        # 1) exact same composition (same active ingredients formula/salt)
+        target_ingredients = set([ing.lower().strip() for ing in med_info.get('active_ingredients', [])])
+        if target_ingredients:
             for med_name, med in MEDICINE_DATABASE.items():
-                if med_name != matched_name and med_name not in [a['name'].lower() for a in alternatives_list]:
-                    if med.get('category') == med_info.get('category'):
-                        similarity = 70.0  # Lower similarity for same category but different
-                        
+                if med_name != matched_name and med.get('active_ingredients'):
+                    med_ingredients = set([ing.lower().strip() for ing in med.get('active_ingredients', [])])
+                    if med_ingredients == target_ingredients:
+                        similarity = 95.0
                         alternatives_list.append({
                             'name': med_name.capitalize(),
                             'generic_name': med.get('generic_name'),
+                            'composition': ', '.join(med.get('active_ingredients', [])),
+                            'price': med.get('price', float(15 + len(med_name) % 30)),
                             'similarity': similarity,
                             'category': med.get('category'),
                             'therapeutic_use': med.get('therapeutic_use'),
                             'dosage': med.get('common_dosage'),
+                            'mechanism': med.get('notes', ''),
+                            'indications': med.get('therapeutic_use', ''),
+                            'differences': generate_differences(med_info, med),
+                            'advantage': generate_advantage(matched_name, med_name),
+                            'atc_code': 'N/A'
+                        })
+
+        # 2) therapeutic equivalents
+        if matched_name in THERAPEUTIC_EQUIVALENTS:
+            equiv_medicines = THERAPEUTIC_EQUIVALENTS[matched_name]
+
+            for alt_name in equiv_medicines:
+                alt_info = MEDICINE_DATABASE.get(alt_name)
+                if alt_info:
+                    # Avoid duplicates
+                    names_in_list = [x['name'].lower() for x in alternatives_list]
+                    if alt_name.capitalize().lower() in names_in_list:
+                        continue
+
+                    similarity = 85.0  # Base similarity for therapeutic equivalents
+
+                    # Increase if same category
+                    if alt_info.get('category') == med_info.get('category'):
+                        similarity += 10.0
+
+                    # Adjust based on class overlap
+                    common_classes = set(alt_info.get('classes', [])) & set(med_info.get('classes', []))
+                    if common_classes:
+                        similarity += len(common_classes) * 5.0
+
+                    similarity = min(similarity, 99.0)  # Cap at 99
+
+                    alternatives_list.append({
+                        'name': alt_name.capitalize(),
+                        'generic_name': alt_info.get('generic_name'),
+                        'composition': ', '.join(alt_info.get('active_ingredients', [])),
+                        'price': alt_info.get('price', float(15 + len(alt_name) % 30)),
+                        'similarity': similarity,
+                        'category': alt_info.get('category'),
+                        'therapeutic_use': alt_info.get('therapeutic_use'),
+                        'dosage': alt_info.get('common_dosage'),
+                        'mechanism': alt_info.get('notes', ''),
+                        'indications': alt_info.get('therapeutic_use', ''),
+                        'differences': generate_differences(med_info, alt_info),
+                        'advantage': generate_advantage(matched_name, alt_name),
+                        'atc_code': 'N/A'
+                    })
+
+        # 3) if not enough, use same category
+        if len(alternatives_list) < top_n:
+            for med_name, med in MEDICINE_DATABASE.items():
+                name_lower = med_name.lower()
+                if med_name != matched_name and name_lower not in [a['name'].lower() for a in alternatives_list]:
+                    if med.get('category') == med_info.get('category'):
+                        similarity = 70.0  # Lower similarity for same category but different
+                        alternatives_list.append({
+                            'name': med_name.capitalize(),
+                            'generic_name': med.get('generic_name'),
+                            'composition': ', '.join(med.get('active_ingredients', [])),
+                            'price': med.get('price', float(15 + len(med_name) % 30)),
+                            'similarity': similarity,
+                            'category': med.get('category'),
+                            'therapeutic_use': med.get('therapeutic_use'),
+                            'dosage': med.get('common_dosage'),
+                            'mechanism': med.get('notes', ''),
+                            'indications': med.get('therapeutic_use', ''),
                             'differences': generate_differences(med_info, med),
                             'advantage': 'Different drug in same class',
                             'atc_code': 'N/A'
                         })
-                
                 if len(alternatives_list) >= top_n:
                     break
-        
+
         # Sort by similarity
         alternatives_list.sort(key=lambda x: x['similarity'], reverse=True)
         alternatives_list = alternatives_list[:top_n]
-        
+
         explanation = f"Alternatives for {medicine_name.capitalize()} based on active ingredients and therapeutic use. {len(alternatives_list)} options recommended."
-        
+
         return alternatives_list, explanation
-        
+
     except Exception as e:
         logger.error(f"Error generating alternatives: {e}")
         return None, str(e)
@@ -383,16 +423,10 @@ def recommend_alternatives():
                 'error': 'Missing required field: medicine'
             }), 400
         
-        medicine = data['medicine'].strip()
+        medicine = correct_drug_name(data['medicine'].strip())
         top_n = data.get('top_n', 5)
         
-        if not medicine:
-            return jsonify({
-                'success': False,
-                'error': 'Medicine name cannot be empty'
-            }), 400
-        
-        logger.info(f"📥 Request for alternatives: {medicine}")
+        logger.info(f"📥 Request for alternatives: {medicine} (original: {data['medicine'].strip()})")
         
         # Generate alternatives
         alternatives, explanation = generate_alternatives(medicine, top_n)

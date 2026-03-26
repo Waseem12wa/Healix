@@ -16,13 +16,11 @@ import numpy as np
 import os
 import logging
 
-# Import LLM service for detailed explanations AND fallback
+# Use local helper utilities and HF fallback (no LLM for core path)
 try:
-    from llm_service import generate_interaction_details, generate_fallback_prediction, check_ollama_available
-    LLM_AVAILABLE = True
+    from drug_utils import correct_drug_name, correct_food_name, hf_fallback_prediction, get_simple_interaction_details
 except ImportError:
-    logging.warning("LLM service not available - detailed explanations will be disabled")
-    LLM_AVAILABLE = False
+    from .drug_utils import correct_drug_name, correct_food_name, hf_fallback_prediction, get_simple_interaction_details
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +32,10 @@ CORS(app)
 # Global model instance
 dfi_model = None
 MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'Models', 'XGB-tuned.sav')
+
+# In-memory caches for speed.
+smiles_cache = {}
+descriptor_cache = {}
 
 
 def load_model():
@@ -83,55 +85,59 @@ def load_model():
 
 def fetch_smiles(medicine_name):
     """
-    Fetch SMILES notation from PubChem
-    
-    Args:
-        medicine_name: Name of the medicine
-        
-    Returns:
-        tuple: (SMILES, CID) or (None, None)
+    Fetch SMILES notation from PubChem (cached)
     """
+    key = medicine_name.lower().strip()
+    if not key:
+        return None, None
+
+    if key in smiles_cache:
+        return smiles_cache[key]
+
     try:
         logger.info(f"Fetching SMILES for: {medicine_name}")
         compounds = pcp.get_compounds(medicine_name, 'name')
-        
+
+        if not compounds:
+            correction = correct_drug_name(medicine_name)
+            if correction and correction != medicine_name:
+                logger.info(f"Trying corrected medicine name for SMILES lookup: {correction}")
+                compounds = pcp.get_compounds(correction, 'name')
+
         if not compounds:
             logger.warning(f"No compound found for: {medicine_name}")
+            smiles_cache[key] = (None, None)
             return None, None
-            
+
         smiles = compounds[0].canonical_smiles
         cid = compounds[0].cid
+        smiles_cache[key] = (smiles, cid)
+
         logger.info(f"Found SMILES for {medicine_name}: {smiles} (CID: {cid})")
         return smiles, cid
-        
+
     except Exception as e:
         logger.error(f"Error fetching SMILES for {medicine_name}: {str(e)}")
+        smiles_cache[key] = (None, None)
         return None, None
 
 
 def calculate_dfi_descriptors(smiles):
     """
     Calculate 18 molecular descriptors required by XGBoost DFI model
-    
-    Features (matching trained model):
-    - MTPSA+MTPSA (doubled topological polar surface area)
-    - MRVSA9, MRVSA8, MRVSA0, MRVSA2 (MOE-type descriptors)
-    - VSAEstate10+VSAEstate10, VSAEstate7+VSAEstate7 (combined features)
-    - EstateVSA0*LabuteASA, EstateVSA1*VSAEstate8 (product features)
-    - EstateVSA7, EstateVSA2, EstateVSA1
-    - PEOEVSA12, PEOEVSA10, PEOEVSA5, PEOEVSA9
-    - slogPVSA2, slogPVSA0, slogPVSA9
-    
-    Args:
-        smiles: SMILES notation
-        
-    Returns:
-        pandas DataFrame with 18 features or None
     """
+    if not smiles:
+        return None
+
+    key = smiles
+    if key in descriptor_cache:
+        return descriptor_cache[key]
+
     try:
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             logger.error(f"Invalid SMILES: {smiles}")
+            descriptor_cache[key] = None
             return None
         
         # Calculate base descriptors
@@ -200,7 +206,8 @@ def calculate_dfi_descriptors(smiles):
         
         # Convert to DataFrame
         features_df = pd.DataFrame([features])
-        
+        descriptor_cache[key] = features_df
+
         logger.info(f"Calculated {len(features)} DFI descriptors successfully")
         return features_df
         
@@ -208,6 +215,7 @@ def calculate_dfi_descriptors(smiles):
         logger.error(f"Error calculating DFI descriptors: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
+        descriptor_cache[key] = None
         return None
 
 
@@ -218,7 +226,7 @@ def health_check():
         "status": "healthy",
         "service": "DFI Prediction Service",
         "model_loaded": dfi_model is not None,
-        "llm_available": LLM_AVAILABLE
+        "hf_fallback": True
     })
 
 
@@ -260,100 +268,81 @@ def predict_food_interaction():
                 "error": "Missing required fields: medicine and food"
             }), 400
         
-        medicine = data['medicine'].strip()
-        food = data['food'].strip()
-        
+        medicine = correct_drug_name(data['medicine'])
+        food = correct_food_name(data['food'].strip())
+
         logger.info(f"Processing food interaction check: {medicine} + {food}")
-        
+
         # Fetch SMILES for medicine
         smiles, cid = fetch_smiles(medicine)
-        
-        # Check if SMILES fetching failed - use LLM fallback if available
+
         if not smiles:
-            logger.warning(f"Could not find SMILES for {medicine} - attempting LLM fallback")
-            
-            if LLM_AVAILABLE:
-                try:
-                    # Use LLM to predict interaction
-                    probability, llm_details = generate_fallback_prediction(medicine, food, "drug-food")
-                    
-                    if probability is not None:
-                        percentage = round(probability * 100, 2)
-                        
-                        if percentage > 70:
-                            severity = "High"
-                            severity_label = "High Risk"
-                        elif percentage >= 40:
-                            severity = "Moderate"
-                            severity_label = "Moderate Risk"
-                        else:
-                            severity = "Low"
-                            severity_label = "Low Risk"
-                        
-                        logger.info(f"LLM fallback prediction: {percentage}% ({severity})")
-                        
-                        return jsonify({
-                            "success": True,
-                            "medicine": medicine,
-                            "food": food,
-                            "probability": probability,
-                            "percentage": percentage,
-                            "severity": severity,
-                            "severity_label": severity_label,
-                            "details": llm_details,
-                            "source": "llm_fallback"
-                        })
-                except Exception as e:
-                    logger.error(f"LLM fallback failed: {str(e)}")
-            
+            logger.warning(f"Could not find SMILES for {medicine} - using HF fallback")
+            probability, hf_details = hf_fallback_prediction(medicine, food, "drug-food")
+
+            if probability is not None:
+                percentage = round(probability * 100, 2)
+                if percentage > 70:
+                    severity = "High"
+                    severity_label = "High Risk"
+                elif percentage >= 40:
+                    severity = "Moderate"
+                    severity_label = "Moderate Risk"
+                else:
+                    severity = "Low"
+                    severity_label = "Low Risk"
+
+                return jsonify({
+                    "success": True,
+                    "medicine": medicine,
+                    "food": food,
+                    "probability": probability,
+                    "percentage": percentage,
+                    "severity": severity,
+                    "severity_label": severity_label,
+                    "details": hf_details,
+                    "source": "hf_fallback"
+                })
+
             return jsonify({
                 "success": False,
-                "error": f"Could not find chemical structure for '{medicine}' in PubChem database and LLM fallback unavailable"
+                "error": f"Could not find chemical structure for '{medicine}' in PubChem database and HF fallback unavailable"
             }), 404
         
         # Calculate 18 molecular descriptors
         features_df = calculate_dfi_descriptors(smiles)
         
         if features_df is None:
-            logger.warning("Descriptor calculation failed - attempting LLM fallback")
-            
-            if LLM_AVAILABLE:
-                try:
-                    # Use LLM to predict interaction
-                    probability, llm_details = generate_fallback_prediction(medicine, food, "drug-food")
-                    
-                    if probability is not None:
-                        percentage = round(probability * 100, 2)
-                        
-                        if percentage > 70:
-                            severity = "High"
-                            severity_label = "High Risk"
-                        elif percentage >= 40:
-                            severity = "Moderate"
-                            severity_label = "Moderate Risk"
-                        else:
-                            severity = "Low"
-                            severity_label = "Low Risk"
-                        
-                        logger.info(f"LLM fallback prediction: {percentage}% ({severity})")
-                        
-                        return jsonify({
-                            "success": True,
-                            "medicine": medicine,
-                            "food": food,
-                            "probability": probability,
-                            "percentage": percentage,
-                            "severity": severity,
-                            "severity_label": severity_label,
-                            "details": llm_details,
-                            "source": "llm_fallback"
-                        })
-                except Exception as e:
-                    logger.error(f"LLM fallback failed: {str(e)}")
-            
+            logger.warning("Descriptor calculation failed - using HF fallback")
+            probability, hf_details = hf_fallback_prediction(medicine, food, "drug-food")
+
+            if probability is not None:
+                percentage = round(probability * 100, 2)
+                if percentage > 70:
+                    severity = "High"
+                    severity_label = "High Risk"
+                elif percentage >= 40:
+                    severity = "Moderate"
+                    severity_label = "Moderate Risk"
+                else:
+                    severity = "Low"
+                    severity_label = "Low Risk"
+
+                return jsonify({
+                    "success": True,
+                    "medicine": medicine,
+                    "food": food,
+                    "probability": probability,
+                    "percentage": percentage,
+                    "severity": severity,
+                    "severity_label": severity_label,
+                    "details": hf_details,
+                    "source": "hf_fallback"
+                })
+
             return jsonify({
                 "success": False,
-                "error": "Failed to calculate molecular descriptors and LLM fallback unavailable"
+                "error": "Failed to calculate molecular descriptors and HF fallback unavailable"
             }), 500
         
         # Predict interaction probability using model
@@ -375,76 +364,42 @@ def predict_food_interaction():
             logger.info(f"DFI Prediction: {percentage}% ({severity})")
             
         except Exception as e:
-            # Model prediction failed - try LLM fallback
+            # Model prediction failed - try HF fallback
             logger.error(f"Model prediction failed: {str(e)}")
-            logger.warning("Attempting LLM fallback...")
-            
-            if LLM_AVAILABLE:
-                try:
-                    probability, llm_details = generate_fallback_prediction(medicine, food, "drug-food")
-                    
-                    if probability is not None:
-                        percentage = round(probability * 100, 2)
-                        
-                        if percentage > 70:
-                            severity = "High"
-                            severity_label = "High Risk"
-                        elif percentage >= 40:
-                            severity = "Moderate"
-                            severity_label = "Moderate Risk"
-                        else:
-                            severity = "Low"
-                            severity_label = "Low Risk"
-                        
-                        logger.info(f"LLM fallback prediction: {percentage}% ({severity})")
-                        
-                        return jsonify({
-                            "success": True,
-                            "medicine": medicine,
-                            "food": food,
-                            "probability": probability,
-                            "percentage": percentage,
-                            "severity": severity,
-                            "severity_label": severity_label,
-                            "details": llm_details,
-                            "source": "llm_fallback"
-                        })
-                except Exception as e2:
-                    logger.error(f"LLM fallback failed: {str(e2)}")
-            
+            probability, hf_details = hf_fallback_prediction(medicine, food, "drug-food")
+
+            if probability is not None:
+                percentage = round(probability * 100, 2)
+                if percentage > 70:
+                    severity = "High"
+                    severity_label = "High Risk"
+                elif percentage >= 40:
+                    severity = "Moderate"
+                    severity_label = "Moderate Risk"
+                else:
+                    severity = "Low"
+                    severity_label = "Low Risk"
+
+                return jsonify({
+                    "success": True,
+                    "medicine": medicine,
+                    "food": food,
+                    "probability": probability,
+                    "percentage": percentage,
+                    "severity": severity,
+                    "severity_label": severity_label,
+                    "details": hf_details,
+                    "source": "hf_fallback"
+                })
+
             return jsonify({
                 "success": False,
-                "error": f"Model prediction failed: {str(e)} and LLM fallback unavailable"
+                "error": f"Model prediction failed: {str(e)} and HF fallback unavailable"
             }), 500
         
-        # ALWAYS generate LLM explanation for successful predictions
-        llm_details = None
-        interaction_detected = probability >= 0.4
-        
-        # Always attempt to generate LLM explanation
-        try:
-            logger.info("Generating LLM explanation for DFI...")
-            if LLM_AVAILABLE:
-                # Create custom prompt for drug-food interaction
-                llm_details = generate_food_interaction_details(
-                    medicine=medicine,
-                    food=food,
-                    probability=percentage,
-                    severity=severity,
-                    interaction_detected=interaction_detected
-                )
-                
-                if llm_details:
-                    logger.info("LLM explanation generated successfully")
-                else:
-                    logger.warning("LLM explanation generation returned None")
-            else:
-                logger.warning("LLM not available - skipping detailed explanation")
-                    
-        except Exception as e:
-            logger.error(f"Error calling LLM service: {str(e)}")
-        
-        # Build response
+        # Use a concise consistency-based explanation
+        details = get_simple_interaction_details(medicine, food, percentage, severity)
+
         response_data = {
             "success": True,
             "medicine": medicine,
@@ -452,12 +407,11 @@ def predict_food_interaction():
             "probability": probability,
             "percentage": percentage,
             "severity": severity,
-            "severity_label": severity_label
+            "severity_label": severity_label,
+            "details": details,
+            "source": "model"
         }
-        
-        if llm_details:
-            response_data["details"] = llm_details
-        
+
         return jsonify(response_data)
         
     except Exception as e:
@@ -470,69 +424,6 @@ def predict_food_interaction():
         }), 500
 
 
-def generate_food_interaction_details(medicine, food, probability, severity, interaction_detected):
-    """Generate LLM explanation for drug-food interaction"""
-    try:
-        import ollama
-        
-        if interaction_detected and probability >= 40:
-            prompt = f"""You are a clinical pharmacist AI. Analyze this drug-food interaction:
-
-Medicine: {medicine}
-Food: {food}
-Interaction Risk: {probability:.1f}%
-Severity: {severity}
-
-Provide a concise clinical analysis in exactly this format:
-
-MECHANISM: [2-3 sentences explaining WHY this food affects the drug's absorption, metabolism, or effectiveness]
-
-SYMPTOMS: [List 3-5 specific symptoms or effects patients may experience from this interaction]
-
-RECOMMENDATIONS: [2-3 specific actions - timing of medication, foods to avoid, monitoring needed]
-
-ALTERNATIVES: [Suggest 1-2 alternative foods that are safer, or state "Consult healthcare provider"]
-
-DOSAGE: [Brief guidance on timing medication around meals, or state "Take on empty stomach" / "Take with food"]
-
-Keep responses evidence-based and concise."""
-
-        else:
-            prompt = f"""You are a clinical pharmacist AI. The AI model did not detect a significant interaction, but please verify:
-
-Medicine: {medicine}
-Food: {food}
-Model Risk Score: {probability:.1f}% (Low)
-
-Provide a brief safety assessment:
-
-MECHANISM: [Explain if there are any minor effects on absorption/metabolism, or state "No significant interaction expected"]
-
-SYMPTOMS: [List any minor effects to monitor, or state "No significant symptoms expected"]
-
-RECOMMENDATIONS: [Brief advice or state "No special precautions needed - can take with or without food"]
-
-ALTERNATIVES: [State "Not applicable - combination appears safe"]
-
-DOSAGE: [State "Standard dosing - follow prescription" or any timing considerations]
-
-Be concise and reassuring if truly safe."""
-
-        response = ollama.chat(
-            model="llama3.2:3b",
-            messages=[{'role': 'user', 'content': prompt}],
-            options={'temperature': 0.5, 'num_predict': 200}  # Aggressive speed optimization
-        )
-        
-        content = response['message']['content']
-        
-        # Parse response (reuse parsing logic from llm_service)
-        from llm_service import parse_llm_response
-        return parse_llm_response(content)
-        
-    except Exception as e:
-        logger.error(f"Error generating LLM explanation: {str(e)}")
-        return None
 
 
 if __name__ == '__main__':

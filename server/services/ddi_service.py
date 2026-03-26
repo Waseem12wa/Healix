@@ -15,27 +15,55 @@ from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors
 import requests
 import os
+import csv
+import json
 import logging
 
 # Configure logging FIRST
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Import LLM service for detailed explanations AND fallback
+# Redis cache support (persistent)
+redis_client = None
 try:
-    from llm_service import generate_interaction_details, generate_fallback_prediction, check_ollama_available
-    LLM_AVAILABLE = True
-    # Check if Ollama is actually running
-    try:
-        import ollama
-        ollama.list()
-        logger.info("Ollama is available and running")
-    except Exception as e:
-        logger.warning(f"Ollama not available: {str(e)}")
-        LLM_AVAILABLE = False
+    import redis
+    REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
+    REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
+    REDIS_DB = int(os.environ.get('REDIS_DB', 0))
+    redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+    redis_client.ping()
+    logger.info(f"Using Redis cache at {REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}")
+except Exception as e:
+    redis_client = None
+    logger.warning(f"Redis unavailable, using in-memory cache only: {e}")
+
+# Metrics counters for fallback frequency
+metrics = {
+    'ddi_model_predictions': 0,
+    'ddi_hf_fallbacks': 0,
+    'ddi_smiles_misses': 0,
+    'ddi_descriptor_misses': 0,
+    'ddi_atc_misses': 0
+}
+
+def record_metric(key: str, inc: int = 1):
+    if key not in metrics:
+        metrics[key] = 0
+    metrics[key] += inc
+
+    if redis_client:
+        try:
+            redis_client.hincrby('ddi:metrics', key, inc)
+        except Exception as e:
+            logger.warning(f"Could not persist metric {key} to Redis: {e}")
+
+# Use local utilities and HF fallback (no default LLM model required for core path)
+try:
+    from drug_utils import correct_drug_name, hf_fallback_prediction, get_simple_interaction_details
 except ImportError:
-    logger.warning("LLM service not available - detailed explanations will be disabled")
-    LLM_AVAILABLE = False
+    from .drug_utils import correct_drug_name, hf_fallback_prediction, get_simple_interaction_details
+
+# We no longer depend on LLM for core predictions; HF fallback is used if model fails
 
 app = Flask(__name__)
 CORS(app)
@@ -43,6 +71,11 @@ CORS(app)
 # Global model instance (loaded once at startup)
 model = None
 MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'Models', 'DDI.cbm')
+
+# In-memory caches for fast repeated lookup
+smiles_cache = {}
+atc_cache = {}
+descriptor_cache = {}
 
 
 def load_model():
@@ -61,125 +94,168 @@ def load_model():
 
 def fetch_smiles(medicine_name):
     """
-    Fetch SMILES notation and CID from PubChem database
-    
-    Args:
-        medicine_name (str): Name of the medicine
-        
-    Returns:
-        tuple: (SMILES notation, CID) or (None, None) if not found
+    Fetch SMILES notation and CID from PubChem database (cached)
     """
+    name_key = medicine_name.lower().strip()
+
+    if not name_key:
+        return None, None
+
+    # Check Redis cache first
+    if redis_client:
+        cached = redis_client.get(f"ddi:smiles:{name_key}")
+        if cached:
+            try:
+                cached_value = json.loads(cached)
+                return cached_value.get('smiles'), cached_value.get('cid')
+            except Exception:
+                pass
+
+    if name_key in smiles_cache:
+        return smiles_cache[name_key]
+
     try:
         logger.info(f"Fetching SMILES for: {medicine_name}")
         compounds = pcp.get_compounds(medicine_name, 'name')
-        
+
+        if not compounds:
+            correction = correct_drug_name(medicine_name)
+            if correction and correction != medicine_name:
+                logger.info(f"Trying corrected name for SMILES lookup: {correction}")
+                compounds = pcp.get_compounds(correction, 'name')
+
         if not compounds:
             logger.warning(f"No compound found for: {medicine_name}")
+            smiles_cache[name_key] = (None, None)
             return None, None
-            
+
         smiles = compounds[0].canonical_smiles
         cid = compounds[0].cid
+
         logger.info(f"Found SMILES for {medicine_name}: {smiles} (CID: {cid})")
+        smiles_cache[name_key] = (smiles, cid)
+        if redis_client:
+            redis_client.set(f"ddi:smiles:{name_key}", json.dumps({'smiles': smiles, 'cid': cid}), ex=86400)
         return smiles, cid
-        
+
     except Exception as e:
         logger.error(f"Error fetching SMILES for {medicine_name}: {str(e)}")
+        smiles_cache[name_key] = (None, None)
+        if redis_client:
+            redis_client.set(f"ddi:smiles:{name_key}", json.dumps({'smiles': None, 'cid': None}), ex=300)
         return None, None
 
 
 def fetch_atc_classification(medicine_name, cid):
     """
-    Fetch ATC (Anatomical Therapeutic Chemical) classification from PubChem
-    
-    Args:
-        medicine_name (str): Name of the medicine
-        cid (int): PubChem Compound ID
-        
-    Returns:
-        dict: Dictionary with state and level1-4 classifications, or None if not found
+    Fetch ATC (Anatomical Therapeutic Chemical) classification from PubChem (cached)
     """
+    if cid is None:
+        return None
+
+    cache_key = f"{medicine_name.lower().strip()}::{cid}"
+
+    # Redis cache
+    if redis_client:
+        cached = redis_client.get(f"ddi:atc:{cache_key}")
+        if cached:
+            try:
+                value = json.loads(cached)
+                return value
+            except Exception:
+                pass
+
+    if cache_key in atc_cache:
+        return atc_cache[cache_key]
+
     try:
         logger.info(f"Fetching ATC classification for: {medicine_name} (CID: {cid})")
-        
-        # Get ATC codes from PubChem using PUG-View API
         url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON"
         response = requests.get(url, timeout=15)
-        
+
         if response.status_code != 200:
             logger.warning(f"Could not fetch PubChem data for CID {cid}")
+            atc_cache[cache_key] = None
             return None
-        
+
         data = response.json()
-        
-        # Navigate through the JSON to find ATC codes
+
         atc_codes = []
         try:
-            sections = data['Record']['Section']
+            sections = data.get('Record', {}).get('Section', [])
             for section in sections:
                 if 'Section' in section:
                     for subsection in section['Section']:
                         if subsection.get('TOCHeading') == 'ATC Code':
-                            if 'Information' in subsection:
-                                for info in subsection['Information']:
-                                    if 'Value' in info and 'StringWithMarkup' in info['Value']:
-                                        for item in info['Value']['StringWithMarkup']:
-                                            if 'String' in item:
-                                                code = item['String']
-                                                # Only keep actual ATC codes (7 characters)
-                                                if len(code) == 7 and code[0].isalpha():
-                                                    atc_codes.append(code)
+                            for info in subsection.get('Information', []):
+                                for item in info.get('Value', {}).get('StringWithMarkup', []):
+                                    code = item.get('String')
+                                    if isinstance(code, str) and len(code) >= 5 and code[0].isalpha():
+                                        atc_codes.append(code)
         except (KeyError, TypeError) as e:
             logger.warning(f"Error parsing ATC data: {e}")
-        
+
         if not atc_codes:
             logger.warning(f"No ATC codes found for {medicine_name}")
+            atc_cache[cache_key] = None
+            record_metric('ddi_atc_misses')
+            if redis_client:
+                redis_client.set(f"ddi:atc:{cache_key}", json.dumps(None), ex=3600)
             return None
-        
-        # Use the first ATC code and extract hierarchical levels
-        # ATC structure: A12BC34 where:
-        # A = Level 1 (Anatomical main group)
-        # A12 = Level 2 (Therapeutic subgroup)
-        # A12B = Level 3 (Pharmacological subgroup)
-        # A12BC = Level 4 (Chemical subgroup)
-        # A12BC34 = Level 5 (Chemical substance)
-        
+
         primary_atc = atc_codes[0]
         logger.info(f"Primary ATC code for {medicine_name}: {primary_atc}")
-        
+
         classification = {
-            'state': 'solid',  # Default - could be enhanced with additional data
-            'level1': primary_atc[0] if len(primary_atc) >= 1 else 'unknown',  # Anatomical
-            'level2': primary_atc[:3] if len(primary_atc) >= 3 else 'unknown',  # Therapeutic
-            'level3': primary_atc[:4] if len(primary_atc) >= 4 else 'unknown',  # Pharmacological
-            'level4': primary_atc[:5] if len(primary_atc) >= 5 else 'unknown',  # Chemical
+            'state': 'solid',
+            'level1': primary_atc[0] if len(primary_atc) >= 1 else 'unknown',
+            'level2': primary_atc[:3] if len(primary_atc) >= 3 else 'unknown',
+            'level3': primary_atc[:4] if len(primary_atc) >= 4 else 'unknown',
+            'level4': primary_atc[:5] if len(primary_atc) >= 5 else 'unknown',
         }
-        
+
         logger.info(f"ATC classification: {classification}")
+        atc_cache[cache_key] = classification
+        if redis_client:
+            redis_client.set(f"ddi:atc:{cache_key}", json.dumps(classification), ex=86400)
         return classification
-        
+
     except Exception as e:
         logger.error(f"Error fetching ATC classification: {str(e)}")
+        atc_cache[cache_key] = None
         return None
 
 
 def calculate_descriptors(smiles, atc_classification=None, drug_suffix='_x'):
     """
-    Calculate molecular descriptors from SMILES matching the model's expected features
-    
-    Args:
-        smiles (str): SMILES notation
-        atc_classification (dict): ATC classification with state and level1-4
-        drug_suffix (str): '_x' for drug1, '_y' for drug2
-        
-    Returns:
-        dict: Dictionary of features matching model's expected feature names
+    Calculate molecular descriptors from SMILES matching the model's expected features (cached)
     """
+    if not smiles:
+        return None
+
+    cache_key = f"{smiles}::{drug_suffix}"
+
+    # Redis cache
+    if redis_client:
+        cached = redis_client.get(f"ddi:descriptor:{cache_key}")
+        if cached:
+            try:
+                desc = json.loads(cached)
+                descriptor_cache[cache_key] = desc
+                return desc
+            except Exception:
+                pass
+
+    if cache_key in descriptor_cache:
+        return descriptor_cache[cache_key]
+
     try:
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             logger.error(f"Invalid SMILES: {smiles}")
+            descriptor_cache[cache_key] = None
             return None
-        
+
         # Calculate RDKit descriptors
         mw = Descriptors.MolWt(mol)
         logp = Descriptors.MolLogP(mol)
@@ -189,7 +265,7 @@ def calculate_descriptors(smiles, atc_classification=None, drug_suffix='_x'):
         rotatable_bonds = Descriptors.NumRotatableBonds(mol)
         num_rings = rdMolDescriptors.CalcNumRings(mol)
         refractivity = Descriptors.MolMR(mol)
-        
+
         # Estimate logS (water solubility) using simple ESOL formula
         aromatic_proportion = rdMolDescriptors.CalcNumAromaticRings(mol) / max(num_rings, 1)
         logs = 0.16 - 0.63*logp - 0.0062*mw + 0.066*rotatable_bonds - 0.74*aromatic_proportion
@@ -278,10 +354,23 @@ def calculate_descriptors(smiles, atc_classification=None, drug_suffix='_x'):
         }
         
         logger.info(f"Calculated {len(features)} features for drug{drug_suffix}")
+        descriptor_cache[cache_key] = features
+        if redis_client:
+            try:
+                redis_client.set(f"ddi:descriptor:{cache_key}", json.dumps(features), ex=86400)
+            except Exception as e:
+                logger.warning(f"Failed to persist descriptor in Redis: {e}")
         return features
         
     except Exception as e:
         logger.error(f"Error calculating descriptors: {str(e)}")
+        descriptor_cache[cache_key] = None
+        if redis_client:
+            try:
+                redis_client.set(f"ddi:descriptor:{cache_key}", json.dumps(None), ex=300)
+            except Exception:
+                pass
+        return None
 
 
 def predict_interaction(features_drug1, features_drug2):
@@ -354,6 +443,20 @@ def health_check():
     })
 
 
+@app.route('/metrics', methods=['GET'])
+def metrics_endpoint():
+    """Interaction analytics metrics"""
+    if redis_client:
+        try:
+            if redis_client.exists('ddi:metrics'):
+                saved = redis_client.hgetall('ddi:metrics')
+                return jsonify({**metrics, **{k: int(v) for k, v in saved.items()}})
+        except Exception as e:
+            logger.warning(f"Cannot read Redis metrics: {e}")
+
+    return jsonify(metrics)
+
+
 @app.route('/predict', methods=['POST'])
 def predict():
     """
@@ -385,61 +488,51 @@ def predict():
                 "error": "Missing required fields: drug1 and drug2"
             }), 400
         
-        drug1 = data['drug1'].strip()
-        drug2 = data['drug2'].strip()
-        
+        drug1 = correct_drug_name(data['drug1'])
+        drug2 = correct_drug_name(data['drug2'])
+
         logger.info(f"Processing interaction check: {drug1} + {drug2}")
-        
-        # Fetch SMILES and CID for both drugs
+
+        # Fetch SMILES and CID for both drugs (cached)
         smiles1, cid1 = fetch_smiles(drug1)
         smiles2, cid2 = fetch_smiles(drug2)
-        
-        # Check if SMILES fetching failed - use LLM fallback if available
+
         if not smiles1 or not smiles2:
             missing_drug = drug1 if not smiles1 else drug2
-            logger.warning(f"Could not find SMILES for {missing_drug} - attempting LLM fallback")
-            
-            if LLM_AVAILABLE:
-                try:
-                    # Use LLM to predict interaction
-                    probability, llm_details = generate_fallback_prediction(drug1, drug2, "drug-drug")
-                    
-                    if probability is not None:
-                        # LLM successfully predicted
-                        percentage = round(probability * 100, 2)
-                        
-                        if percentage > 70:
-                            severity = "Severe"
-                            severity_label = "Dangerous"
-                        elif percentage >= 40:
-                            severity = "Mild"
-                            severity_label = "Caution"
-                        else:
-                            severity = "None"
-                            severity_label = "Safe"
-                        
-                        logger.info(f"LLM fallback prediction: {percentage}% ({severity})")
-                        
-                        return jsonify({
-                            "success": True,
-                            "drug1": drug1,
-                            "drug2": drug2,
-                            "probability": probability,
-                            "percentage": percentage,
-                            "severity": severity,
-                            "severity_label": severity_label,
-                            "details": llm_details,
-                            "source": "llm_fallback"  # Indicate this came from LLM
-                        })
-                except Exception as e:
-                    logger.error(f"LLM fallback failed: {str(e)}")
-            
-            # If LLM not available or failed, return error
+            logger.warning(f"Could not find SMILES for {missing_drug} - using HF fallback")
+            record_metric('ddi_smiles_misses')
+
+            probability, hf_details = hf_fallback_prediction(drug1, drug2, "drug-drug")
+            if probability is not None:
+                record_metric('ddi_hf_fallbacks')
+                percentage = round(probability * 100, 2)
+                if percentage > 70:
+                    severity = "Severe"
+                    severity_label = "Dangerous"
+                elif percentage >= 40:
+                    severity = "Mild"
+                    severity_label = "Caution"
+                else:
+                    severity = "None"
+                    severity_label = "Low Risk"
+
+                return jsonify({
+                    "success": True,
+                    "drug1": drug1,
+                    "drug2": drug2,
+                    "probability": probability,
+                    "percentage": percentage,
+                    "severity": severity,
+                    "severity_label": severity_label,
+                    "details": hf_details,
+                    "source": "hf_fallback"
+                })
+
             return jsonify({
                 "success": False,
-                "error": f"Could not find chemical structure for '{missing_drug}' in PubChem database and LLM fallback unavailable"
+                "error": f"Could not find chemical structure for '{missing_drug}' in PubChem database and HF fallback unavailable"
             }), 404
-        
+
         # Fetch ATC classifications (optional - will use defaults if not found)
         atc1 = fetch_atc_classification(drug1, cid1)
         atc2 = fetch_atc_classification(drug2, cid2)
@@ -449,133 +542,101 @@ def predict():
         descriptors2 = calculate_descriptors(smiles2, atc2, drug_suffix='_y')
         
         if descriptors1 is None or descriptors2 is None:
-            logger.warning("Descriptor calculation failed - attempting LLM fallback")
-            
-            if LLM_AVAILABLE:
-                try:
-                    # Use LLM to predict interaction
-                    probability, llm_details = generate_fallback_prediction(drug1, drug2, "drug-drug")
-                    
-                    if probability is not None:
-                        percentage = round(probability * 100, 2)
-                        
-                        if percentage > 70:
-                            severity = "Severe"
-                            severity_label = "Dangerous"
-                        elif percentage >= 40:
-                            severity = "Mild"
-                            severity_label = "Caution"
-                        else:
-                            severity = "None"
-                            severity_label = "Safe"
-                        
-                        logger.info(f"LLM fallback prediction: {percentage}% ({severity})")
-                        
-                        return jsonify({
-                            "success": True,
-                            "drug1": drug1,
-                            "drug2": drug2,
-                            "probability": probability,
-                            "percentage": percentage,
-                            "severity": severity,
-                            "severity_label": severity_label,
-                            "details": llm_details,
-                            "source": "llm_fallback"
-                        })
-                except Exception as e:
-                    logger.error(f"LLM fallback failed: {str(e)}")
-            
+            logger.warning("Descriptor calculation failed - using HF fallback")
+            record_metric('ddi_descriptor_misses')
+
+            probability, hf_details = hf_fallback_prediction(drug1, drug2, "drug-drug")
+            if probability is not None:
+                record_metric('ddi_hf_fallbacks')
+                percentage = round(probability * 100, 2)
+                if percentage > 70:
+                    severity = "Severe"
+                    severity_label = "Dangerous"
+                elif percentage >= 40:
+                    severity = "Mild"
+                    severity_label = "Caution"
+                else:
+                    severity = "None"
+                    severity_label = "Low Risk"
+
+                return jsonify({
+                    "success": True,
+                    "drug1": drug1,
+                    "drug2": drug2,
+                    "probability": probability,
+                    "percentage": percentage,
+                    "severity": severity,
+                    "severity_label": severity_label,
+                    "details": hf_details,
+                    "source": "hf_fallback"
+                })
+
             return jsonify({
                 "success": False,
-                "error": "Failed to calculate molecular descriptors and LLM fallback unavailable"
+                "error": "Failed to calculate molecular descriptors and HF fallback unavailable"
             }), 500
         
         # Predict interaction using model
         prediction = predict_interaction(descriptors1, descriptors2)
-        
+
         if prediction is None:
-            # Model prediction failed - try LLM fallback
-            logger.warning("Model prediction failed - attempting LLM fallback")
-            
-            if LLM_AVAILABLE:
-                try:
-                    probability, llm_details = generate_fallback_prediction(drug1, drug2, "drug-drug")
-                    
-                    if probability is not None:
-                        percentage = round(probability * 100, 2)
-                        
-                        if percentage > 70:
-                            severity = "Severe"
-                            severity_label = "Dangerous"
-                        elif percentage >= 40:
-                            severity = "Mild"
-                            severity_label = "Caution"
-                        else:
-                            severity = "None"
-                            severity_label = "Safe"
-                        
-                        logger.info(f"LLM fallback prediction: {percentage}% ({severity})")
-                        
-                        return jsonify({
-                            "success": True,
-                            "drug1": drug1,
-                            "drug2": drug2,
-                            "probability": probability,
-                            "percentage": percentage,
-                            "severity": severity,
-                            "severity_label": severity_label,
-                            "details": llm_details,
-                            "source": "llm_fallback"
-                        })
-                except Exception as e:
-                    logger.error(f"LLM fallback failed: {str(e)}")
-            
+            # Model prediction failed - try HF fallback
+            logger.warning("Model prediction failed - attempting HF fallback")
+            record_metric('ddi_descriptor_misses')
+            probability, hf_details = hf_fallback_prediction(drug1, drug2, "drug-drug")
+
+            if probability is not None:
+                record_metric('ddi_hf_fallbacks')
+                percentage = round(probability * 100, 2)
+                if percentage > 70:
+                    severity = "Severe"
+                    severity_label = "Dangerous"
+                elif percentage >= 40:
+                    severity = "Mild"
+                    severity_label = "Caution"
+                else:
+                    severity = "None"
+                    severity_label = "Low Risk"
+
+                return jsonify({
+                    "success": True,
+                    "drug1": drug1,
+                    "drug2": drug2,
+                    "probability": probability,
+                    "percentage": percentage,
+                    "severity": severity,
+                    "severity_label": severity_label,
+                    "details": hf_details,
+                    "source": "hf_fallback"
+                })
+
             return jsonify({
                 "success": False,
-                "error": "Model prediction failed and LLM fallback unavailable"
+                "error": "Model prediction failed and HF fallback unavailable"
             }), 500
-        
-        # ALWAYS generate detailed explanation using LLM for successful predictions
-        llm_details = None
+
+# Record model prediction analytics
+        record_metric('ddi_model_predictions')
+        # Build fallback-friendly explanation from model output
         interaction_detected = prediction['probability'] >= 0.4
         
-        # Always attempt to generate LLM explanation
-        try:
-            logger.info("Generating LLM explanation...")
-            if LLM_AVAILABLE:
-                llm_details = generate_interaction_details(
-                    drug1=drug1,
-                    drug2=drug2,
-                    probability=prediction['percentage'],
-                    severity=prediction['severity'],
-                    atc1=atc1,
-                    atc2=atc2,
-                    interaction_detected=interaction_detected
-                )
-                
-                if llm_details:
-                    logger.info("LLM explanation generated successfully")
-                else:
-                    logger.warning("LLM explanation generation returned None")
-            else:
-                logger.warning("LLM not available - skipping detailed explanation")
-                    
-        except Exception as e:
-            logger.error(f"Error calling LLM service: {str(e)}")
-            # Continue without LLM details
-        
-        # Build response
+        # Generate concise deterministic explanation (no LLM dependency)
+        explanation = get_simple_interaction_details(
+            item1=drug1,
+            item2=drug2,
+            percentage=prediction['percentage'],
+            severity=prediction['severity']
+        )
+
         response_data = {
             "success": True,
             "drug1": drug1,
             "drug2": drug2,
-            **prediction
+            **prediction,
+            "details": explanation,
+            "source": "model"
         }
-        
-        # Add LLM details if available
-        if llm_details:
-            response_data["details"] = llm_details
-        
+
         return jsonify(response_data)
         
     except Exception as e:

@@ -31,6 +31,7 @@ import BackButton from '../ui/BackButton'
 import PaymentModal from '../components/PaymentModal'
 import { getMedicines } from '../services/paymentService'
 import type { Medicine } from '../services/paymentService'
+import { getCart, addToCart, removeFromCart, clearCart } from '../services/cartService'
 import { format } from 'date-fns'
 
 export default function MedicineShop() {
@@ -38,13 +39,25 @@ export default function MedicineShop() {
   const [medicines, setMedicines] = useState<Medicine[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [cart, setCart] = useState<Map<string, number>>(new Map())
+  const [cart, setCart] = useState<Record<string, number>>({})
+  const [cartDetails, setCartDetails] = useState<Record<string, Medicine>>({})
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [selectedMedInfo, setSelectedMedInfo] = useState<Medicine | null>(null)
   const [filtering, setFiltering] = useState(false)
 
   useEffect(() => {
     loadMedicines()
+    const cartState = getCart()
+    const quantities: Record<string, number> = {}
+    const details: Record<string, Medicine> = {}
+
+    Object.entries(cartState).forEach(([id, value]) => {
+      quantities[id] = value.quantity
+      details[id] = value.medicine
+    })
+
+    setCart(quantities)
+    setCartDetails(details)
   }, [])
 
   const loadMedicines = async () => {
@@ -85,34 +98,49 @@ export default function MedicineShop() {
   }
 
   const handleAddToCart = (medicine: Medicine) => {
-    const newCart = new Map(cart)
-    newCart.set(medicine._id, (newCart.get(medicine._id) || 0) + 1)
+    const newCart = { ...cart }
+    newCart[medicine._id] = (newCart[medicine._id] || 0) + 1
     setCart(newCart)
+
+    const newCartDetails = { ...cartDetails, [medicine._id]: medicine }
+    setCartDetails(newCartDetails)
+
+    addToCart(medicine)
   }
 
   const handleRemoveFromCart = (medicineId: string) => {
-    const newCart = new Map(cart)
-    const current = newCart.get(medicineId) || 0
+    const newCart = { ...cart }
+    const current = newCart[medicineId] || 0
     if (current <= 1) {
-      newCart.delete(medicineId)
+      delete newCart[medicineId]
     } else {
-      newCart.set(medicineId, current - 1)
+      newCart[medicineId] = current - 1
     }
     setCart(newCart)
+
+    removeFromCart(medicineId)
+
+    if (newCart[medicineId] === undefined) {
+      const newCartDetails = { ...cartDetails }
+      delete newCartDetails[medicineId]
+      setCartDetails(newCartDetails)
+    }
   }
 
   const getTotalAmount = () => {
-    return Array.from(cart.entries()).reduce((total, [medId, qty]) => {
-      const med = medicines.find((m) => m._id === medId)
+    return Object.entries(cart).reduce((total, [medId, qty]) => {
+      const med = medicines.find((m) => m._id === medId) || cartDetails[medId]
       return total + (med?.sellingPrice || 0) * qty
     }, 0)
   }
 
   const getCartMedicines = () => {
-    return Array.from(cart.entries()).map(([medId, qty]) => {
-      const med = medicines.find((m) => m._id === medId)
-      return med ? { ...med } : null
-    }).filter(Boolean) as Medicine[]
+    return Object.entries(cart)
+      .map(([medId]) => {
+        const med = medicines.find((m) => m._id === medId) || cartDetails[medId]
+        return med ? { ...med } : null
+      })
+      .filter(Boolean) as Medicine[]
   }
 
   const isExpired = (expiryDate: string) => {
@@ -164,7 +192,7 @@ export default function MedicineShop() {
         />
 
         {/* Cart Summary Bar */}
-        {cart.size > 0 && (
+        {Object.keys(cart).length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -176,7 +204,7 @@ export default function MedicineShop() {
                     <ShoppingCartIcon color="primary" />
                     <Box>
                       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                        {cart.size} item(s) in cart
+                        {Object.keys(cart).length} item(s) in cart
                       </Typography>
                       <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
                         Total: ${getTotalAmount().toFixed(2)}
@@ -208,7 +236,7 @@ export default function MedicineShop() {
           <Grid container spacing={2}>
             <AnimatePresence>
               {medicines.map((medicine, index) => {
-                const cartQty = cart.get(medicine._id) || 0
+                const cartQty = cart[medicine._id] || 0
                 const expired = isExpired(medicine.expiryDate)
                 const lowStock = isLowStock(medicine.quantity) && !expired
 
@@ -403,7 +431,9 @@ export default function MedicineShop() {
         totalAmount={getTotalAmount()}
         onSuccess={(orderId) => {
           alert(`Order placed successfully! Order ID: ${orderId}`)
-          setCart(new Map())
+          clearCart()
+          setCart({})
+          setCartDetails({})
           setPaymentOpen(false)
         }}
       />
