@@ -429,8 +429,7 @@ def predict_food_interaction():
 if __name__ == '__main__':
     # Load model at startup
     if not load_model():
-        logger.error("Failed to load DFI model. Exiting.")
-        exit(1)
+        logger.warning("Failed to load DFI model. Continuing with HF fallback only mode.")
     
     # Start Flask server
     port = int(os.environ.get('DFI_SERVICE_PORT', 5002))

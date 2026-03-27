@@ -52,15 +52,78 @@ const DRUG_SPELL_CORRECTIONS: Record<string, string> = {
   amoxcillin: 'amoxicillin',
 }
 
+const FOOD_SPELL_CORRECTIONS: Record<string, string> = {
+  grapfruit: 'grapefruit',
+  alchohol: 'alcohol',
+  cheeze: 'cheese',
+  brocolli: 'broccoli',
+  spinich: 'spinach',
+  caffiene: 'caffeine',
+}
+
+const KNOWN_DRUGS = [
+  'aspirin', 'ibuprofen', 'paracetamol', 'acetaminophen', 'metformin', 'warfarin',
+  'amoxicillin', 'lisinopril', 'atorvastatin', 'omeprazole', 'simvastatin'
+]
+
+const KNOWN_FOODS = [
+  'grapefruit', 'grapefruit juice', 'alcohol', 'dairy', 'milk', 'cheese', 'yogurt',
+  'salt', 'coffee', 'caffeine', 'broccoli', 'spinach', 'soy', 'cranberry juice'
+]
+
 function normalizeName(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ')
 }
 
-function fuzzyCorrectName(name: string): string {
+function getLevenshteinDistance(a: string, b: string): number {
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0))
+  for (let i = 0; i <= a.length; i++) dp[i][0] = i
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+    }
+  }
+  return dp[a.length][b.length]
+}
+
+function correctDrugName(name: string): string {
   const key = normalizeName(name)
   if (!key) return name
   if (DRUG_SPELL_CORRECTIONS[key]) return DRUG_SPELL_CORRECTIONS[key]
-  return name
+  if (KNOWN_DRUGS.includes(key)) return key
+
+  let best = key
+  let bestDistance = Infinity
+  KNOWN_DRUGS.forEach((drug) => {
+    const distance = getLevenshteinDistance(key, drug)
+    if (distance < bestDistance) {
+      bestDistance = distance
+      best = drug
+    }
+  })
+
+  return bestDistance <= 2 ? best : name
+}
+
+function correctFoodName(name: string): string {
+  const key = normalizeName(name)
+  if (!key) return name
+  if (FOOD_SPELL_CORRECTIONS[key]) return FOOD_SPELL_CORRECTIONS[key]
+  if (KNOWN_FOODS.includes(key)) return key
+
+  let best = key
+  let bestDistance = Infinity
+  KNOWN_FOODS.forEach((food) => {
+    const distance = getLevenshteinDistance(key, food)
+    if (distance < bestDistance) {
+      bestDistance = distance
+      best = food
+    }
+  })
+
+  return bestDistance <= 2 ? best : name
 }
 
 export default function DrugFoodInteractionChecker() {
@@ -76,7 +139,7 @@ export default function DrugFoodInteractionChecker() {
   const addMedicine = () => {
     const raw = medicineInput.trim()
     if (!raw) return
-    const corrected = fuzzyCorrectName(raw)
+    const corrected = correctDrugName(raw)
     const value = corrected || raw
 
     if (!medicines.includes(value)) {
@@ -90,7 +153,12 @@ export default function DrugFoodInteractionChecker() {
   const addFood = (food?: string) => {
     const raw = (food || foodInput).trim()
     if (!raw) return
-    if (!foods.includes(raw)) setFoods([...foods, raw])
+    const corrected = correctFoodName(raw)
+    const value = corrected || raw
+    if (!foods.includes(value)) {
+      setFoods([...foods, value])
+      if (value !== raw) setError(`Corrected '${raw}' to '${value}'`)
+    }
     setFoodInput('')
   }
 
