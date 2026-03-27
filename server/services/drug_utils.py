@@ -9,16 +9,9 @@ from sentence_transformers import SentenceTransformer, util
 
 logger = logging.getLogger(__name__)
 
-# Preload a lightweight biomedical tokenizer/encoder for fallback predictions
+# HF fallback model intentionally disabled.
+# Requirement: prediction features must rely on their dedicated ML models only.
 HF_MODEL = None
-HF_MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
-
-try:
-    HF_MODEL = SentenceTransformer(HF_MODEL_NAME)
-    logger.info(f"Loaded HF fallback model: {HF_MODEL_NAME}")
-except Exception as e:
-    logger.warning(f"Could not load HF fallback model: {e}")
-    HF_MODEL = None
 
 # Default curated drug list to use when CSV is missing
 _DEFAULT_DRUGS = [
@@ -272,6 +265,7 @@ def _ensure_hf_embeddings():
 
 def hf_fallback_prediction(item1: str, item2: str, interaction_type: str = 'drug-drug') -> Tuple[Optional[float], Optional[Dict[str, str]]]:
     """Fallback prediction using lightweight HF embedding similarity."""
+    raise RuntimeError("HF fallback prediction has been removed (models-only mode).")
     try:
         item1_norm = normalize_drug_name(item1)
         item2_norm = normalize_drug_name(item2)

@@ -83,6 +83,13 @@ const MICROSERVICES = [
   { name: 'HEALTH', port: 5006, endpoint: '/health' }
 ];
 
+const REQUIRED_MICROSERVICES = new Set(
+  (process.env.REQUIRED_MICROSERVICES || 'DDI,DFI,ALT,SIDE,HEALTH')
+    .split(',')
+    .map(s => s.trim().toUpperCase())
+    .filter(Boolean)
+);
+
 /**
  * Check if a microservice is healthy
  * @param {string} name - Service name
@@ -113,7 +120,7 @@ async function waitForMicroservices(maxRetries = 60, delayMs = 2000) {
   console.log('\n⏳ Checking microservice availability...\n');
   
   for (let retry = 0; retry < maxRetries; retry++) {
-    let allHealthy = true;
+    let allRequiredHealthy = true;
     let readyCount = 0;
     
     for (const service of MICROSERVICES) {
@@ -129,7 +136,9 @@ async function waitForMicroservices(maxRetries = 60, delayMs = 2000) {
           results[service.name].healthy = true;
           console.log(`✅ ${service.name} Service ready (port ${service.port})`);
         } else {
-          allHealthy = false;
+          if (REQUIRED_MICROSERVICES.has(service.name)) {
+            allRequiredHealthy = false;
+          }
         }
       }
       
@@ -138,19 +147,22 @@ async function waitForMicroservices(maxRetries = 60, delayMs = 2000) {
       }
     }
     
-    if (allHealthy) {
-      console.log(`\n✅ All microservices are ready!\n`);
+    if (allRequiredHealthy) {
+      console.log(`\n✅ All required microservices are ready!\n`);
       return results;
     }
     
     if (retry < maxRetries - 1) {
       const waitTime = delayMs / 1000;
-      console.log(`⏳ Waiting for services... (${readyCount}/${MICROSERVICES.length} ready) - retrying in ${waitTime}s...`);
+      const requiredReady = Object.entries(results)
+        .filter(([name, status]) => REQUIRED_MICROSERVICES.has(name) && status.healthy)
+        .length;
+      console.log(`⏳ Waiting for services... (${requiredReady}/${REQUIRED_MICROSERVICES.size} required, ${readyCount}/${MICROSERVICES.length} total ready) - retrying in ${waitTime}s...`);
       await new Promise(resolve => setTimeout(resolve, delayMs));
     }
   }
   
-  console.log(`\n⚠️  Timeout waiting for all microservices after ${maxRetries * delayMs / 1000}s`);
+  console.log(`\n⚠️  Timeout waiting for required microservices after ${maxRetries * delayMs / 1000}s`);
   console.log(`Ready services: ${Object.values(results).filter(r => r.healthy).length}/${MICROSERVICES.length}\n`);
   console.log('Status:');
   for (const [name, status] of Object.entries(results)) {
@@ -164,45 +176,52 @@ async function waitForMicroservices(maxRetries = 60, delayMs = 2000) {
 
 // Connect to MongoDB and Start Server
 const startServer = async () => {
+  let dbConnected = false;
+
+  // Try DB first, but do not hard-exit if unavailable.
   try {
-    // Connect to MongoDB
     await connectDB();
+    dbConnected = true;
+  } catch (error) {
+    console.error(`⚠️ MongoDB unavailable at startup: ${error.message}`);
+    console.error('⚠️ Continuing API startup in degraded mode (DB-backed routes may fail).');
+  }
 
-    // Wait for microservices to be ready
-    const serviceStatus = await waitForMicroservices(60, 2000); // 2s delay, max 120s total
+  // Wait for microservices to be ready
+  const serviceStatus = await waitForMicroservices(60, 2000); // 2s delay, max 120s total
 
-    // Start Server
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📊 API Endpoint: http://localhost:${PORT}/api`);
-      console.log(`✅ MongoDB authentication enabled`);
-      console.log(`\n💡 Use /api/auth/signup to create new users`);
-      console.log(`💡 Use /api/auth/login to authenticate users\n`);
+  // Start Server
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📊 API Endpoint: http://localhost:${PORT}/api`);
+    console.log(dbConnected ? `✅ MongoDB authentication enabled` : `⚠️ MongoDB unavailable (degraded mode)`);
+    console.log(`\n💡 Use /api/auth/signup to create new users`);
+    console.log(`💡 Use /api/auth/login to authenticate users\n`);
 
-      // Start reminder email cron job (runs every minute)
+    // Start reminder email cron job only when DB is available
+    if (dbConnected) {
       cron.schedule('* * * * *', reminderEmailJob);
       console.log('⏰ Reminder email job scheduled (runs every minute)\n');
+    } else {
+      console.log('⚠️ Reminder email job disabled until MongoDB is available\n');
+    }
 
-      // Log service summary
-      const readyServices = Object.entries(serviceStatus)
-        .filter(([_, status]) => status.healthy)
-        .map(([name, _]) => name);
-      const unavailableServices = Object.entries(serviceStatus)
-        .filter(([_, status]) => !status.healthy)
-        .map(([name, _]) => name);
+    // Log service summary
+    const readyServices = Object.entries(serviceStatus)
+      .filter(([_, status]) => status.healthy)
+      .map(([name, _]) => name);
+    const unavailableServices = Object.entries(serviceStatus)
+      .filter(([_, status]) => !status.healthy)
+      .map(([name, _]) => name);
 
-      if (readyServices.length > 0) {
-        console.log(`✅ Ready services: ${readyServices.join(', ')}`);
-      }
-      if (unavailableServices.length > 0) {
-        console.log(`⚠️  Unavailable services: ${unavailableServices.join(', ')}`);
-        console.log(`   These services may still be initializing. Check logs for details.\n`);
-      }
-    });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error.message);
-    process.exit(1);
-  }
+    if (readyServices.length > 0) {
+      console.log(`✅ Ready services: ${readyServices.join(', ')}`);
+    }
+    if (unavailableServices.length > 0) {
+      console.log(`⚠️  Unavailable services: ${unavailableServices.join(', ')}`);
+      console.log(`   These services may still be initializing. Check logs for details.\n`);
+    }
+  });
 };
 
 startServer();

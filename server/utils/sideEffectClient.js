@@ -243,43 +243,6 @@ export function formatSideEffectsForDisplay(prediction) {
     };
 }
 
-// ============================================
-// ERROR HANDLING & FALLBACK
-// ============================================
-
-/**
- * Safe wrapper with fallback to generic side effects
- */
-export async function predictSideEffectsWithFallback(medicineName, options = {}) {
-    const result = await predictSideEffects(medicineName, options);
-    
-    if (result.success) {
-        return result;
-    }
-    
-    // Fallback: Return generic side effects for any medicine
-    console.log('⚠️ Using fallback generic side effects');
-    return {
-        success: true,
-        data: {
-            medicine: medicineName,
-            side_effects: [
-                { side_effect: "nausea", probability: 0.3, severity: "low" },
-                { side_effect: "dizziness", probability: 0.25, severity: "low" },
-                { side_effect: "headache", probability: 0.2, severity: "low" },
-                { side_effect: "stomach upset", probability: 0.25, severity: "moderate" },
-                { side_effect: "rash", probability: 0.15, severity: "moderate" }
-            ],
-            model_info: {
-                model_name: "Fallback Generic Data",
-                approach: "generic-database",
-                note: "Using common side effects as predictor service is unavailable"
-            }
-        },
-        isFallbackData: true
-    };
-}
-
 export default {
     checkSideEffectServiceHealth,
     predictSideEffects,
@@ -287,5 +250,4 @@ export default {
     getPerformanceMetrics,
     resetPerformanceMetrics,
     formatSideEffectsForDisplay,
-    predictSideEffectsWithFallback
 };

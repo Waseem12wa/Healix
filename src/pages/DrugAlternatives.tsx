@@ -47,7 +47,7 @@ type ApiResponse = {
     matched_name?: string
     alternatives: Alternative[]
     explanation?: string
-    source: 'model' | 'llm_fallback' | 'huggingface_nlp'
+    source?: string
     error?: string
 }
 
@@ -314,13 +314,6 @@ export default function DrugAlternatives() {
                     {error && (
                         <Alert severity="error" onClose={() => setError(null)} sx={{ borderRadius: 2 }}>
                             {error}
-                        </Alert>
-                    )}
-
-                    {/* LLM Fallback Notice */}
-                    {result && result.source === 'llm_fallback' && (
-                        <Alert severity="info" icon={<InfoIcon />} sx={{ borderRadius: 2 }}>
-                            Using AI-generated alternatives (medicine not found in database)
                         </Alert>
                     )}
 

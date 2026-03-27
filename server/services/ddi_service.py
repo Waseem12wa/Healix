@@ -57,15 +57,14 @@ def record_metric(key: str, inc: int = 1):
         except Exception as e:
             logger.warning(f"Could not persist metric {key} to Redis: {e}")
 
-# Use local utilities and HF fallback (no default LLM model required for core path)
+# Use local utilities (no HF fallback)
 try:
-    from drug_utils import correct_drug_name, hf_fallback_prediction, get_simple_interaction_details
+    from drug_utils import correct_drug_name, get_simple_interaction_details
 except ImportError:
-    from .drug_utils import correct_drug_name, hf_fallback_prediction, get_simple_interaction_details
-
-# We no longer depend on LLM for core predictions; HF fallback is used if model fails
+    from .drug_utils import correct_drug_name, get_simple_interaction_details
 
 app = Flask(__name__)
+
 CORS(app)
 
 # Global model instance (loaded once at startup)
@@ -499,38 +498,10 @@ def predict():
 
         if not smiles1 or not smiles2:
             missing_drug = drug1 if not smiles1 else drug2
-            logger.warning(f"Could not find SMILES for {missing_drug} - using HF fallback")
-            record_metric('ddi_smiles_misses')
-
-            probability, hf_details = hf_fallback_prediction(drug1, drug2, "drug-drug")
-            if probability is not None:
-                record_metric('ddi_hf_fallbacks')
-                percentage = round(probability * 100, 2)
-                if percentage > 70:
-                    severity = "Severe"
-                    severity_label = "Dangerous"
-                elif percentage >= 40:
-                    severity = "Mild"
-                    severity_label = "Caution"
-                else:
-                    severity = "None"
-                    severity_label = "Low Risk"
-
-                return jsonify({
-                    "success": True,
-                    "drug1": drug1,
-                    "drug2": drug2,
-                    "probability": probability,
-                    "percentage": percentage,
-                    "severity": severity,
-                    "severity_label": severity_label,
-                    "details": hf_details,
-                    "source": "hf_fallback"
-                })
-
+            logger.error(f"Could not find SMILES for {missing_drug}")
             return jsonify({
                 "success": False,
-                "error": f"Could not find chemical structure for '{missing_drug}' in PubChem database and HF fallback unavailable"
+                "error": f"Could not find chemical structure for '{missing_drug}' in PubChem database"
             }), 404
 
         # Fetch ATC classifications (optional - will use defaults if not found)
@@ -542,77 +513,20 @@ def predict():
         descriptors2 = calculate_descriptors(smiles2, atc2, drug_suffix='_y')
         
         if descriptors1 is None or descriptors2 is None:
-            logger.warning("Descriptor calculation failed - using HF fallback")
-            record_metric('ddi_descriptor_misses')
-
-            probability, hf_details = hf_fallback_prediction(drug1, drug2, "drug-drug")
-            if probability is not None:
-                record_metric('ddi_hf_fallbacks')
-                percentage = round(probability * 100, 2)
-                if percentage > 70:
-                    severity = "Severe"
-                    severity_label = "Dangerous"
-                elif percentage >= 40:
-                    severity = "Mild"
-                    severity_label = "Caution"
-                else:
-                    severity = "None"
-                    severity_label = "Low Risk"
-
-                return jsonify({
-                    "success": True,
-                    "drug1": drug1,
-                    "drug2": drug2,
-                    "probability": probability,
-                    "percentage": percentage,
-                    "severity": severity,
-                    "severity_label": severity_label,
-                    "details": hf_details,
-                    "source": "hf_fallback"
-                })
-
+            logger.error("Descriptor calculation failed")
             return jsonify({
                 "success": False,
-                "error": "Failed to calculate molecular descriptors and HF fallback unavailable"
+                "error": "Failed to calculate molecular descriptors"
             }), 500
         
         # Predict interaction using model
         prediction = predict_interaction(descriptors1, descriptors2)
 
         if prediction is None:
-            # Model prediction failed - try HF fallback
-            logger.warning("Model prediction failed - attempting HF fallback")
-            record_metric('ddi_descriptor_misses')
-            probability, hf_details = hf_fallback_prediction(drug1, drug2, "drug-drug")
-
-            if probability is not None:
-                record_metric('ddi_hf_fallbacks')
-                percentage = round(probability * 100, 2)
-                if percentage > 70:
-                    severity = "Severe"
-                    severity_label = "Dangerous"
-                elif percentage >= 40:
-                    severity = "Mild"
-                    severity_label = "Caution"
-                else:
-                    severity = "None"
-                    severity_label = "Low Risk"
-
-                return jsonify({
-                    "success": True,
-                    "drug1": drug1,
-                    "drug2": drug2,
-                    "probability": probability,
-                    "percentage": percentage,
-                    "severity": severity,
-                    "severity_label": severity_label,
-                    "details": hf_details,
-                    "source": "hf_fallback"
-                })
-
+            logger.error("Model prediction failed")
             return jsonify({
                 "success": False,
-                "error": "Model prediction failed and HF fallback unavailable"
+                "error": "Model prediction failed"
             }), 500
 
 # Record model prediction analytics

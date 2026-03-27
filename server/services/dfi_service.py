@@ -16,11 +16,11 @@ import numpy as np
 import os
 import logging
 
-# Use local helper utilities and HF fallback (no LLM for core path)
+# Use local helper utilities (no HF fallback)
 try:
-    from drug_utils import correct_drug_name, correct_food_name, hf_fallback_prediction, get_simple_interaction_details
+    from drug_utils import correct_drug_name, correct_food_name, get_simple_interaction_details
 except ImportError:
-    from .drug_utils import correct_drug_name, correct_food_name, hf_fallback_prediction, get_simple_interaction_details
+    from .drug_utils import correct_drug_name, correct_food_name, get_simple_interaction_details
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +36,41 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'Models', 'XGB-
 # In-memory caches for speed.
 smiles_cache = {}
 descriptor_cache = {}
+
+
+def align_features_to_model(features_df):
+    """
+    Align feature dataframe to model expected schema:
+    - add missing columns as 0.0
+    - drop extra columns
+    - enforce exact column order
+    """
+    if features_df is None:
+        return None
+
+    # Common sklearn/xgboost wrappers expose feature_names_in_
+    expected_features = getattr(dfi_model, 'feature_names_in_', None)
+    if expected_features is None:
+        # If model does not expose names, use provided features as-is.
+        return features_df
+
+    expected = list(expected_features)
+    current = list(features_df.columns)
+
+    # Add missing columns
+    for col in expected:
+        if col not in features_df.columns:
+            features_df[col] = 0.0
+
+    # Keep only expected columns, in exact order
+    aligned_df = features_df[expected].copy()
+
+    missing = [c for c in expected if c not in current]
+    extra = [c for c in current if c not in expected]
+    if missing or extra:
+        logger.warning(f"Aligned DFI features to model schema. Added missing: {missing}; dropped extra: {extra}")
+
+    return aligned_df
 
 
 def load_model():
@@ -204,11 +239,12 @@ def calculate_dfi_descriptors(smiles):
             'EstateVSA1': float(estate_vsa[1] if len(estate_vsa) > 1 else 0),
         }
         
-        # Convert to DataFrame
+        # Convert to DataFrame and align with model schema if available
         features_df = pd.DataFrame([features])
+        features_df = align_features_to_model(features_df)
         descriptor_cache[key] = features_df
 
-        logger.info(f"Calculated {len(features)} DFI descriptors successfully")
+        logger.info(f"Calculated {len(features_df.columns)} aligned DFI descriptors successfully")
         return features_df
         
     except Exception as e:
@@ -225,8 +261,7 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "service": "DFI Prediction Service",
-        "model_loaded": dfi_model is not None,
-        "hf_fallback": True
+        "model_loaded": dfi_model is not None
     })
 
 
@@ -277,72 +312,20 @@ def predict_food_interaction():
         smiles, cid = fetch_smiles(medicine)
 
         if not smiles:
-            logger.warning(f"Could not find SMILES for {medicine} - using HF fallback")
-            probability, hf_details = hf_fallback_prediction(medicine, food, "drug-food")
-
-            if probability is not None:
-                percentage = round(probability * 100, 2)
-                if percentage > 70:
-                    severity = "High"
-                    severity_label = "High Risk"
-                elif percentage >= 40:
-                    severity = "Moderate"
-                    severity_label = "Moderate Risk"
-                else:
-                    severity = "Low"
-                    severity_label = "Low Risk"
-
-                return jsonify({
-                    "success": True,
-                    "medicine": medicine,
-                    "food": food,
-                    "probability": probability,
-                    "percentage": percentage,
-                    "severity": severity,
-                    "severity_label": severity_label,
-                    "details": hf_details,
-                    "source": "hf_fallback"
-                })
-
+            logger.error(f"Could not find SMILES for {medicine}")
             return jsonify({
                 "success": False,
-                "error": f"Could not find chemical structure for '{medicine}' in PubChem database and HF fallback unavailable"
+                "error": f"Could not find chemical structure for '{medicine}' in PubChem database"
             }), 404
         
         # Calculate 18 molecular descriptors
         features_df = calculate_dfi_descriptors(smiles)
         
         if features_df is None:
-            logger.warning("Descriptor calculation failed - using HF fallback")
-            probability, hf_details = hf_fallback_prediction(medicine, food, "drug-food")
-
-            if probability is not None:
-                percentage = round(probability * 100, 2)
-                if percentage > 70:
-                    severity = "High"
-                    severity_label = "High Risk"
-                elif percentage >= 40:
-                    severity = "Moderate"
-                    severity_label = "Moderate Risk"
-                else:
-                    severity = "Low"
-                    severity_label = "Low Risk"
-
-                return jsonify({
-                    "success": True,
-                    "medicine": medicine,
-                    "food": food,
-                    "probability": probability,
-                    "percentage": percentage,
-                    "severity": severity,
-                    "severity_label": severity_label,
-                    "details": hf_details,
-                    "source": "hf_fallback"
-                })
-
+            logger.error("Descriptor calculation failed")
             return jsonify({
                 "success": False,
-                "error": "Failed to calculate molecular descriptors and HF fallback unavailable"
+                "error": "Failed to calculate molecular descriptors"
             }), 500
         
         # Predict interaction probability using model
@@ -364,37 +347,10 @@ def predict_food_interaction():
             logger.info(f"DFI Prediction: {percentage}% ({severity})")
             
         except Exception as e:
-            # Model prediction failed - try HF fallback
             logger.error(f"Model prediction failed: {str(e)}")
-            probability, hf_details = hf_fallback_prediction(medicine, food, "drug-food")
-
-            if probability is not None:
-                percentage = round(probability * 100, 2)
-                if percentage > 70:
-                    severity = "High"
-                    severity_label = "High Risk"
-                elif percentage >= 40:
-                    severity = "Moderate"
-                    severity_label = "Moderate Risk"
-                else:
-                    severity = "Low"
-                    severity_label = "Low Risk"
-
-                return jsonify({
-                    "success": True,
-                    "medicine": medicine,
-                    "food": food,
-                    "probability": probability,
-                    "percentage": percentage,
-                    "severity": severity,
-                    "severity_label": severity_label,
-                    "details": hf_details,
-                    "source": "hf_fallback"
-                })
-
             return jsonify({
                 "success": False,
-                "error": f"Model prediction failed: {str(e)} and HF fallback unavailable"
+                "error": f"Model prediction failed: {str(e)}"
             }), 500
         
         # Use a concise consistency-based explanation
@@ -429,7 +385,8 @@ def predict_food_interaction():
 if __name__ == '__main__':
     # Load model at startup
     if not load_model():
-        logger.warning("Failed to load DFI model. Continuing with HF fallback only mode.")
+        logger.error("Failed to load DFI model. Exiting.")
+        exit(1)
     
     # Start Flask server
     port = int(os.environ.get('DFI_SERVICE_PORT', 5002))

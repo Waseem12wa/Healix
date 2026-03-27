@@ -1,5 +1,6 @@
 import MedicineReminder from '../models/MedicineReminder.js';
 import { sendMedicineReminderEmail } from '../utils/emailService.js';
+import mongoose from 'mongoose';
 
 /**
  * Background job to send medicine reminder emails
@@ -10,6 +11,12 @@ import { sendMedicineReminderEmail } from '../utils/emailService.js';
  */
 export const reminderEmailJob = async () => {
     try {
+        // Skip job when DB is unavailable to avoid noisy stack traces every minute
+        if (mongoose.connection.readyState !== 1) {
+            console.warn('⚠️ Reminder Job skipped: MongoDB is not connected');
+            return;
+        }
+
         const now = new Date();
 
         // Find all due reminders that haven't been sent yet

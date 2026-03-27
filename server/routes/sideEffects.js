@@ -14,7 +14,6 @@ import {
     batchPredictSideEffects,
     getPerformanceMetrics,
     formatSideEffectsForDisplay,
-    predictSideEffectsWithFallback,
     checkSideEffectServiceHealth
 } from '../utils/sideEffectClient.js';
 
@@ -54,22 +53,22 @@ router.post('/predict', async (req, res) => {
 
         console.log(`📋 Side effect prediction request for: ${medicine}`);
 
-        // Get prediction
-        const result = await predictSideEffectsWithFallback(medicine, {
+        // Get prediction (model-only; no fallback)
+        const result = await predictSideEffects(medicine, {
             age,
             conditions,
             dosage
         });
 
         if (result.success) {
-            // Format for display
-            const formatted = formatSideEffectsForDisplay(result);
+            // Normalize output shape for frontend
+            const normalized = normalizeForFrontend(result);
 
             return res.status(200).json({
                 success: true,
                 medicine: medicine,
-                sideEffects: result.data.side_effects || [],
-                summary: formatted,
+                sideEffects: normalized.sideEffects,
+                summary: normalized.summary,
                 modelInfo: result.data.model_info,
                 isFallback: result.isFallbackData || false,
                 timestamp: new Date().toISOString()
@@ -139,8 +138,7 @@ router.post('/batch', async (req, res) => {
             // Format all predictions
             const formatted = result.data.predictions.map(pred => ({
                 medicine: pred.medicine,
-                sideEffects: pred.side_effects || [],
-                summary: formatSideEffectsForDisplay({ success: true, data: pred }),
+                ...normalizeForFrontend({ success: true, data: pred }),
                 modelInfo: pred.model_info,
                 isFallback: pred.isFallbackData || false
             }));
@@ -327,6 +325,41 @@ function generateCombinationRecommendation(compoundSideEffects) {
     }
     
     return "Moderate combination risk detected. Monitor for common side effects and consult healthcare provider if needed.";
+}
+
+function normalizeForFrontend(prediction) {
+    const sideEffectsRaw = prediction?.data?.side_effects || [];
+    const normalizedSideEffects = sideEffectsRaw.map((se) => {
+        const probability = Number(se.probability || 0);
+        const severity = String(se.severity || 'low').toLowerCase();
+        return {
+            effect: se.side_effect || se.effect || 'Unknown',
+            severity: severity === 'critical' || severity === 'high'
+                ? 'High'
+                : severity === 'moderate'
+                    ? 'Moderate'
+                    : 'Low',
+            percentage: Math.round(probability * 100),
+            frequency: `${Math.round(probability * 100)}% prevalence`,
+            description: se.confidence ? `Model confidence: ${se.confidence}` : undefined
+        };
+    });
+
+    const summarySource = formatSideEffectsForDisplay(prediction);
+    const bySeverity = summarySource?.bySeverity || {};
+    const topEffect = normalizedSideEffects[0]?.effect || 'N/A';
+    return {
+        sideEffects: normalizedSideEffects,
+        summary: {
+            total_effects: normalizedSideEffects.length,
+            most_common: topEffect,
+            severity_distribution: {
+                High: (bySeverity.critical?.length || 0) + (bySeverity.high?.length || 0),
+                Moderate: bySeverity.moderate?.length || 0,
+                Low: bySeverity.low?.length || 0
+            }
+        }
+    };
 }
 
 // ============================================

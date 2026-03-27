@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "concurrently -n API,ALT,DDI,DFI,SIDE,HEALTH,MEDREC \"node server.js\" \"py services/alternative_service.py\" \"py services/ddi_service.py\" \"py services/dfi_service.py\" \"py services/side_effect_service.py\" \"py services/health_assistant_service.py\" \"py services/medical_record_service.py\"",
+    "start:core": "concurrently -n API,ALT,DDI,DFI,SIDE,HEALTH \"node server.js\" \"py services/alternative_service.py\" \"py services/ddi_service.py\" \"py services/dfi_service.py\" \"py services/side_effect_service.py\" \"py services/health_assistant_service.py\"",
     "dev": "nodemon server.js",
     "seed:doctors": "node scripts/seed-doctors.js"
   },

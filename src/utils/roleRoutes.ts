@@ -30,12 +30,15 @@ export const roleRoutes: RouteConfig[] = [
   { path: '/tools/drug-interactions', allowedRoles: ['patient', 'doctor'] },
   { path: '/tools/drug-food-interactions', allowedRoles: ['patient', 'doctor'] },
   { path: '/tools/drug-alternatives', allowedRoles: ['patient', 'doctor'] },
+  { path: '/tools/side-effects', allowedRoles: ['patient', 'doctor'] },
   { path: '/tools/medication-reminder', allowedRoles: ['patient'] },
   { path: '/tools/ai-chatbot', allowedRoles: ['patient'] },
   { path: '/tools/health-summary', allowedRoles: ['patient'] },
   { path: '/tools/appointments', allowedRoles: ['patient', 'doctor'] },
   { path: '/tools/notifications', allowedRoles: ['patient', 'doctor', 'admin', 'provider'] },
   { path: '/tools/profile', allowedRoles: ['patient', 'doctor'] },
+  { path: '/shop/medicines', allowedRoles: ['patient', 'doctor'] },
+  { path: '/shop/orders', allowedRoles: ['patient', 'doctor'] },
   { path: '/profile/patient', allowedRoles: ['patient'] },
   
   // Doctor-specific routes
