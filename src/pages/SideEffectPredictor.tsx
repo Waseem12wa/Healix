@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -26,6 +26,7 @@ import ErrorIcon from '@mui/icons-material/Error'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import AddIcon from '@mui/icons-material/Add'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useSearchParams } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import { correctDrugTerm } from '../utils/medicalAutoCorrect'
 
@@ -52,37 +53,16 @@ type PredictionResult = {
 
 export default function SideEffectPredictor() {
   const theme = useTheme()
+  const [searchParams] = useSearchParams()
   const [medicineInput, setMedicineInput] = useState('')
   const [medicines, setMedicines] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [predictions, setPredictions] = useState<PredictionResult[]>([])
   const [error, setError] = useState<string | null>(null)
+  const autoRunKeyRef = useRef('')
 
-  const handleAddMedicine = (med: string = medicineInput.trim()) => {
-    const raw = med.trim()
-    if (!raw) return
-
-    const corrected = correctDrugTerm(raw)
-    const value = corrected || raw
-
-    if (medicines.some((m) => m.toLowerCase() === value.toLowerCase())) {
-      setError('This medicine is already added')
-      return
-    }
-    setMedicines([...medicines, value])
-    if (value !== raw) {
-      setError(`Corrected '${raw}' to '${value}'`)
-    }
-    setMedicineInput('')
-    if (value === raw) setError(null)
-  }
-
-  const handleRemoveMedicine = (index: number) => {
-    setMedicines(medicines.filter((_, i) => i !== index))
-  }
-
-  const handlePredict = async () => {
-    if (medicines.length === 0) {
+  const runPredictionFor = async (medicineList: string[]) => {
+    if (medicineList.length === 0) {
       setError('Please add at least one medicine')
       return
     }
@@ -94,7 +74,7 @@ export default function SideEffectPredictor() {
     try {
       const results: PredictionResult[] = []
 
-      for (const medication of medicines) {
+      for (const medication of medicineList) {
         try {
           const response = await fetch('http://localhost:5000/api/side-effects/predict', {
             method: 'POST',
@@ -140,6 +120,56 @@ export default function SideEffectPredictor() {
       setLoading(false)
     }
   }
+
+  const handleAddMedicine = (med: string = medicineInput.trim()) => {
+    const raw = med.trim()
+    if (!raw) return
+
+    const corrected = correctDrugTerm(raw)
+    const value = corrected || raw
+
+    if (medicines.some((m) => m.toLowerCase() === value.toLowerCase())) {
+      setError('This medicine is already added')
+      return
+    }
+    setMedicines([...medicines, value])
+    if (value !== raw) {
+      setError(`Corrected '${raw}' to '${value}'`)
+    }
+    setMedicineInput('')
+    if (value === raw) setError(null)
+  }
+
+  const handleRemoveMedicine = (index: number) => {
+    setMedicines(medicines.filter((_, i) => i !== index))
+  }
+
+  const handlePredict = async () => {
+    await runPredictionFor(medicines)
+  }
+
+  useEffect(() => {
+    const medicinesParam = searchParams.get('medicines') || searchParams.get('medicine') || ''
+    if (!medicinesParam) return
+
+    const parsed = medicinesParam
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => correctDrugTerm(item) || item)
+
+    const unique = Array.from(new Set(parsed.map((item) => item.toLowerCase())))
+      .map((lower) => parsed.find((item) => item.toLowerCase() === lower) as string)
+
+    if (unique.length === 0) return
+
+    const key = unique.join('|').toLowerCase()
+    if (autoRunKeyRef.current === key) return
+    autoRunKeyRef.current = key
+
+    setMedicines(unique)
+    runPredictionFor(unique)
+  }, [searchParams])
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {

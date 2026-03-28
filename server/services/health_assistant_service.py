@@ -39,6 +39,14 @@ INTERNAL_API_URL = os.environ.get('INTERNAL_API_URL', 'http://localhost:5000')  
 SIDE_EFFECT_SERVICE_URL = 'http://localhost:5004'
 MEDICAL_RECORD_SERVICE_URL = 'http://localhost:5005'
 
+DRUG_MISSPELLINGS = {
+    'metaformin': 'metformin',
+    'metfornin': 'metformin',
+    'asprin': 'aspirin',
+    'ibuprophen': 'ibuprofen',
+    'amoxcillin': 'amoxicillin',
+}
+
 # Performance metrics
 metrics = {
     'total_queries': 0,
@@ -173,6 +181,11 @@ def extract_drug_names(query: str) -> List[str]:
     ]
     
     query_lower = query.lower()
+
+    # Normalize common misspellings before extraction.
+    for wrong, correct in DRUG_MISSPELLINGS.items():
+        query_lower = query_lower.replace(wrong, correct)
+
     found_drugs = []
     
     for drug in common_drugs:
@@ -200,14 +213,14 @@ def route_to_side_effects(query: str, drugs: List[str]) -> Dict[str, Any]:
         
         drug = drugs[0]
         payload = {
-            'drug': drug,
-            'patient_age': 45,  # Default, can be personalized
-            'patient_weight': 70,
-            'existing_conditions': []
+            'medicine': drug,
+            'age': 45,
+            'conditions': [],
+            'dosage': 'standard'
         }
-        
+
         response = requests.post(
-            f'{SIDE_EFFECT_SERVICE_URL}/predict',
+            f'{INTERNAL_API_URL}/api/side-effects/predict',
             json=payload,
             timeout=30
         )
@@ -222,7 +235,7 @@ def route_to_side_effects(query: str, drugs: List[str]) -> Dict[str, Any]:
         else:
             return {
                 'success': False,
-                'error': 'Side Effect Service unavailable'
+                'error': f"Side Effect Service unavailable (status {response.status_code})"
             }
     except Exception as e:
         logger.error(f"Error routing to side effects: {e}")
@@ -250,7 +263,7 @@ def route_to_drug_interaction(query: str, drugs: List[str]) -> Dict[str, Any]:
         }
         
         response = requests.post(
-            f'{INTERNAL_API_URL}/api/ddi/check-combination',
+            f'{INTERNAL_API_URL}/api/ddi/check-interactions',
             json=payload,
             timeout=30
         )
@@ -265,7 +278,7 @@ def route_to_drug_interaction(query: str, drugs: List[str]) -> Dict[str, Any]:
         else:
             return {
                 'success': False,
-                'error': 'Drug Interaction Service unavailable'
+                'error': f"Drug Interaction Service unavailable (status {response.status_code})"
             }
     except Exception as e:
         logger.error(f"Error routing to drug interaction: {e}")
@@ -292,12 +305,12 @@ def route_to_food_interaction(query: str, drugs: List[str]) -> Dict[str, Any]:
         found_foods = [f for f in foods if f in query.lower()]
         
         payload = {
-            'drug': drugs[0],
+            'medicine': drugs[0],
             'food': found_foods[0] if found_foods else 'grapefruit'
         }
         
         response = requests.post(
-            f'{INTERNAL_API_URL}/api/dfi/check',
+            f'{INTERNAL_API_URL}/api/dfi/predict',
             json=payload,
             timeout=30
         )
@@ -312,7 +325,7 @@ def route_to_food_interaction(query: str, drugs: List[str]) -> Dict[str, Any]:
         else:
             return {
                 'success': False,
-                'error': 'Food Interaction Service unavailable'
+                'error': f"Food Interaction Service unavailable (status {response.status_code})"
             }
     except Exception as e:
         logger.error(f"Error routing to food interaction: {e}")
@@ -371,6 +384,88 @@ def route_to_medical_summary(query: str) -> Dict[str, Any]:
         }
 
 
+def route_to_alternatives(query: str, drugs: List[str]) -> Dict[str, Any]:
+    """
+    Route query to medicine alternatives service
+    """
+    try:
+        if not drugs:
+            return {
+                'success': False,
+                'error': 'Could not identify medicine from query',
+                'suggestion': 'Please mention a medicine name (e.g., "Alternative of Aspirin")'
+            }
+
+        response = requests.post(
+            f'{INTERNAL_API_URL}/api/alternative/recommend',
+            json={'medicine': drugs[0], 'top_n': 5},
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            return {
+                'success': True,
+                'data': response.json(),
+                'source': 'alternative-medicine'
+            }
+
+        return {
+            'success': False,
+            'error': f"Alternative Service unavailable (status {response.status_code})"
+        }
+    except Exception as e:
+        logger.error(f"Error routing to alternatives: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+
+def route_to_doctor_search(query: str) -> Dict[str, Any]:
+    """
+    Route query to doctor search service
+    """
+    try:
+        specialization = ''
+        query_lower = query.lower()
+        known_specializations = [
+            'cardiologist', 'dermatologist', 'neurologist', 'orthopedic',
+            'gynecologist', 'pediatrician', 'general'
+        ]
+        for item in known_specializations:
+            if item in query_lower:
+                specialization = item
+                break
+
+        params = {}
+        if specialization:
+            params['specialization'] = specialization
+
+        response = requests.get(
+            f'{INTERNAL_API_URL}/api/doctors/search',
+            params=params,
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            return {
+                'success': True,
+                'data': response.json(),
+                'source': 'doctor-search'
+            }
+
+        return {
+            'success': False,
+            'error': f"Doctor Search Service unavailable (status {response.status_code})"
+        }
+    except Exception as e:
+        logger.error(f"Error routing to doctor search: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+
 def route_to_general_health(query: str) -> Dict[str, Any]:
     """
     Handle general health information queries
@@ -421,25 +516,83 @@ def generate_formatted_response(route_result: Dict[str, Any]) -> str:
     
     # Format based on source
     if source == 'side-effect-predictor':
-        side_effects = data.get('side_effects', [])
-        severity = data.get('severity', 'Unknown')
-        msg = f"📋 **Side Effects for {data.get('drug', 'this medication')}**\n\n"
-        msg += f"Severity: {severity}\n\n"
+        side_effects = data.get('sideEffects', []) or data.get('side_effects', [])
+        medicine = data.get('medicine') or data.get('drug') or 'this medication'
+        msg = f"📋 **Side Effects for {medicine}**\n\n"
+        if not side_effects:
+            return msg + 'No side effects were returned by the service.'
+
         for idx, effect in enumerate(side_effects[:5], 1):
-            msg += f"{idx}. {effect}\n"
+            if isinstance(effect, dict):
+                effect_name = effect.get('effect') or effect.get('sideEffect') or effect.get('side_effect') or 'Unknown effect'
+                severity = effect.get('severity', 'unknown')
+                msg += f"{idx}. {effect_name} ({severity})\n"
+            else:
+                msg += f"{idx}. {effect}\n"
         return msg
     
     elif source == 'drug-interaction-checker':
-        interaction = data.get('interaction', {})
+        interactions = data.get('interactions', [])
         msg = f"⚠️ **Drug Interaction Check**\n\n"
-        msg += f"Drugs: {', '.join(interaction.get('drugs', []))}\n"
-        msg += f"Risk Level: {interaction.get('risk_level', 'Unknown')}\n"
-        msg += f"Description: {interaction.get('description', 'No description available')}\n"
+        if not interactions:
+            return msg + 'No interaction details were returned by the service.'
+
+        top = interactions[0]
+        msg += f"Drugs: {top.get('drug1', 'Unknown')} and {top.get('drug2', 'Unknown')}\n"
+        msg += f"Severity: {top.get('severityLabel', top.get('severity', 'Unknown'))}\n"
+        msg += f"Risk: {top.get('percentage', 0)}%\n"
+        details = top.get('details')
+        if details:
+            if isinstance(details, dict):
+                mechanism = details.get('mechanism')
+                recommendations = details.get('recommendations')
+                symptoms = details.get('symptoms')
+                if mechanism:
+                    msg += f"Mechanism: {mechanism}\n"
+                if symptoms:
+                    msg += f"Watch for: {symptoms}\n"
+                if recommendations:
+                    msg += f"Recommendation: {recommendations}\n"
+            else:
+                msg += f"Notes: {details}\n"
         return msg
     
     elif source == 'food-interaction-checker':
         msg = f"🍎 **Food-Drug Interaction**\n\n"
-        msg += json.dumps(data, indent=2)
+        if data.get('success') and data.get('result'):
+            result = data.get('result', {})
+            msg += f"Medicine: {result.get('medicine_name', 'Unknown')}\n"
+            msg += f"Food: {result.get('food_name', 'Unknown')}\n"
+            msg += f"Risk: {result.get('risk_level', 'Unknown')}\n"
+            msg += f"Confidence: {result.get('confidence', 0)}%\n"
+            msg += f"Details: {result.get('interaction_details', 'No details available')}"
+        else:
+            msg += json.dumps(data, indent=2)
+        return msg
+
+    elif source == 'alternative-medicine':
+        msg = '💊 **Alternative Medicines**\n\n'
+        alternatives = data.get('alternatives', [])
+        if not alternatives:
+            return msg + 'No alternatives found.'
+        for idx, alt in enumerate(alternatives[:5], 1):
+            name = alt.get('name') or alt.get('medicineName') or 'Unknown'
+            sim = alt.get('similarity_score')
+            if isinstance(sim, (int, float)):
+                msg += f"{idx}. {name} (similarity: {sim:.2f})\n"
+            else:
+                msg += f"{idx}. {name}\n"
+        return msg
+
+    elif source == 'doctor-search':
+        doctors = data.get('data', [])
+        total = data.get('count', len(doctors))
+        msg = f"👨‍⚕️ **Doctor Search**\n\nFound {total} doctor(s).\n"
+        for idx, doctor in enumerate(doctors[:5], 1):
+            name = doctor.get('name', 'Unknown')
+            specialization = doctor.get('specialization', 'General')
+            city = doctor.get('city', 'N/A')
+            msg += f"{idx}. {name} - {specialization} ({city})\n"
         return msg
     
     elif source == 'health-information':
@@ -484,6 +637,10 @@ def process_query(query: str, user_id: str = None) -> Dict[str, Any]:
             route_result = route_to_food_interaction(query, drugs)
         elif intent == 'medical-summary':
             route_result = route_to_medical_summary(query)
+        elif intent == 'alternatives':
+            route_result = route_to_alternatives(query, drugs)
+        elif intent == 'doctor-search':
+            route_result = route_to_doctor_search(query)
         else:
             route_result = route_to_general_health(query)
         

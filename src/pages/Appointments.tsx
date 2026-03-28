@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -71,6 +72,7 @@ interface Appointment {
 }
 
 export default function Appointments() {
+  const [searchParams] = useSearchParams()
   const [tabValue, setTabValue] = useState(0) // 0 = Browse Doctors, 1 = My Appointments
   const [loading, setLoading] = useState(false)
   const [doctors, setDoctors] = useState<Doctor[]>([])
@@ -130,15 +132,19 @@ export default function Appointments() {
     }
   }
 
-  const searchDoctors = async () => {
+  const searchDoctors = async (overrides?: { name?: string; specialization?: string; city?: string }) => {
     setLoading(true)
     setError('')
 
     try {
+      const resolvedName = overrides?.name ?? searchQuery
+      const resolvedSpecialization = overrides?.specialization ?? specializationFilter
+      const resolvedCity = overrides?.city ?? cityFilter
+
       const params = new URLSearchParams()
-      if (searchQuery) params.append('name', searchQuery)
-      if (specializationFilter) params.append('specialization', specializationFilter)
-      if (cityFilter) params.append('city', cityFilter)
+      if (resolvedName) params.append('name', resolvedName)
+      if (resolvedSpecialization) params.append('specialization', resolvedSpecialization)
+      if (resolvedCity) params.append('city', resolvedCity)
 
       const response = await fetch(`http://localhost:5000/api/doctors/search?${params.toString()}`)
       const data = await response.json()
@@ -155,6 +161,30 @@ export default function Appointments() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const tabParam = (searchParams.get('tab') || '').toLowerCase()
+    const nameParam = (searchParams.get('name') || '').trim()
+    const specializationParam = (searchParams.get('specialization') || '').trim()
+    const cityParam = (searchParams.get('city') || '').trim()
+
+    if (tabParam === '1' || tabParam === 'my') {
+      setTabValue(1)
+      return
+    }
+
+    if (tabParam === '0' || tabParam === 'browse' || nameParam || specializationParam || cityParam) {
+      setTabValue(0)
+      setSearchQuery(nameParam)
+      setSpecializationFilter(specializationParam)
+      setCityFilter(cityParam)
+      searchDoctors({
+        name: nameParam,
+        specialization: specializationParam,
+        city: cityParam,
+      })
+    }
+  }, [searchParams])
 
   const handleBookAppointment = (doctor: Doctor) => {
     setSelectedDoctor(doctor)
@@ -515,7 +545,9 @@ export default function Appointments() {
                     </Stack>
                     <Button
                       variant="contained"
-                      onClick={searchDoctors}
+                      onClick={() => {
+                        searchDoctors()
+                      }}
                       disabled={loading}
                       sx={{
                         bgcolor: '#06D6A0',

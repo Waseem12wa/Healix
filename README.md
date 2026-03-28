@@ -1,542 +1,353 @@
-# 💊 Healix – AI Powered Healthcare Assistant
+# Healix
 
-> **Empowering safer, smarter healthcare with AI-driven medication safety and personalized health management.**
+Healix is a full-stack healthcare platform that combines appointment workflows, medicine safety tools, medication reminders, profile management, notifications, payments, and AI-assisted clinical utilities in one system.
 
-Healix is a cutting-edge web-based healthcare platform that revolutionizes **patient safety, medication management, and clinical decision support** with **intelligent AI-powered tools**. Our platform integrates three advanced machine learning models to provide comprehensive drug interaction analysis and personalized medicine recommendations.
+The project includes:
+- A React + TypeScript frontend (Vite)
+- A Node.js + Express API backend (MongoDB)
+- Multiple Python microservices for AI/ML health features
 
----
+## Highlights
 
-## ✨ Core Features
+- Role-based access for patient, doctor, provider, and admin workflows
+- Drug interaction checks (drug-drug)
+- Drug-food interaction checks
+- Medicine alternative recommendations
+- Side-effect prediction
+- AI Health Assistant with intent routing and action buttons
+- Medical record summarization (PDF, DOCX, TXT, images, scanned PDFs)
+- Medication reminders + email reminder jobs
+- Medicine shop, checkout, and order history
+- Profile image upload and serving via uploads proxy
 
-### 🎯 AI-Powered Models (3 Implemented)
-
-| Feature | Technology | Accuracy | Purpose |
-|---------|-----------|----------|---------|
-| **Drug-Drug Interaction (DDI)** | CatBoost ML Model | ~95% | Detects harmful interactions between prescribed medicines |
-| **Drug-Food Interaction (DFI)** | XGBoost ML Model | ~92% | Analyzes food interference with medication absorption |
-| **Medicine Alternatives** | Llama 3.2 LLM (Ollama) | N/A | AI-powered alternative drug recommendations |
-
-### 📋 Additional Features
-
-- **Medication Reminder System** – Smart reminders for timely medication intake
-- **AI Chatbot** – Natural language health queries (Urdu + English)
-- **Health Record Summarization** – Intelligent document summarization
-- **Multi-Channel Notifications** – Email, SMS, and WhatsApp reminders
-- **Secure Patient Records** – HIPAA-compliant data storage
-- **Doctor Management** – Multi-user role-based access
-- **Appointment Scheduling** – Integrated booking system
-
----
-
-## 🏗️ Complete System Architecture
-
-### High-Level Data Flow
-```mermaid
-graph TB;
-  subgraph Client["🖥️ Client Side"]
-    UI["React.js UI<br/>Vite Dev Server<br/>:5173"]
-  end
-  
-  subgraph Backend["🔧 Backend Layer"]
-    API["Node.js/Express API<br/>:5000<br/>- Auth<br/>- Routes<br/>- Jobs<br/>- Reminders<br/>- Notifications"]
-    DB["MongoDB<br/>Patient Data<br/>Appointments<br/>Reminders<br/>Users"]
-    Notif["📧 Notification Service<br/>- Email (Nodemailer)<br/>- SMS<br/>- WhatsApp"]
-  end
-  
-  subgraph AI["🤖 ML Model Microservices"]
-    DDI["⚙️ DDI Service<br/>CatBoost Model<br/>:5001<br/>Drug-Drug Interactions"]
-    DFI["⚙️ DFI Service<br/>XGBoost Model<br/>:5002<br/>Drug-Food Interactions"]
-    ALT["⚙️ Alternative Service<br/>Llama 3.2 LLM<br/>:5003<br/>Medicine Alternatives"]
-  end
-  
-  subgraph External["🌐 External Services"]
-    PubChem["PubChem API<br/>Drug & Molecular<br/>Data"]
-    Ollama["🦙 Ollama<br/>Local LLM<br/>Inference"]
-  end
-  
-  UI -->|REST API| API
-  API --> DB
-  API --> Notif
-  API -->|HTTP Calls| DDI
-  API -->|HTTP Calls| DFI
-  API -->|HTTP Calls| ALT
-  
-  DDI -->|Query| PubChem
-  DFI -->|Query| PubChem
-  ALT -->|Inference| Ollama
-  
-  Notif -->|Send| Client
-```
-
-### Model Architecture Detail
-```mermaid
-graph LR;
-  subgraph InputData["📥 Input Processing"]
-    MedName["Medicine Name"]
-    Food["Food Item"]
-    Dose["Dosage Info"]
-  end
-  
-  subgraph FeatureEng["🔧 Feature Engineering"]
-    Chem["Chemical Structure<br/>Retrieval<br/>PubChem"]
-    Mol["Molecular Descriptors<br/>RDKit Calculation<br/>18 Features"]
-    ATC["ATC Drug<br/>Classification<br/>API"]
-  end
-  
-  subgraph MLModels["🤖 ML Models"]
-    DDIModel["CatBoost<br/>DDI Classifier<br/>Binary/Multi-class"]
-    DFIModel["XGBoost<br/>DFI Classifier<br/>Risk Scoring"]
-    LLMModel["Llama 3.2<br/>Alternative Gen<br/>Text-to-Text"]
-  end
-  
-  subgraph Output["📤 Output"]
-    DDIPred["Interaction Risk<br/>Score: 0-100%<br/>Severity Level"]
-    DFIPred["Food Effect Risk<br/>Recommendation<br/>Timing Advice"]
-    ALTPred["Alternative List<br/>Similarity Score<br/>Clinical Notes"]
-  end
-  
-  InputData -->|Extract| FeatureEng
-  FeatureEng -->|18D Vector| MLModels
-  MLModels -->|Predict| Output
-```
-
----
-
-## 🛠️ Tech Stack
+## Architecture
 
 ### Frontend
-- **React.js** – UI framework
-- **Vite** – Lightning-fast build tool
-- **Material-UI (MUI)** – Component library
-- **TypeScript** – Type safety
-- **Framer Motion** – Smooth animations
-- **Recharts** – Data visualization
+- Stack: React 19, TypeScript, Vite, MUI, Framer Motion, React Router
+- Location: src
+- Dev server: http://localhost:5173
+- Proxies (configured in vite.config.ts):
+  - /api -> http://localhost:5000
+  - /uploads -> http://localhost:5000
 
-### Backend
-- **Node.js** – Runtime
-- **Express.js** – REST API framework
-- **MongoDB** – NoSQL database
-- **Mongoose** – ODM for MongoDB
-- **Node-Cron** – Job scheduling
+### Backend API
+- Stack: Node.js, Express, Mongoose, JWT auth
+- Location: server
+- API base: http://localhost:5000/api
+- Serves uploaded files from /uploads
+- Starts immediately and checks microservice readiness asynchronously
 
-### AI/ML Models (3 Implemented)
+### Python Microservices
+Default ports:
+- DDI service: 5001
+- DFI service: 5002
+- Alternatives service: 5003
+- Side effects service: 5004
+- Medical record summarization service: 5005
+- Health assistant router service: 5006
 
-#### 1. **DDI Model (CatBoost)** 🔴
-- **Framework:** CatBoost Classifier
-- **Model Path:** `Models/DDI.cbm`
-- **Input Features:** 
-  - Molecular descriptors (RDKit)
-  - ATC classifications
-  - Chemical structure similarity
-- **Output:** Drug-drug interaction probability (0-100%)
-- **Performance:** ~95% accuracy on test set
-- **Microservice Port:** 5001
+## Monorepo Structure
 
-#### 2. **DFI Model (XGBoost)** 🟡
-- **Framework:** XGBoost Classifier
-- **Model Path:** `Models/XGB-tuned.sav`
-- **Input Features:** 18 molecular descriptors
-  - LogP (Lipophilicity)
-  - Molecular Weight
-  - H-Bond Donors/Acceptors
-  - TPSA
-  - AtomCount, etc.
-- **Output:** Risk score with recommendations
-- **Performance:** ~92% accuracy
-- **Microservice Port:** 5002
+- src: Frontend app
+- server: Backend API and Python services
+- server/routes: REST API routes
+- server/models: MongoDB models
+- server/services: Python and payment-related services
+- server/utils: API clients and utility modules
+- Models: ML model assets
 
-#### 3. **Alternative Medicine Model (LLM)** 🟢
-- **Framework:** Ollama + Llama 3.2 (3B)
-- **Type:** Generative AI for text
-- **Input:** Medicine name, desired count
-- **Output:** 
-  - Alternative drug names
-  - Similarity scores
-  - Mechanism of action
-  - Clinical indications
-  - ATC codes
-- **Performance:** Fast inference (~2-5 seconds)
-- **Microservice Port:** 5003
+## Route Map (Frontend)
 
-### Supporting Libraries
-- **Flask** – Python microservices
-- **RDKit** – Molecular descriptors
-- **PubChemPy** – Chemical data retrieval
-- **Joblib** – Model serialization
-- **Ollama** – LLM inference
+Public:
+- /
+- /about
+- /contact
+- /login
+- /signup
+- /forgot-password
+- /reset-password
 
----
+Protected:
+- /dashboard
+- /doctor-dashboard
+- /provider-dashboard
+- /admin
+- /tools/ai-chatbot
+- /tools/health-summary
+- /tools/medication-reminder
+- /tools/drug-interactions
+- /tools/drug-food-interactions
+- /tools/drug-alternatives
+- /tools/side-effects
+- /tools/appointments
+- /tools/notifications
+- /tools/profile
+- /shop/medicines
+- /shop/checkout
+- /shop/orders
 
-## 📊 Model Microservices Details
+## AI Assistant Flow
 
-### DDI Service (Port 5001)
-```
-Endpoint: POST /predict
-Request: { drug1: string, drug2: string }
-Response: {
-  success: boolean,
-  drug1: string,
-  drug2: string,
-  risk_score: number,      // 0-100
-  severity: string,         // low/medium/high
-  explanation: string,
-  details: object
-}
-```
+The assistant supports intent-based routing and action-button navigation.
 
-### DFI Service (Port 5002)
-```
-Endpoint: POST /predict
-Request: { medicine: string, food: string }
-Response: {
-  success: boolean,
-  medicine: string,
-  food: string,
-  risk_score: number,
-  recommendation: string,
-  explanation: string
-}
-```
+Typical intents:
+- side-effects
+- drug-interaction
+- food-interaction
+- alternatives
+- doctor-search
+- medical-summary
+- reminder
+- general-health
 
-### Alternative Service (Port 5003)
-```
-Endpoint: POST /recommend
-Request: { medicine: string, top_n: number }
-Response: {
-  success: boolean,
-  medicine: string,
-  alternatives: [
-    {
-      name: string,
-      similarity: number,
-      mechanism: string,
-      indications: string,
-      category: string,
-      atc_code: string
-    }
-  ],
-  explanation: string,
-  source: string
-}
-```
+Behavior:
+- User asks a natural-language question.
+- Health assistant service detects intent and routes to the proper feature service.
+- Chat response includes formatted clinical output.
+- UI can render action buttons (for example: Open Side Effects, Open Drug Interactions, Find Doctors).
+- Navigation includes query parameters so target pages auto-prefill and auto-run checks when appropriate.
 
----
+## Medical Record Summarization
 
-## ⚙️ Complete Installation & Setup Guide
+Supported file types include:
+- PDF
+- DOCX
+- TXT
+- Common images (OCR path)
 
-### Prerequisites
-- Node.js (v16+)
-- Python (v3.8+)
-- MongoDB (local or Atlas)
-- Ollama (for LLM service)
+Capabilities:
+- OCR extraction for images
+- OCR fallback for scanned PDFs
+- Medical relevance validation (non-medical uploads are rejected)
+- Chunk-safe summarization to avoid model length/index overflow
+- Structured output sections (conditions, medications, actions, recommendations)
 
-### 1️⃣ Clone Repository
+## Prerequisites
+
+- Node.js 18+
+- npm 9+
+- Python 3.10+
+- MongoDB (local or cloud)
+
+For OCR quality in medical summarization service:
+- Tesseract OCR installed and available in PATH
+- Poppler utilities installed and available in PATH (required by pdf2image)
+
+## Installation
+
+### 1. Install root dependencies
+
 ```bash
-git clone https://github.com/Waseem12wa/Healix.git
-cd Healix
-```
-
-### 2️⃣ Frontend Setup (React + Vite)
-```bash
-# Install dependencies
 npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
 ```
-- **Dev Server:** http://localhost:5173
-- **Build Output:** `dist/` folder
 
-### 3️⃣ Backend Server Setup (Node.js + Express)
+### 2. Install backend dependencies
+
 ```bash
-# Navigate to server
 cd server
-
-# Install dependencies
 npm install
+```
 
-# Configure environment variables
-# Create .env file with MongoDB URI, SMTP settings, etc.
-nano .env
+### 3. Install Python dependencies
 
-# Start development server
+From server:
+
+```bash
+py -m pip install -r requirements.txt
+```
+
+If your environment uses python command instead:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+## Running The App
+
+From repository root:
+
+```bash
 npm run dev
+```
 
-# Or production
+This launches:
+- Frontend (Vite) on 5173
+- Backend stack via server npm start (API + Python services)
+
+Useful commands:
+
+```bash
+npm run build
+npm run preview
+npm run start:backend
+```
+
+Backend-only from server folder:
+
+```bash
 npm start
 ```
-- **API Server:** http://localhost:5000
-- **API Endpoint:** http://localhost:5000/api
 
-### 4️⃣ Python AI Model Services
+## Environment Variables
 
-#### Install Python Dependencies (One Time)
+Create a .env file in server folder. Start with the minimal set and add optional integrations as needed.
+
+### Core Required (recommended)
+
+```env
+PORT=5000
+MONGODB_URI=mongodb://localhost:27017/healix
+JWT_SECRET=change_this_secret
+JWT_EXPIRES_IN=30d
+FRONTEND_URL=http://localhost:5173
+NODE_ENV=development
+```
+
+### Optional Microservice/Runtime Controls
+
+```env
+REQUIRED_MICROSERVICES=DDI,DFI,ALT,SIDE,HEALTH
+HEALTH_ASSISTANT_SERVICE_URL=http://localhost:5006
+MEDICAL_RECORD_SERVICE_URL=http://localhost:5005
+DDI_SERVICE_URL=http://localhost:5001
+DFI_SERVICE_URL=http://localhost:5002
+ALTERNATIVE_SERVICE_URL=http://localhost:5003
+SIDE_EFFECT_SERVICE_URL=http://localhost:5004
+```
+
+### Optional Email
+
+```env
+USE_RESEND=true
+RESEND_API_KEY=your_resend_api_key
+
+# or SMTP style
+EMAIL_SERVICE=gmail
+EMAIL_USER=your_email
+EMAIL_PASSWORD=your_app_password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+EMAIL_DEV_MODE=false
+```
+
+### Optional Payments
+
+```env
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+BACKEND_URL=http://localhost:5000
+
+EASYPAISA_API_URL=https://sandbox.easypaisa.com.pk/api/v2
+EASYPAISA_STORE_ID=
+EASYPAISA_MERCHANT_ID=
+EASYPAISA_PASSWORD=
+EASYPAISA_SUCCESS_URL=http://localhost:5173/payment/success
+EASYPAISA_FAILURE_URL=http://localhost:5173/payment/failure
+
+JAZZCASH_API_URL=https://sandbox.jazzcash.com.pk/applicationapi/api
+JAZZCASH_MERCHANT_ID=
+JAZZCASH_MERCHANT_PASSWORD=
+JAZZCASH_INTEGRATION_TYPE=MERCHANT_DIRECT
+JAZZCASH_SUCCESS_URL=http://localhost:5173/payment/success
+JAZZCASH_FAILURE_URL=http://localhost:5173/payment/failure
+```
+
+### Optional Object Storage
+
+```env
+OBJECT_STORAGE_BUCKET=
+OBJECT_STORAGE_REGION=us-east-1
+OBJECT_STORAGE_ENDPOINT=
+OBJECT_STORAGE_ACCESS_KEY_ID=
+OBJECT_STORAGE_SECRET_ACCESS_KEY=
+OBJECT_STORAGE_PUBLIC_BASE_URL=
+```
+
+### Frontend Environment
+
+Create .env in root when needed:
+
+```env
+VITE_API_BASE_URL=/api/assistant
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+```
+
+## Data Seeding And Indexing
+
+From project root:
+
 ```bash
-cd server
-pip install -r requirements.txt
+npm run seed:medicines
+npm run seed:medicines:million
+npm run seed:medicines:csv
+npm run seed:medicines:pk:strict
+npm run seed:drug-food:million
+npm run db:indexes
 ```
 
-#### Service 1: DDI Model (CatBoost)
+From server directory:
+
 ```bash
-cd services
-python ddi_service.py
-```
-- **Port:** 5001
-- **Model:** CatBoost classifier
-- **Dependencies:** catboost, rdkit, pubchempy, flask
-
-#### Service 2: DFI Model (XGBoost)
-```bash
-cd services
-python dfi_service.py
-```
-- **Port:** 5002
-- **Model:** XGBoost classifier
-- **Dependencies:** xgboost, scikit-learn, rdkit, joblib
-
-#### Service 3: Alternative Medicine Model (LLM)
-
-First, ensure Ollama is running:
-```bash
-# Install Ollama from https://ollama.ai
-# Then start the Ollama service
-ollama serve
+npm run seed:doctors
+npm run seed:medicines
+npm run db:indexes
 ```
 
-In another terminal:
-```bash
-cd services
-python alternative_service.py
-```
-- **Port:** 5003
-- **Model:** Llama 3.2 (3B)
-- **Requirements:** ollama, flask
+## API Overview
 
----
+Backend route prefixes:
+- /api/auth
+- /api/password
+- /api/doctors
+- /api/appointments
+- /api/notifications
+- /api/ddi
+- /api/dfi
+- /api/alternative
+- /api/side-effects
+- /api/reminders
+- /api/assistant
+- /api/payments
 
-## 🚀 Quick Start (All Services)
+## Troubleshooting
 
-### Terminal 1: Start Frontend
-```bash
-npm run dev
-```
+### 401 errors in protected pages
+- Verify token exists and is not expired.
+- Login again to refresh session.
+- Confirm frontend and backend are both running.
 
-### Terminal 2: Start Backend
-```bash
-cd server
-npm run dev
-```
+### Assistant unavailable
+- Check Python services are running on expected ports.
+- Confirm backend route /api/assistant responds.
+- Verify REQUIRED_MICROSERVICES does not require services you intentionally disabled.
 
-### Terminal 3: Start DDI Model
-```bash
-cd server/services
-python ddi_service.py
-```
+### Medical summarization OCR issues
+- Ensure Tesseract is installed and available from command line.
+- Ensure Poppler utilities are installed for pdf2image.
+- Restart backend stack after dependency changes.
 
-### Terminal 4: Start DFI Model
-```bash
-cd server/services
-python dfi_service.py
-```
+### Profile images not loading
+- Confirm backend serves /uploads and Vite proxy includes /uploads.
+- Ensure uploaded path is persisted in user profile payload.
 
-### Terminal 5: Start Alternative Model
-```bash
-# First ensure Ollama is running (separate terminal)
-ollama serve
+### Build failures
+- Run root build first, then backend checks.
+- Verify Node and Python versions meet prerequisites.
 
-# Then in another terminal
-cd server/services
-python alternative_service.py
-```
+## Security Notes
 
----
+- Replace default JWT secrets in production.
+- Restrict CORS origins for deployment.
+- Do not commit real API keys or payment secrets.
+- Review medical data handling and storage policy before production use.
 
-## 📡 API Integration Guide
+## Development Notes
 
-### Test DDI Model
-```bash
-curl -X POST http://localhost:5001/predict \
-  -H "Content-Type: application/json" \
-  -d '{"drug1": "Warfarin", "drug2": "Aspirin"}'
-```
+- Backend now starts API immediately and performs microservice readiness checks in background.
+- Some features can still fail if their dependent microservice is not ready yet.
+- Reminder email cron starts only when MongoDB is connected.
 
-### Test DFI Model
-```bash
-curl -X POST http://localhost:5002/predict \
-  -H "Content-Type: application/json" \
-  -d '{"medicine": "Metformin", "food": "Alcohol"}'
-```
+## License
 
-### Test Alternative Model
-```bash
-curl -X POST http://localhost:5003/recommend \
-  -H "Content-Type: application/json" \
-  -d '{"medicine": "Paracetamol", "top_n": 5}'
-```
-
----
-
-## 📊 Project Structure
-
-```
-Healix/
-├── src/                          # Frontend (React + Vite)
-│   ├── pages/                    # Page components
-│   ├── components/               # Reusable components
-│   ├── hooks/                    # Custom hooks
-│   ├── utils/                    # Helper utilities
-│   └── main.tsx                  # Entry point
-├── server/                       # Backend (Node.js + Express)
-│   ├── services/                 # Python ML microservices
-│   │   ├── ddi_service.py        # DDI model service
-│   │   ├── dfi_service.py        # DFI model service
-│   │   ├── alternative_service.py # LLM alternative service
-│   │   └── llm_service.py        # Shared LLM utilities
-│   ├── routes/                   # Express routes
-│   ├── models/                   # MongoDB schemas
-│   ├── jobs/                     # Cron jobs
-│   ├── config/                   # Database config
-│   ├── utils/                    # Helper utilities
-│   ├── package.json              # Node dependencies
-│   ├── requirements.txt          # Python dependencies
-│   └── server.js                 # Express app entry
-├── Models/                       # Pre-trained ML models
-│   ├── DDI.cbm                   # CatBoost DDI model
-│   ├── XGB-tuned.sav             # XGBoost DFI model
-│   └── medicine_alternative_model.pkl # Alternative model
-├── public/                       # Static assets
-├── package.json                  # Root dependencies
-├── vite.config.ts                # Vite configuration
-├── tsconfig.json                 # TypeScript configuration
-└── README.md                     # This file
-```
-
----
-
-## 🔍 How the Models Work
-
-### DDI (Drug-Drug Interaction) - CatBoost
-1. User enters two drug names
-2. System fetches molecular structures from PubChem
-3. RDKit calculates molecular descriptors
-4. ATC codes are retrieved
-5. Features passed to CatBoost classifier
-6. Model outputs interaction probability
-7. LLM provides clinical explanation (if Ollama available)
-
-### DFI (Drug-Food Interaction) - XGBoost
-1. User enters medicine and food items
-2. Chemical structure retrieval from PubChem
-3. 18 molecular descriptors calculated
-4. XGBoost model predicts risk score
-5. Recommendations provided (take with/without food, timing)
-6. LLM adds safety advice
-
-### Alternative Medicine - Llama 3.2 LLM
-1. User enters medicine name
-2. Ollama local LLM generates alternatives (no internet needed)
-3. Alternatives formatted with:
-   - Similarity scores
-   - Mechanism of action
-   - Clinical indications
-   - ATC classifications
-4. Fallback to generic alternatives if LLM unavailable
-
----
-
-## 🧪 Testing & Validation
-
-### Run Frontend Tests
-```bash
-npm run build  # Check TypeScript errors
-```
-
-### Test Backend APIs
-```bash
-cd server
-npm run dev
-# Visit http://localhost:5000 to see API health
-```
-
-### Test ML Models
-```bash
-# Check if models load correctly
-cd server/services
-python -c "from catboost import CatBoostClassifier; print('CatBoost OK')"
-python -c "import xgboost; print('XGBoost OK')"
-python -c "import ollama; print('Ollama OK')"
-```
-
----
-
-## 📸 Key Pages & Features
-
-- **👤 Authentication** – Login, signup, password reset
-- **📋 Patient Dashboard** – Medical history, reminders, stats
-- **💊 Drug Checker** – Check drug-drug & drug-food interactions
-- **💡 Medicine Alternatives** – Find alternative medications
-- **⏰ Medication Reminders** – Smart scheduling system
-- **👨‍⚕️ Doctor Management** – Book appointments, view profiles
-- **📊 Health Records** – Store and summarize medical documents
-- **🤖 AI Chatbot** – Natural language health assistant
-
----
-
-## 🔐 Security Features
-
-- **Password Hashing** – bcryptjs for secure password storage
-- **JWT Authentication** – Token-based auth
-- **CORS Protection** – Cross-origin request handling
-- **MongoDB Validation** – Schema validation with Mongoose
-- **Environment Variables** – Secure config management (.env)
-
----
-
-## 🐳 Docker Support (Optional)
-
-Coming soon! Dockerfile for containerized deployment.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see LICENSE file for details.
-
----
-
-## 👥 Authors & Contact
-
-**Waseem** – Project Lead & Developer  
-GitHub: [@Waseem12wa](https://github.com/Waseem12wa)
-
----
-
-## 🙏 Acknowledgments
-
-- **CatBoost** for DDI model framework
-- **XGBoost** for DFI model framework
-- **Ollama** for local LLM inference
-- **RDKit** for molecular descriptor calculations
-- **PubChem** for drug chemical data
-- **MongoDB** for robust database solutions
-- **React & Node.js** communities
-
----
-
-**Last Updated:** February 14, 2026  
-**Status:** ✅ Active Development
+ISC (backend package), plus dependencies under their own licenses.

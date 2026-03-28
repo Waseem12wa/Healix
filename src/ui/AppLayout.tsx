@@ -164,41 +164,7 @@ export function AppLayout() {
             </Stack>
           </Box>
           <Stack direction="row" spacing={1}>
-            {userRole ? (
-              // Logged in - show Logout button
-              <Button
-                onClick={() => {
-                  // Clear all auth data
-                  localStorage.removeItem('userRole')
-                  localStorage.removeItem('authRole')
-                  localStorage.removeItem('userEmail')
-                  localStorage.removeItem('userName')
-                  localStorage.removeItem('userId')
-                  localStorage.removeItem('token')
-                  // Redirect to login
-                  navigate('/login')
-                }}
-                variant="contained"
-                sx={{
-                  bgcolor: '#FFFFFF',
-                  color: '#00B4D8',
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1,
-                  borderRadius: 2,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    bgcolor: '#F0F9FF',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
-                  }
-                }}
-              >
-                Logout
-              </Button>
-            ) : (
-              // Not logged in - show Login and Sign up buttons
+            {!userRole && (
               <>
                 <Button
                   component={Link}

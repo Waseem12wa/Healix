@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -26,6 +26,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ErrorIcon from '@mui/icons-material/Error'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useSearchParams } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import { correctDrugTerm } from '../utils/medicalAutoCorrect'
 import { logPatientActivity } from '../services/patientService'
@@ -49,11 +50,79 @@ type Interaction = {
 
 export default function DrugInteractionChecker() {
   const theme = useTheme()
+  const [searchParams] = useSearchParams()
   const [input, setInput] = useState('')
   const [drugs, setDrugs] = useState<string[]>([])
   const [results, setResults] = useState<Interaction[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const autoRunKeyRef = useRef('')
+
+  const runCheckFor = async (drugsToCheck: string[]) => {
+    setLoading(true)
+    setError(null)
+    setResults([])
+
+    try {
+      const response = await fetch('http://localhost:5000/api/ddi/check-interactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {}),
+        },
+        body: JSON.stringify({ drugs: drugsToCheck }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to check interactions')
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to check interactions')
+      }
+
+      const interactions: Interaction[] = data.interactions.map((item: any) => ({
+        drug1: item.drug1,
+        drug2: item.drug2,
+        severity: item.severity,
+        severityLabel: item.severityLabel,
+        percentage: item.percentage,
+        probability: item.probability,
+        details: item.details
+      }))
+
+      setResults(interactions)
+
+      await logPatientActivity({
+        category: 'drug-interaction',
+        title: 'Drug interaction check',
+        details: `Checked ${drugsToCheck.length} medicines`,
+        metadata: {
+          drugs: drugsToCheck,
+          totalPairs: data.totalPairs,
+          successfulPredictions: data.successfulPredictions,
+          failedPredictions: data.failedPredictions,
+        }
+      }).catch(() => {
+        // non-blocking
+      })
+
+      if (data.errors && data.errors.length > 0) {
+        const errorMessages = data.errors.map((err: any) =>
+          `${err.drug1} + ${err.drug2}: ${err.error}`
+        ).join('; ')
+        setError(`Some predictions failed: ${errorMessages}`)
+      }
+
+    } catch (err: any) {
+      console.error('Error checking interactions:', err)
+      setError(err.message || 'Failed to check drug interactions. Please ensure the DDI service is running.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const addDrug = () => {
     const rawName = input.trim()
@@ -78,72 +147,31 @@ export default function DrugInteractionChecker() {
   }
 
   const handleCheck = async () => {
-    setLoading(true)
-    setError(null)
-    setResults([])
-
-    try {
-      const response = await fetch('http://localhost:5000/api/ddi/check-interactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {}),
-        },
-        body: JSON.stringify({ drugs }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to check interactions')
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to check interactions')
-      }
-
-      // Map API response to our Interaction type
-      const interactions: Interaction[] = data.interactions.map((item: any) => ({
-        drug1: item.drug1,
-        drug2: item.drug2,
-        severity: item.severity,
-        severityLabel: item.severityLabel,
-        percentage: item.percentage,
-        probability: item.probability,
-        details: item.details
-      }))
-
-      setResults(interactions)
-
-      await logPatientActivity({
-        category: 'drug-interaction',
-        title: 'Drug interaction check',
-        details: `Checked ${drugs.length} medicines`,
-        metadata: {
-          drugs,
-          totalPairs: data.totalPairs,
-          successfulPredictions: data.successfulPredictions,
-          failedPredictions: data.failedPredictions,
-        }
-      }).catch(() => {
-        // non-blocking
-      })
-
-      // Show errors if any predictions failed
-      if (data.errors && data.errors.length > 0) {
-        const errorMessages = data.errors.map((err: any) =>
-          `${err.drug1} + ${err.drug2}: ${err.error}`
-        ).join('; ')
-        setError(`Some predictions failed: ${errorMessages}`)
-      }
-
-    } catch (err: any) {
-      console.error('Error checking interactions:', err)
-      setError(err.message || 'Failed to check drug interactions. Please ensure the DDI service is running.')
-    } finally {
-      setLoading(false)
-    }
+    await runCheckFor(drugs)
   }
+
+  useEffect(() => {
+    const drugsParam = searchParams.get('drugs') || ''
+    if (!drugsParam) return
+
+    const parsed = drugsParam
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => correctDrugTerm(item) || item)
+
+    const unique = Array.from(new Set(parsed.map((item) => item.toLowerCase())))
+      .map((lower) => parsed.find((item) => item.toLowerCase() === lower) as string)
+
+    if (unique.length < 2) return
+
+    const key = unique.join('|').toLowerCase()
+    if (autoRunKeyRef.current === key) return
+    autoRunKeyRef.current = key
+
+    setDrugs(unique)
+    runCheckFor(unique)
+  }, [searchParams])
 
   const summary = useMemo(() => {
     const counts = { None: 0, Mild: 0, Severe: 0 }

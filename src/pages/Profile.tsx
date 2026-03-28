@@ -75,6 +75,7 @@ export default function Profile() {
           profileImage: profile?.patientProfile?.profileImage || '',
           bio: profile?.patientProfile?.bio || '',
         })
+        localStorage.setItem('profileImage', profile?.patientProfile?.profileImage || '')
         setActivities(Array.isArray(activityData) ? activityData : [])
       } catch (err: any) {
         setError(err?.response?.data?.message || 'Failed to load profile')
@@ -116,6 +117,7 @@ export default function Profile() {
         throw new Error('Image upload failed')
       }
       updateField('profileImage', imageUrl)
+      localStorage.setItem('profileImage', imageUrl)
       setSuccess('Profile image uploaded successfully')
     } catch (err: any) {
       setError(err?.response?.data?.message || err.message || 'Failed to upload image')
@@ -145,6 +147,7 @@ export default function Profile() {
       const updated = await updateMyProfile(payload)
       localStorage.setItem('userName', updated?.userName || form.userName)
       localStorage.setItem('userEmail', updated?.email || form.email)
+      localStorage.setItem('profileImage', updated?.patientProfile?.profileImage || form.profileImage || '')
 
       setSuccess('Profile saved successfully')
     } catch (err: any) {

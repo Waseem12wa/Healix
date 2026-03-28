@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './HealthAssistant.css';
 import { clearAuthData } from '../utils/auth';
 
@@ -18,10 +19,16 @@ interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
+    actions?: AssistantAction[];
     intent?: string;
     source?: string;
     timestamp: Date;
     responseTime?: number;
+}
+
+interface AssistantAction {
+    label: string;
+    path: string;
 }
 
 interface QuickQuery {
@@ -30,7 +37,31 @@ interface QuickQuery {
     category: string;
 }
 
+const KNOWN_MEDICINES = [
+    'aspirin', 'ibuprofen', 'metformin', 'lisinopril', 'atorvastatin',
+    'amoxicillin', 'paracetamol', 'acetaminophen', 'omeprazole', 'sertraline'
+];
+
+const KNOWN_FOODS = ['grapefruit', 'alcohol', 'dairy', 'milk', 'cheese'];
+
+const getKnownMatches = (query: string, vocabulary: string[]) => {
+    const lower = query.toLowerCase();
+    return vocabulary.filter((item) => lower.includes(item));
+};
+
+const getSpecializationFromQuery = (query: string) => {
+    const lower = query.toLowerCase();
+    const candidates = [
+        'cardiologist', 'dermatologist', 'neurologist', 'orthopedic',
+        'gynecologist', 'pediatrician', 'psychiatrist', 'general physician'
+    ];
+    return candidates.find((item) => lower.includes(item)) || '';
+};
+
+const toCsvParam = (items: string[]) => encodeURIComponent(items.join(','));
+
 const HealthAssistant: React.FC = () => {
+    const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
@@ -39,6 +70,86 @@ const HealthAssistant: React.FC = () => {
     const [showQuickQueries, setShowQuickQueries] = useState(true);
     const [error, setError] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const buildActions = (query: string, assistantPayload: any): AssistantAction[] => {
+        const intent = String(assistantPayload?.intent || '');
+        const source = String(assistantPayload?.source || '');
+        const data = assistantPayload?.data || {};
+        const medicineMatches = getKnownMatches(query, KNOWN_MEDICINES);
+        const foodMatches = getKnownMatches(query, KNOWN_FOODS);
+        const actions: AssistantAction[] = [];
+
+        if (intent === 'side-effects' || source === 'side-effect-predictor') {
+            const medicineFromData = typeof data?.medicine === 'string' ? data.medicine : '';
+            const medicines = [medicineFromData, ...medicineMatches].filter(Boolean);
+            const uniqueMeds = Array.from(new Set(medicines));
+            const path = uniqueMeds.length > 0
+                ? `/tools/side-effects?medicines=${toCsvParam(uniqueMeds)}`
+                : '/tools/side-effects';
+            actions.push({ label: 'Open Side Effects', path });
+        }
+
+        if (intent === 'drug-interaction' || source === 'drug-interaction-checker') {
+            const interaction = Array.isArray(data?.interactions) ? data.interactions[0] : undefined;
+            const fromData = [interaction?.drug1, interaction?.drug2].filter(Boolean);
+            const drugs = Array.from(new Set([...fromData, ...medicineMatches]));
+            const path = drugs.length >= 2
+                ? `/tools/drug-interactions?drugs=${toCsvParam(drugs.slice(0, 4))}`
+                : '/tools/drug-interactions';
+            actions.push({ label: 'Open Drug Interactions', path });
+        }
+
+        if (intent === 'food-interaction' || source === 'food-interaction-checker') {
+            const meds = Array.from(new Set(medicineMatches));
+            const foods = Array.from(new Set(foodMatches));
+            const params: string[] = [];
+            if (meds.length > 0) params.push(`medicines=${toCsvParam(meds.slice(0, 3))}`);
+            if (foods.length > 0) params.push(`foods=${toCsvParam(foods.slice(0, 3))}`);
+            const path = params.length > 0
+                ? `/tools/drug-food-interactions?${params.join('&')}`
+                : '/tools/drug-food-interactions';
+            actions.push({ label: 'Open Drug-Food Interactions', path });
+        }
+
+        if (intent === 'alternatives' || source === 'alternative-medicine') {
+            const medicine = medicineMatches[0] || (typeof data?.medicine === 'string' ? data.medicine : '');
+            const path = medicine
+                ? `/tools/drug-alternatives?medicine=${encodeURIComponent(medicine)}`
+                : '/tools/drug-alternatives';
+            actions.push({ label: 'Open Alternatives', path });
+        }
+
+        if (intent === 'doctor-search' || query.toLowerCase().includes('doctor') || query.toLowerCase().includes('appointment')) {
+            const specialization = getSpecializationFromQuery(query);
+            const params = ['tab=0'];
+            if (specialization) params.push(`specialization=${encodeURIComponent(specialization)}`);
+            actions.push({ label: 'Find Doctors', path: `/tools/appointments?${params.join('&')}` });
+            actions.push({ label: 'My Appointments', path: '/tools/appointments?tab=1' });
+        }
+
+        if (intent === 'medical-summary') {
+            actions.push({ label: 'Open Health Summary', path: '/tools/health-summary' });
+        }
+
+        if (intent === 'reminder' || query.toLowerCase().includes('reminder')) {
+            actions.push({ label: 'Open Medication Reminder', path: '/tools/medication-reminder' });
+        }
+
+        if (query.toLowerCase().includes('shop') || query.toLowerCase().includes('buy') || query.toLowerCase().includes('order') || query.toLowerCase().includes('mix')) {
+            const medicine = medicineMatches[0] || '';
+            const path = medicine
+                ? `/shop/medicines?search=${encodeURIComponent(medicine)}`
+                : '/shop/medicines';
+            actions.push({ label: 'Open Medicine Shop', path });
+        }
+
+        const seen = new Set<string>();
+        return actions.filter((item) => {
+            if (seen.has(item.label)) return false;
+            seen.add(item.label);
+            return true;
+        });
+    };
 
     const parseJsonSafely = async (response: Response) => {
         const raw = await response.text();
@@ -80,7 +191,7 @@ const HealthAssistant: React.FC = () => {
     // API CALLS
     // ============================================
 
-    const fetchQuickQueries = async () => {
+    const fetchQuickQueries = async (attempt = 0) => {
         try {
             const response = await fetch(`${API_BASE_URL}/quick-queries`);
             const data = await parseJsonSafely(response);
@@ -88,9 +199,15 @@ const HealthAssistant: React.FC = () => {
                 setQuickQueries(data.queries);
             } else {
                 console.warn('Quick query response was not successful:', response.status);
+                if (attempt < 5) {
+                    window.setTimeout(() => fetchQuickQueries(attempt + 1), 1500);
+                }
             }
         } catch (err) {
             console.error('Error fetching quick queries:', err);
+            if (attempt < 5) {
+                window.setTimeout(() => fetchQuickQueries(attempt + 1), 1500);
+            }
         }
     };
 
@@ -145,10 +262,12 @@ const HealthAssistant: React.FC = () => {
             }
 
             if (data.success && data.data) {
+                const actions = buildActions(query, data.data);
                 const assistantMessage: Message = {
                     id: `assistant-${Date.now()}`,
                     role: 'assistant',
                     content: data.data.response || 'Unable to process your query',
+                    actions,
                     intent: data.data.intent,
                     source: data.data.source,
                     responseTime: data.data.response_time_ms,
@@ -289,6 +408,20 @@ const HealthAssistant: React.FC = () => {
                                     <div className="message-text">
                                         {renderMessageContent(message)}
                                     </div>
+                                    {message.role === 'assistant' && message.actions && message.actions.length > 0 && (
+                                        <div className="message-actions">
+                                            {message.actions.map((action) => (
+                                                <button
+                                                    key={`${message.id}-${action.label}`}
+                                                    className="message-action-btn"
+                                                    onClick={() => navigate(action.path)}
+                                                    type="button"
+                                                >
+                                                    {action.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                     {message.responseTime && (
                                         <div className="message-meta">
                                             ⏱️ {Math.round(message.responseTime)}ms

@@ -17,9 +17,10 @@ import EventIcon from '@mui/icons-material/Event'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import SearchIcon from '@mui/icons-material/Search'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNotifications } from '../hooks/useNotifications'
 import { clearAuthData } from '../utils/auth'
+import { getMyProfile } from '../services/patientService'
 import { Area, AreaChart, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line } from 'recharts'
 
 // Helper function to generate random values within a range
@@ -33,9 +34,37 @@ export default function Dashboard() {
   const userName = useMemo(() => {
     return (localStorage.getItem('userName') || 'Patient')
   }, [])
+  const [profileImage, setProfileImage] = useState(() => localStorage.getItem('profileImage') || '')
   const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null)
 
   const { unreadCount } = useNotifications()
+
+  useEffect(() => {
+    let mounted = true
+
+    const loadProfileImage = async () => {
+      try {
+        const profile = await getMyProfile()
+        const nextImage = profile?.patientProfile?.profileImage || ''
+        if (!mounted) return
+
+        setProfileImage(nextImage)
+        if (nextImage) {
+          localStorage.setItem('profileImage', nextImage)
+        } else {
+          localStorage.removeItem('profileImage')
+        }
+      } catch {
+        // Keep local fallback image when profile endpoint is unavailable.
+      }
+    }
+
+    loadProfileImage()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
 
   const featureItems = [
@@ -303,7 +332,7 @@ export default function Dashboard() {
                 role="button"
                 aria-label="Open patient profile menu"
               >
-                <Avatar sx={{
+                <Avatar src={profileImage || undefined} sx={{
                   bgcolor: '#00B4D8',
                   width: 44,
                   height: 44,

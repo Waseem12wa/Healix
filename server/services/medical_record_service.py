@@ -14,12 +14,20 @@ from flask_cors import CORS
 import logging
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import traceback
+import io
+import re
 
 # Transformers & NLP
 from transformers import PegasusForConditionalGeneration, AutoTokenizer, pipeline
 import torch
+
+from PyPDF2 import PdfReader
+from docx import Document
+from PIL import Image
+import pytesseract
+from pdf2image import convert_from_bytes
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -101,6 +109,15 @@ CLINICAL_ENTITIES = {
               'respiratory rate', 'weight', 'height', 'bmi']
 }
 
+MEDICAL_KEYWORDS = {
+    'diagnosis', 'diagnosed', 'assessment', 'impression', 'symptom', 'symptoms',
+    'medication', 'tablet', 'capsule', 'mg', 'dosage', 'bp', 'blood pressure',
+    'heart rate', 'pulse', 'temperature', 'treatment', 'prescription',
+    'follow-up', 'follow up', 'doctor', 'physician', 'clinic', 'hospital',
+    'patient', 'disease', 'condition', 'lab', 'laboratory', 'test', 'report',
+    'x-ray', 'ct', 'mri', 'ultrasound', 'allergy', 'history of'
+}
+
 # ============================================
 # HELPER FUNCTIONS
 # ============================================
@@ -142,10 +159,65 @@ def extract_clinical_entities(text: str) -> Dict[str, List[str]]:
 
 def clean_text(text: str) -> str:
     """Clean and normalize medical text"""
-    # Remove extra whitespace
-    text = ' '.join(text.split())
-    # Ensure minimum length
+    text = text.replace('\x00', ' ')
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
+
+
+def _is_medical_content(text: str) -> Tuple[bool, float, List[str]]:
+    """Determine whether input appears to be medical content."""
+    if not text:
+        return False, 0.0, []
+
+    lower = text.lower()
+    matched = [kw for kw in MEDICAL_KEYWORDS if kw in lower]
+    score = min(1.0, len(matched) / 8.0)
+    has_entities = any(len(v) > 0 for v in extract_clinical_entities(text).values())
+    is_medical = score >= 0.25 or has_entities
+    return is_medical, score, matched[:20]
+
+
+def _extract_text_from_pdf(raw: bytes) -> str:
+    reader = PdfReader(io.BytesIO(raw))
+    pages = []
+    for page in reader.pages:
+        pages.append(page.extract_text() or '')
+    extracted = '\n'.join(pages).strip()
+
+    # OCR fallback for scanned PDFs with little/no embedded text.
+    if len(extracted) >= 40:
+        return extracted
+
+    try:
+        images = convert_from_bytes(raw)
+        ocr_pages: List[str] = []
+        for img in images:
+            try:
+                ocr_pages.append(pytesseract.image_to_string(img) or '')
+            except Exception as ocr_error:
+                logger.warning(f"PDF page OCR failed: {ocr_error}")
+        ocr_text = '\n'.join(ocr_pages).strip()
+        return ocr_text or extracted
+    except Exception as e:
+        logger.warning(f"PDF OCR fallback unavailable: {e}")
+        return extracted
+
+
+def _extract_text_from_docx(raw: bytes) -> str:
+    document = Document(io.BytesIO(raw))
+    paragraphs = [p.text for p in document.paragraphs if p.text and p.text.strip()]
+    return '\n'.join(paragraphs).strip()
+
+
+def _extract_text_from_image(raw: bytes) -> str:
+    image = Image.open(io.BytesIO(raw))
+    try:
+        text = pytesseract.image_to_string(image)
+    except Exception as e:
+        logger.warning(f"OCR failed: {e}")
+        return ''
+    return (text or '').strip()
 
 def summarize_text(text: str, max_length: int = 100, min_length: int = 30) -> Optional[str]:
     """
@@ -164,28 +236,57 @@ def summarize_text(text: str, max_length: int = 100, min_length: int = 30) -> Op
             logger.warning(f"Text too short for summarization: {len(text)} chars")
             return text
         
-        # Tokenize with truncation
-        inputs = pegasus_tokenizer.encode(text, return_tensors="pt", max_length=1024, truncation=True)
-        
-        if inputs.shape[1] == 0:
+        model_max_positions = getattr(getattr(pegasus_model, 'config', None), 'max_position_embeddings', 512) or 512
+        tokenizer_limit = getattr(pegasus_tokenizer, 'model_max_length', 512)
+        safe_input_limit = max(64, min(480, int(model_max_positions) - 2, int(tokenizer_limit)))
+
+        # Chunk long inputs to avoid index overflow in positional embeddings.
+        token_ids = pegasus_tokenizer.encode(text, add_special_tokens=False)
+        if not token_ids:
             logger.warning("Empty tokenized input")
             return text
-        
-        inputs = inputs.to(DEVICE)
-        
-        # Generate summary
-        with torch.no_grad():
-            summary_ids = pegasus_model.generate(
-                inputs,
-                max_length=max_length,
-                min_length=min_length,
-                num_beams=4,
-                length_penalty=2.0,
-                early_stopping=True
-            )
-        
-        # Decode summary
-        summary = pegasus_tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+
+        chunk_summaries: List[str] = []
+        step = max(64, safe_input_limit - 32)
+        for start in range(0, len(token_ids), step):
+            chunk_ids = token_ids[start:start + safe_input_limit]
+            if not chunk_ids:
+                continue
+
+            inputs = torch.tensor([chunk_ids], dtype=torch.long).to(DEVICE)
+            with torch.no_grad():
+                summary_ids = pegasus_model.generate(
+                    inputs,
+                    max_length=max_length,
+                    min_length=min_length,
+                    num_beams=4,
+                    length_penalty=2.0,
+                    early_stopping=True
+                )
+
+            chunk_summary = pegasus_tokenizer.decode(summary_ids[0], skip_special_tokens=True).strip()
+            if chunk_summary:
+                chunk_summaries.append(chunk_summary)
+
+        if not chunk_summaries:
+            return None
+
+        summary = ' '.join(chunk_summaries)
+
+        # If we had multiple chunks, compress once more to a concise final summary.
+        if len(chunk_summaries) > 1:
+            compressed_ids = pegasus_tokenizer.encode(summary, add_special_tokens=False)[:safe_input_limit]
+            final_inputs = torch.tensor([compressed_ids], dtype=torch.long).to(DEVICE)
+            with torch.no_grad():
+                final_ids = pegasus_model.generate(
+                    final_inputs,
+                    max_length=max_length,
+                    min_length=min_length,
+                    num_beams=4,
+                    length_penalty=2.0,
+                    early_stopping=True
+                )
+            summary = pegasus_tokenizer.decode(final_ids[0], skip_special_tokens=True).strip()
         
         logger.info(f"✅ Summary generated: {len(summary)} chars")
         return summary
@@ -196,18 +297,56 @@ def summarize_text(text: str, max_length: int = 100, min_length: int = 30) -> Op
         return None
 
 
-def _extract_text_from_upload() -> str:
-    """Extract best-effort text content from uploaded file payload."""
+def _extract_text_from_upload() -> Dict[str, str]:
+    """Extract text content from upload across text, PDF, DOCX, and image files."""
     uploaded = request.files.get('file')
     if uploaded is None:
-        return ''
+        return {'text': '', 'file_type': 'unknown'}
 
     payload = uploaded.read()
     if not payload:
-        return ''
+        return {'text': '', 'file_type': 'unknown'}
 
-    # Keep implementation dependency-light: plain decoding fallback.
-    return payload.decode('utf-8', errors='ignore').strip()
+    filename = (uploaded.filename or '').lower()
+    content_type = (uploaded.mimetype or '').lower()
+
+    try:
+        if filename.endswith('.pdf') or 'pdf' in content_type:
+            text = _extract_text_from_pdf(payload)
+            return {'text': clean_text(text), 'file_type': 'pdf'}
+
+        if filename.endswith('.docx') or 'wordprocessingml' in content_type:
+            text = _extract_text_from_docx(payload)
+            return {'text': clean_text(text), 'file_type': 'docx'}
+
+        if filename.endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tif', '.tiff')) or content_type.startswith('image/'):
+            text = _extract_text_from_image(payload)
+            return {'text': clean_text(text), 'file_type': 'image'}
+
+        # Fallback text decode for txt/csv and unknown text-based payloads.
+        text = payload.decode('utf-8', errors='ignore').strip()
+        return {'text': clean_text(text), 'file_type': 'text'}
+    except Exception as e:
+        logger.error(f"File extraction failed: {e}")
+        return {'text': '', 'file_type': 'unknown'}
+
+
+def _build_recommendations(entities: Dict[str, List[str]]) -> List[str]:
+    recommendations: List[str] = []
+
+    if entities.get('conditions'):
+        recommendations.append('Consult your physician for condition-specific treatment planning and monitoring.')
+    if entities.get('symptoms'):
+        recommendations.append('Monitor symptom progression and seek urgent care if symptoms worsen.')
+    if entities.get('medications'):
+        recommendations.append('Take medications exactly as prescribed and verify possible interactions.')
+    if entities.get('vitals'):
+        recommendations.append('Track vital signs consistently and report abnormal trends to your clinician.')
+
+    if not recommendations:
+        recommendations.append('Review this report with a qualified healthcare professional before making decisions.')
+
+    return recommendations
 
 # ============================================
 # ROUTES
@@ -244,13 +383,16 @@ def summarize():
     try:
         is_multipart = request.content_type and 'multipart/form-data' in request.content_type
         if is_multipart:
-            record = _extract_text_from_upload()
+            extracted = _extract_text_from_upload()
+            record = extracted.get('text', '')
+            file_type = extracted.get('file_type', 'unknown')
             max_length = int(request.form.get('max_length', 120))
             min_length = int(request.form.get('min_length', 40))
             extract_entities = request.form.get('extract_entities', 'true').lower() != 'false'
         else:
             data = request.get_json(silent=True) or {}
             record = str(data.get('record', data.get('text', ''))).strip()
+            file_type = 'json-text'
             max_length = int(data.get('max_length', data.get('max_summary_length', 120)))
             min_length = int(data.get('min_length', 40))
             extract_entities = bool(data.get('extract_entities', True))
@@ -258,8 +400,18 @@ def summarize():
         if not record:
             return jsonify({
                 'success': False,
-                'error': 'Record cannot be empty. Upload a text-based file or provide record/text in JSON.'
+                'error': 'No readable text found in file. For images ensure text is clear; for scans ensure OCR-friendly quality.'
             }), 400
+
+        is_medical, medical_score, matched_keywords = _is_medical_content(record)
+        if not is_medical:
+            return jsonify({
+                'success': False,
+                'error': 'Uploaded content does not appear to be medical information and cannot be summarized as a medical record.',
+                'file_type': file_type,
+                'medical_relevance_score': round(medical_score, 3),
+                'matched_medical_terms': matched_keywords,
+            }), 422
         
         logger.info(f"📋 Processing medical record ({len(record)} chars)")
         
@@ -267,6 +419,7 @@ def summarize():
         
         # Extract clinical entities
         entities = extract_clinical_entities(record) if extract_entities else {}
+        recommendations = _build_recommendations(entities)
         
         # Summarize
         summary = summarize_text(record, max_length, min_length)
@@ -294,14 +447,25 @@ def summarize():
                 'key_findings': entities.get('conditions', []),
                 'clinical_observations': entities.get('symptoms', []),
                 'recommendations': {
-                    'follow_up': 'Consult your physician for treatment decisions.'
+                    'follow_up': recommendations,
+                    'precautions': [
+                        'Do not change prescribed treatment without clinician guidance.',
+                        'Seek urgent care for severe or rapidly worsening symptoms.'
+                    ]
                 },
                 'confidence': {
                     'summary': 0.82
                 },
                 'metadata': {
-                    'generated_at': datetime.now().isoformat()
+                    'generated_at': datetime.now().isoformat(),
+                    'file_type': file_type,
+                    'medical_relevance_score': round(medical_score, 3)
                 }
+            },
+            'medical_summary': {
+                'identified_conditions': entities.get('conditions', []),
+                'suggested_medications': entities.get('medications', []),
+                'recommended_actions': recommendations,
             },
             'original_length': len(record),
             'summary_length': len(summary),
@@ -332,9 +496,19 @@ def summarize_text_route():
                 'error': 'Missing required field: text'
             }), 400
 
+        is_medical, medical_score, matched_keywords = _is_medical_content(text)
+        if not is_medical:
+            return jsonify({
+                'success': False,
+                'error': 'Provided text does not appear to be medical information and cannot be summarized as a medical record.',
+                'medical_relevance_score': round(medical_score, 3),
+                'matched_medical_terms': matched_keywords,
+            }), 422
+
         max_length = int(data.get('max_length', data.get('max_summary_length', 120)))
         min_length = int(data.get('min_length', 40))
         entities = extract_clinical_entities(text)
+        recommendations = _build_recommendations(entities)
         summary = summarize_text(text, max_length=max_length, min_length=min_length)
 
         if not summary:
@@ -347,8 +521,14 @@ def summarize_text_route():
             'success': True,
             'summary': summary,
             'entities': entities,
+            'medical_summary': {
+                'identified_conditions': entities.get('conditions', []),
+                'suggested_medications': entities.get('medications', []),
+                'recommended_actions': recommendations,
+            },
             'original_length': len(text),
-            'summary_length': len(summary)
+            'summary_length': len(summary),
+            'medical_relevance_score': round(medical_score, 3)
         }), 200
     except Exception as e:
         logger.error(f"Error in summarize-text endpoint: {e}")

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
     Box,
     Button,
@@ -25,6 +25,7 @@ import InfoIcon from '@mui/icons-material/Info'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useSearchParams } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import PaymentModal from '../components/PaymentModal'
 import type { Medicine } from '../services/paymentService'
@@ -62,6 +63,7 @@ type ApiResponse = {
 
 export default function DrugAlternatives() {
     const theme = useTheme()
+    const [searchParams] = useSearchParams()
     const [query, setQuery] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -69,11 +71,13 @@ export default function DrugAlternatives() {
     const [paymentOpen, setPaymentOpen] = useState(false)
     const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null)
     const [toastMessage, setToastMessage] = useState<string | null>(null)
+    const autoRunQueryRef = useRef('')
 
-    const handleSearch = async () => {
-        if (!query.trim()) return
+    const handleSearch = async (incomingQuery?: string) => {
+        const term = (incomingQuery ?? query).trim()
+        if (!term) return
 
-        const rawQuery = query.trim()
+        const rawQuery = term
         const correctedQuery = correctDrugTerm(rawQuery)
 
         setLoading(true)
@@ -84,6 +88,8 @@ export default function DrugAlternatives() {
             if (correctedQuery !== rawQuery) {
                 setError(`Corrected '${rawQuery}' to '${correctedQuery}'`)
             }
+
+                setQuery(correctedQuery)
 
             const response = await fetch('http://localhost:5000/api/alternative/recommend', {
                 method: 'POST',
@@ -111,6 +117,18 @@ export default function DrugAlternatives() {
             setLoading(false)
         }
     }
+
+    useEffect(() => {
+        const medicine = (searchParams.get('medicine') || '').trim()
+        if (!medicine) return
+
+        const key = medicine.toLowerCase()
+        if (autoRunQueryRef.current === key) return
+        autoRunQueryRef.current = key
+
+        setQuery(medicine)
+        handleSearch(medicine)
+    }, [searchParams])
 
     const getSimilarityColor = (similarity: number) => {
         if (similarity >= 80) return theme.palette.success.main
@@ -257,7 +275,9 @@ export default function DrugAlternatives() {
                                     <Button
                                         variant="contained"
                                         startIcon={loading ? <CircularProgress size={20} sx={{ color: 'inherit' }} /> : <SearchIcon />}
-                                        onClick={handleSearch}
+                                        onClick={() => {
+                                            handleSearch()
+                                        }}
                                         disabled={!query.trim() || loading}
                                         sx={{
                                             borderRadius: 3,

@@ -27,6 +27,11 @@ export default function HealthRecordSummarization() {
     const [summary, setSummary] = useState('')
     const [error, setError] = useState('')
     const [entities, setEntities] = useState<any>(null)
+    const [medicalSummary, setMedicalSummary] = useState<{
+        identified_conditions: string[]
+        recommended_actions: string[]
+        suggested_medications: string[]
+    } | null>(null)
     const inputRef = useRef<HTMLInputElement | null>(null)
 
     const handleFiles = async (files: FileList | null) => {
@@ -42,11 +47,14 @@ export default function HealthRecordSummarization() {
             if (result.success) {
                 setSummary(result.summary || 'Summary generated successfully')
                 setEntities(result.entities)
+                setMedicalSummary(result.medical_summary || null)
             } else {
                 setError(result.error || 'Failed to summarize medical record')
+                setMedicalSummary(null)
             }
         } catch (error: any) {
             setError(error.message || 'An error occurred while processing the file')
+            setMedicalSummary(null)
         } finally {
             setLoading(false)
         }
@@ -231,14 +239,14 @@ export default function HealthRecordSummarization() {
                                                 or click to browse
                                             </Typography>
                                             <Typography variant="caption" color="text.secondary">
-                                                Supports PDF, text, and image files
+                                                    Supports PDF, DOCX, TXT, and image files (PNG/JPG/WebP)
                                             </Typography>
                                         </Stack>
                                     )}
                                     <input
                                         ref={inputRef}
                                         type="file"
-                                        accept=".pdf,.txt,image/*"
+                                            accept=".pdf,.docx,.txt,image/*"
                                         hidden
                                         onChange={(e) => handleFiles(e.target.files)}
                                     />
@@ -359,6 +367,55 @@ export default function HealthRecordSummarization() {
                                                     </Stack>
                                                 </Box>
                                             )}
+
+                                            {medicalSummary && (
+                                                <Box>
+                                                    <Typography variant="h6" fontWeight={600} sx={{ mb: 2, color: theme.palette.primary.main }}>
+                                                        Clinical Decision Highlights
+                                                    </Typography>
+
+                                                    {medicalSummary.identified_conditions?.length > 0 && (
+                                                        <Box sx={{ mb: 2 }}>
+                                                            <Typography variant="subtitle2" fontWeight={600} color="primary">
+                                                                Identified Diseases / Conditions:
+                                                            </Typography>
+                                                            <Stack direction="row" spacing={1} flexWrap="wrap">
+                                                                {medicalSummary.identified_conditions.map((cond, idx) => (
+                                                                    <Chip key={`cond-${idx}`} label={cond} size="small" color="secondary" variant="outlined" />
+                                                                ))}
+                                                            </Stack>
+                                                        </Box>
+                                                    )}
+
+                                                    {medicalSummary.suggested_medications?.length > 0 && (
+                                                        <Box sx={{ mb: 2 }}>
+                                                            <Typography variant="subtitle2" fontWeight={600} color="primary">
+                                                                Suggested Medications:
+                                                            </Typography>
+                                                            <Stack direction="row" spacing={1} flexWrap="wrap">
+                                                                {medicalSummary.suggested_medications.map((med, idx) => (
+                                                                    <Chip key={`med-${idx}`} label={med} size="small" variant="outlined" />
+                                                                ))}
+                                                            </Stack>
+                                                        </Box>
+                                                    )}
+
+                                                    {medicalSummary.recommended_actions?.length > 0 && (
+                                                        <Box>
+                                                            <Typography variant="subtitle2" fontWeight={600} color="primary" sx={{ mb: 1 }}>
+                                                                Recommended Actions / Precautions:
+                                                            </Typography>
+                                                            <Stack spacing={0.75}>
+                                                                {medicalSummary.recommended_actions.map((action, idx) => (
+                                                                    <Typography key={`action-${idx}`} variant="body2" color="text.secondary">
+                                                                        • {action}
+                                                                    </Typography>
+                                                                ))}
+                                                            </Stack>
+                                                        </Box>
+                                                    )}
+                                                </Box>
+                                            )}
                                             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                                                 <Button
                                                     variant="contained"
@@ -380,7 +437,7 @@ export default function HealthRecordSummarization() {
                                                 </Button>
                                                 <Button
                                                     variant="outlined"
-                                                    onClick={() => { setFileName(''); setSummary(''); setError(''); setEntities(null) }}
+                                                    onClick={() => { setFileName(''); setSummary(''); setError(''); setEntities(null); setMedicalSummary(null) }}
                                                     sx={{
                                                         borderRadius: 3,
                                                         px: 4,

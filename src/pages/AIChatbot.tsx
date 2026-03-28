@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Divider,
@@ -20,13 +21,39 @@ import SmartToyIcon from '@mui/icons-material/SmartToy'
 import SendIcon from '@mui/icons-material/Send'
 import PersonIcon from '@mui/icons-material/Person'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import { sendChatMessage } from '../utils/healthAssistantClient'
 
-type Msg = { id: string; role: 'user' | 'bot'; text: string }
+type AssistantAction = { label: string; path: string }
+type Msg = { id: string; role: 'user' | 'bot'; text: string; actions?: AssistantAction[] }
+
+const KNOWN_MEDICINES = [
+  'aspirin', 'ibuprofen', 'metformin', 'lisinopril', 'atorvastatin',
+  'amoxicillin', 'paracetamol', 'acetaminophen', 'omeprazole', 'sertraline'
+]
+
+const KNOWN_FOODS = ['grapefruit', 'alcohol', 'dairy', 'milk', 'cheese']
+
+const getKnownMatches = (query: string, vocabulary: string[]) => {
+  const lower = query.toLowerCase()
+  return vocabulary.filter((item) => lower.includes(item))
+}
+
+const getSpecializationFromQuery = (query: string) => {
+  const lower = query.toLowerCase()
+  const candidates = [
+    'cardiologist', 'dermatologist', 'neurologist', 'orthopedic',
+    'gynecologist', 'pediatrician', 'psychiatrist', 'general physician'
+  ]
+  return candidates.find((item) => lower.includes(item)) || ''
+}
+
+const toCsvParam = (items: string[]) => encodeURIComponent(items.join(','))
 
 export default function AIChatbot() {
   const theme = useTheme()
+  const navigate = useNavigate()
   const [messages, setMessages] = useState<Msg[]>([
     { id: 'm1', role: 'bot', text: 'Hello! I am your AI Health Assistant. How can I help you today?' },
   ])
@@ -34,6 +61,87 @@ export default function AIChatbot() {
   const [urdu, setUrdu] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const endRef = useRef<HTMLDivElement | null>(null)
+
+  const buildActions = (query: string, result: any): AssistantAction[] => {
+    const intent = String(result?.intent || '')
+    const source = String(result?.source || '')
+    const data = result?.data || {}
+    const medicineMatches = getKnownMatches(query, KNOWN_MEDICINES)
+    const foodMatches = getKnownMatches(query, KNOWN_FOODS)
+    const actions: AssistantAction[] = []
+
+    if (intent === 'side-effects' || source === 'side-effect-predictor') {
+      const medicineFromData = typeof data?.medicine === 'string' ? data.medicine : ''
+      const medicines = [medicineFromData, ...medicineMatches].filter(Boolean)
+      const uniqueMeds = Array.from(new Set(medicines))
+      const path = uniqueMeds.length > 0
+        ? `/tools/side-effects?medicines=${toCsvParam(uniqueMeds)}`
+        : '/tools/side-effects'
+      actions.push({ label: 'Open Side Effects', path })
+    }
+
+    if (intent === 'drug-interaction' || source === 'drug-interaction-checker') {
+      const interaction = Array.isArray(data?.interactions) ? data.interactions[0] : undefined
+      const fromData = [interaction?.drug1, interaction?.drug2].filter(Boolean)
+      const drugs = Array.from(new Set([...fromData, ...medicineMatches]))
+      const path = drugs.length >= 2
+        ? `/tools/drug-interactions?drugs=${toCsvParam(drugs.slice(0, 4))}`
+        : '/tools/drug-interactions'
+      actions.push({ label: 'Open Drug Interactions', path })
+    }
+
+    if (intent === 'food-interaction' || source === 'food-interaction-checker') {
+      const meds = Array.from(new Set(medicineMatches))
+      const foods = Array.from(new Set(foodMatches))
+      const params: string[] = []
+      if (meds.length > 0) params.push(`medicines=${toCsvParam(meds.slice(0, 3))}`)
+      if (foods.length > 0) params.push(`foods=${toCsvParam(foods.slice(0, 3))}`)
+      const path = params.length > 0
+        ? `/tools/drug-food-interactions?${params.join('&')}`
+        : '/tools/drug-food-interactions'
+      actions.push({ label: 'Open Drug-Food Interactions', path })
+    }
+
+    if (intent === 'alternatives' || source === 'alternative-medicine') {
+      const medicine = medicineMatches[0] || (typeof data?.medicine === 'string' ? data.medicine : '')
+      const path = medicine
+        ? `/tools/drug-alternatives?medicine=${encodeURIComponent(medicine)}`
+        : '/tools/drug-alternatives'
+      actions.push({ label: 'Open Alternatives', path })
+    }
+
+    if (intent === 'doctor-search' || query.toLowerCase().includes('doctor') || query.toLowerCase().includes('appointment')) {
+      const specialization = getSpecializationFromQuery(query)
+      const params = [`tab=0`]
+      if (specialization) params.push(`specialization=${encodeURIComponent(specialization)}`)
+      actions.push({ label: 'Find Doctors', path: `/tools/appointments?${params.join('&')}` })
+      actions.push({ label: 'My Appointments', path: '/tools/appointments?tab=1' })
+    }
+
+    if (intent === 'medical-summary') {
+      actions.push({ label: 'Open Health Summary', path: '/tools/health-summary' })
+    }
+
+    if (intent === 'reminder' || query.toLowerCase().includes('reminder')) {
+      actions.push({ label: 'Open Medication Reminder', path: '/tools/medication-reminder' })
+    }
+
+    if (query.toLowerCase().includes('shop') || query.toLowerCase().includes('buy') || query.toLowerCase().includes('order') || query.toLowerCase().includes('mix')) {
+      const medicine = medicineMatches[0] || ''
+      const path = medicine
+        ? `/shop/medicines?search=${encodeURIComponent(medicine)}`
+        : '/shop/medicines'
+      actions.push({ label: 'Open Medicine Shop', path })
+    }
+
+    // Remove duplicate labels while preserving order.
+    const seen = new Set<string>()
+    return actions.filter((item) => {
+      if (seen.has(item.label)) return false
+      seen.add(item.label)
+      return true
+    })
+  }
 
   const send = async () => {
     const content = input.trim()
@@ -47,10 +155,12 @@ export default function AIChatbot() {
     try {
       const result = await sendChatMessage(content)
       if (result.success) {
+        const actions = buildActions(content, result)
         const botMsg: Msg = {
           id: Math.random().toString(36).slice(2),
           role: 'bot',
-          text: result.response || 'I received your message but couldn\'t generate a response.'
+          text: result.response || 'I received your message but couldn\'t generate a response.',
+          actions,
         }
         setMessages((prev) => [...prev, botMsg])
       } else {
@@ -270,6 +380,30 @@ export default function AIChatbot() {
                               border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
                             }}>
                               <Typography sx={{ lineHeight: 1.6 }}>{m.text}</Typography>
+                              {m.role === 'bot' && m.actions && m.actions.length > 0 && (
+                                <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap' }}>
+                                  {m.actions.map((action) => (
+                                    <Button
+                                      key={`${m.id}-${action.label}`}
+                                      size="small"
+                                      variant="outlined"
+                                      onClick={() => navigate(action.path)}
+                                      sx={{
+                                        borderRadius: 2,
+                                        textTransform: 'none',
+                                        borderColor: alpha('#00B4D8', 0.5),
+                                        color: '#0087A8',
+                                        '&:hover': {
+                                          borderColor: '#00B4D8',
+                                          backgroundColor: alpha('#00B4D8', 0.08)
+                                        }
+                                      }}
+                                    >
+                                      {action.label}
+                                    </Button>
+                                  ))}
+                                </Stack>
+                              )}
                             </Box>
                           </Stack>
                         </Box>

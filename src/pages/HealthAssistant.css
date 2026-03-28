@@ -245,6 +245,34 @@
     font-style: italic;
 }
 
+.message-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.message-action-btn {
+    border: 1px solid rgba(102, 126, 234, 0.45);
+    background: #ffffff;
+    color: #4a4f8a;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.message-action-btn:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.08);
+}
+
+.message-action-btn:active {
+    transform: scale(0.97);
+}
+
 /* Message User */
 .message-user {
     text-align: right;

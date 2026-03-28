@@ -13,6 +13,22 @@ export interface SummarizationResult {
     procedures: string[]
     vitals: string[]
   }
+  medical_summary?: {
+    identified_conditions: string[]
+    recommended_actions: string[]
+    suggested_medications: string[]
+  }
+  report?: {
+    recommendations?: {
+      follow_up?: string[]
+      precautions?: string[]
+    }
+    metadata?: {
+      file_type?: string
+      medical_relevance_score?: number
+    }
+  }
+  medical_relevance_score?: number
   confidence?: number
   processing_time?: number
   error?: string

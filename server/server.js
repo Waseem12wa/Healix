@@ -189,10 +189,7 @@ const startServer = async () => {
     console.error('⚠️ Continuing API startup in degraded mode (DB-backed routes may fail).');
   }
 
-  // Wait for microservices to be ready
-  const serviceStatus = await waitForMicroservices(60, 2000); // 2s delay, max 120s total
-
-  // Start Server
+  // Start Server immediately; microservice readiness checks run in background.
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📊 API Endpoint: http://localhost:${PORT}/api`);
@@ -207,23 +204,29 @@ const startServer = async () => {
     } else {
       console.log('⚠️ Reminder email job disabled until MongoDB is available\n');
     }
-
-    // Log service summary
-    const readyServices = Object.entries(serviceStatus)
-      .filter(([_, status]) => status.healthy)
-      .map(([name, _]) => name);
-    const unavailableServices = Object.entries(serviceStatus)
-      .filter(([_, status]) => !status.healthy)
-      .map(([name, _]) => name);
-
-    if (readyServices.length > 0) {
-      console.log(`✅ Ready services: ${readyServices.join(', ')}`);
-    }
-    if (unavailableServices.length > 0) {
-      console.log(`⚠️  Unavailable services: ${unavailableServices.join(', ')}`);
-      console.log(`   These services may still be initializing. Check logs for details.\n`);
-    }
   });
+
+  // Report microservice status asynchronously without blocking API availability.
+  waitForMicroservices(60, 2000)
+    .then((serviceStatus) => {
+      const readyServices = Object.entries(serviceStatus)
+        .filter(([_, status]) => status.healthy)
+        .map(([name, _]) => name);
+      const unavailableServices = Object.entries(serviceStatus)
+        .filter(([_, status]) => !status.healthy)
+        .map(([name, _]) => name);
+
+      if (readyServices.length > 0) {
+        console.log(`✅ Ready services: ${readyServices.join(', ')}`);
+      }
+      if (unavailableServices.length > 0) {
+        console.log(`⚠️  Unavailable services: ${unavailableServices.join(', ')}`);
+        console.log('   Some features may fail until services finish loading.\n');
+      }
+    })
+    .catch((error) => {
+      console.error(`⚠️ Microservice readiness check failed: ${error.message}`);
+    });
 };
 
 startServer();

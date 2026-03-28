@@ -12,6 +12,7 @@ export function clearAuthData() {
   localStorage.removeItem('userRole')
   localStorage.removeItem('userName')
   localStorage.removeItem('userEmail')
+  localStorage.removeItem('profileImage')
 }
 
 /**

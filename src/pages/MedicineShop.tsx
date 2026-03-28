@@ -47,6 +47,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import { getMedicineFilterOptions, getMedicines } from '../services/paymentService'
 import type { Medicine, MedicineFilterOptions, MedicineQueryOptions } from '../services/paymentService'
@@ -71,6 +72,7 @@ const formatPkr = (value?: number) => pkrFormatter.format(Number(value || 0))
 export default function MedicineShop() {
   const theme = useTheme()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [medicines, setMedicines] = useState<Medicine[]>([])
   const [loading, setLoading] = useState(false)
   const [searchInput, setSearchInput] = useState('')
@@ -134,6 +136,22 @@ export default function MedicineShop() {
 
     return () => clearTimeout(timer)
   }, [searchInput, formulaInput, typeInput])
+
+  useEffect(() => {
+    const nextSearch = (searchParams.get('search') || '').trim()
+    const nextFormula = (searchParams.get('formula') || '').trim()
+    const nextType = (searchParams.get('type') || '').trim()
+    const nextCategory = (searchParams.get('category') || '').trim()
+
+    if (nextSearch !== searchInput) setSearchInput(nextSearch)
+    if (nextFormula !== formulaInput) setFormulaInput(nextFormula)
+    if (nextType !== typeInput) setTypeInput(nextType)
+    if (nextCategory !== category) setCategory(nextCategory)
+
+    if (nextSearch || nextFormula || nextType || nextCategory) {
+      setPage(1)
+    }
+  }, [searchParams])
 
   const loadMedicines = async (targetPage = 1) => {
     try {

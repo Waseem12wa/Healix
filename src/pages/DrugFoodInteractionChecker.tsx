@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -26,6 +26,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ErrorIcon from '@mui/icons-material/Error'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useSearchParams } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import { correctDrugTerm, correctFoodTerm } from '../utils/medicalAutoCorrect'
 import { logPatientActivity } from '../services/patientService'
@@ -49,6 +50,7 @@ type FoodInteraction = {
 
 export default function DrugFoodInteractionChecker() {
   const theme = useTheme()
+  const [searchParams] = useSearchParams()
   const [medicineInput, setMedicineInput] = useState('')
   const [foodInput, setFoodInput] = useState('')
   const [medicines, setMedicines] = useState<string[]>([])
@@ -56,44 +58,9 @@ export default function DrugFoodInteractionChecker() {
   const [results, setResults] = useState<FoodInteraction[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const autoRunKeyRef = useRef('')
 
-  const addMedicine = () => {
-    const raw = medicineInput.trim()
-    if (!raw) return
-    const corrected = correctDrugTerm(raw)
-    const value = corrected || raw
-
-    if (!medicines.includes(value)) {
-      setMedicines([...medicines, value])
-      if (value !== raw) setError(`Corrected '${raw}' to '${value}'`)
-    }
-
-    setMedicineInput('')
-  }
-
-  const addFood = (food?: string) => {
-    const raw = (food || foodInput).trim()
-    if (!raw) return
-    const corrected = correctFoodTerm(raw)
-    const value = corrected || raw
-    if (!foods.includes(value)) {
-      setFoods([...foods, value])
-      if (value !== raw) setError(`Corrected '${raw}' to '${value}'`)
-    }
-    setFoodInput('')
-  }
-
-  const removeMedicine = (name: string) => {
-    setMedicines(medicines.filter((m) => m !== name))
-    setError(null)
-  }
-
-  const removeFood = (name: string) => {
-    setFoods(foods.filter((f) => f !== name))
-    setError(null)
-  }
-
-  const handleCheck = async () => {
+  const runCheckFor = async (medicinesToCheck: string[], foodsToCheck: string[]) => {
     setLoading(true)
     setError(null)
     setResults([])
@@ -102,9 +69,8 @@ export default function DrugFoodInteractionChecker() {
       const interactions: FoodInteraction[] = []
       const errors: string[] = []
 
-      // Check each medicine-food combination
-      for (const medicine of medicines) {
-        for (const food of foods) {
+      for (const medicine of medicinesToCheck) {
+        for (const food of foodsToCheck) {
           try {
             const response = await fetch('http://localhost:5000/api/dfi/predict', {
               method: 'POST',
@@ -143,11 +109,11 @@ export default function DrugFoodInteractionChecker() {
       await logPatientActivity({
         category: 'food-interaction',
         title: 'Drug-food interaction check',
-        details: `Checked ${medicines.length} medicines with ${foods.length} foods`,
+        details: `Checked ${medicinesToCheck.length} medicines with ${foodsToCheck.length} foods`,
         metadata: {
-          medicines,
-          foods,
-          totalCombinations: medicines.length * foods.length,
+          medicines: medicinesToCheck,
+          foods: foodsToCheck,
+          totalCombinations: medicinesToCheck.length * foodsToCheck.length,
           successfulPredictions: interactions.length,
           failedPredictions: errors.length,
         }
@@ -166,6 +132,79 @@ export default function DrugFoodInteractionChecker() {
       setLoading(false)
     }
   }
+
+  const addMedicine = () => {
+    const raw = medicineInput.trim()
+    if (!raw) return
+    const corrected = correctDrugTerm(raw)
+    const value = corrected || raw
+
+    if (!medicines.includes(value)) {
+      setMedicines([...medicines, value])
+      if (value !== raw) setError(`Corrected '${raw}' to '${value}'`)
+    }
+
+    setMedicineInput('')
+  }
+
+  const addFood = (food?: string) => {
+    const raw = (food || foodInput).trim()
+    if (!raw) return
+    const corrected = correctFoodTerm(raw)
+    const value = corrected || raw
+    if (!foods.includes(value)) {
+      setFoods([...foods, value])
+      if (value !== raw) setError(`Corrected '${raw}' to '${value}'`)
+    }
+    setFoodInput('')
+  }
+
+  const removeMedicine = (name: string) => {
+    setMedicines(medicines.filter((m) => m !== name))
+    setError(null)
+  }
+
+  const removeFood = (name: string) => {
+    setFoods(foods.filter((f) => f !== name))
+    setError(null)
+  }
+
+  const handleCheck = async () => {
+    await runCheckFor(medicines, foods)
+  }
+
+  useEffect(() => {
+    const medicinesParam = searchParams.get('medicines') || searchParams.get('medicine') || ''
+    const foodsParam = searchParams.get('foods') || searchParams.get('food') || ''
+    if (!medicinesParam && !foodsParam) return
+
+    const parsedMeds = medicinesParam
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => correctDrugTerm(item) || item)
+
+    const parsedFoods = foodsParam
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => correctFoodTerm(item) || item)
+
+    if (parsedMeds.length === 0 || parsedFoods.length === 0) return
+
+    const meds = Array.from(new Set(parsedMeds.map((item) => item.toLowerCase())))
+      .map((lower) => parsedMeds.find((item) => item.toLowerCase() === lower) as string)
+    const foodList = Array.from(new Set(parsedFoods.map((item) => item.toLowerCase())))
+      .map((lower) => parsedFoods.find((item) => item.toLowerCase() === lower) as string)
+
+    const key = `${meds.join('|')}::${foodList.join('|')}`.toLowerCase()
+    if (autoRunKeyRef.current === key) return
+    autoRunKeyRef.current = key
+
+    setMedicines(meds)
+    setFoods(foodList)
+    runCheckFor(meds, foodList)
+  }, [searchParams])
 
   const summary = useMemo(() => {
     const counts = { Low: 0, Moderate: 0, High: 0 }
