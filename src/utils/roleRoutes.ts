@@ -45,6 +45,7 @@ export const roleRoutes: RouteConfig[] = [
   // Doctor-specific routes
   { path: '/doctor-dashboard', allowedRoles: ['doctor'] },
   { path: '/doctor-profile', allowedRoles: ['doctor'] },
+  { path: '/doctor-history', allowedRoles: ['doctor'] },
   
   // Admin-specific routes
   { path: '/admin', allowedRoles: ['admin'] },

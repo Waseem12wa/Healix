@@ -1,7 +1,45 @@
 import express from 'express';
 import User from '../models/User.js';
+import Appointment from '../models/Appointment.js';
+import MedicineReminder from '../models/MedicineReminder.js';
+import PatientActivity from '../models/PatientActivity.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const toDateKey = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const isSideEffectSignal = (activity) => {
+  const text = `${activity.title || ''} ${activity.details || ''}`.toLowerCase();
+  return /side effect|adverse/.test(text);
+};
+
+const isHealthSummarySignal = (activity) => {
+  const text = `${activity.title || ''} ${activity.details || ''}`.toLowerCase();
+  return /summary|record|upload|medical/.test(text);
+};
+
+const getPathFromActivity = (activity) => {
+  const metadata = activity.metadata || {};
+  if (typeof metadata.path === 'string') {
+    return metadata.path;
+  }
+  const details = String(activity.details || '');
+  const pathMatch = details.match(/\/(doctor|tools|shop)[^\s]*/i);
+  return pathMatch ? pathMatch[0] : '';
+};
+
+const isModuleFromPath = (activity, matcher) => {
+  const path = getPathFromActivity(activity).toLowerCase();
+  return matcher(path);
+};
 
 /**
  * @route   GET /api/doctors/profile
@@ -198,6 +236,223 @@ router.get('/search', async (req, res) => {
       success: false,
       message: 'Error searching doctors',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   GET /api/doctors/dashboard-live
+ * @desc    Real-time doctor dashboard analytics
+ * @access  Private (Doctor only)
+ */
+router.get('/dashboard-live', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'doctor') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only doctors can access dashboard analytics',
+      });
+    }
+
+    const doctor = await User.findById(req.user.id).select('email userName doctorProfile');
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Doctor not found',
+      });
+    }
+
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 6);
+    weekAgo.setHours(0, 0, 0, 0);
+
+    const sevenDaysLater = new Date(now);
+    sevenDaysLater.setDate(now.getDate() + 7);
+
+    const [appointments, doctorActivities, remindersCreated, pendingReminders] = await Promise.all([
+      Appointment.find({ doctorEmail: req.user.email })
+        .select('patientId patientName status createdAt updatedAt')
+        .sort({ createdAt: -1 })
+        .limit(5000),
+      PatientActivity.find({ userId: req.user.id })
+        .sort({ createdAt: -1 })
+        .limit(1000),
+      MedicineReminder.countDocuments({ doctorEmail: req.user.email }),
+      MedicineReminder.countDocuments({
+        doctorEmail: req.user.email,
+        sent: false,
+        reminderDateTime: { $gte: now, $lte: sevenDaysLater },
+      }),
+    ]);
+
+    const patientIdSet = new Set(
+      appointments
+        .map((a) => (a.patientId ? String(a.patientId) : ''))
+        .filter(Boolean)
+    );
+
+    const patientIds = Array.from(patientIdSet);
+
+    const patientActivities = patientIds.length > 0
+      ? await PatientActivity.find({ userId: { $in: patientIds } })
+          .sort({ createdAt: -1 })
+          .limit(4000)
+      : [];
+
+    let approvedCount = 0;
+    let rejectedCount = 0;
+    let pendingCount = 0;
+
+    appointments.forEach((appointment) => {
+      if (appointment.status === 'approved') approvedCount += 1;
+      else if (appointment.status === 'rejected') rejectedCount += 1;
+      else if (appointment.status === 'pending') pendingCount += 1;
+    });
+
+    const moduleUsage = {
+      ddi: 0,
+      dfi: 0,
+      sideEffects: 0,
+      medicationShop: 0,
+      healthSummary: 0,
+      aiAssistant: 0,
+      appointments: 0,
+      reminders: 0,
+      profileUpdates: 0,
+      total: 0,
+    };
+
+    patientActivities.forEach((activity) => {
+      const category = activity.category || 'other';
+      moduleUsage.total += 1;
+
+      if (category === 'drug-interaction') moduleUsage.ddi += 1;
+      if (category === 'food-interaction') moduleUsage.dfi += 1;
+      if (category === 'ai-assistant') moduleUsage.aiAssistant += 1;
+      if (category === 'profile-update') moduleUsage.profileUpdates += 1;
+      if (category === 'purchase' || category === 'cart-update') moduleUsage.medicationShop += 1;
+
+      if (isSideEffectSignal(activity) || isModuleFromPath(activity, (path) => path.includes('/tools/side-effects'))) {
+        moduleUsage.sideEffects += 1;
+      }
+
+      if (
+        isHealthSummarySignal(activity) ||
+        isModuleFromPath(activity, (path) => path.includes('/tools/health-summary'))
+      ) {
+        moduleUsage.healthSummary += 1;
+      }
+
+      if (isModuleFromPath(activity, (path) => path.includes('/tools/appointments'))) {
+        moduleUsage.appointments += 1;
+      }
+
+      if (isModuleFromPath(activity, (path) => path.includes('/tools/medication-reminder'))) {
+        moduleUsage.reminders += 1;
+      }
+    });
+
+    const actionOutcomes = {
+      approvals: approvedCount,
+      rejections: rejectedCount,
+      recommendationsGiven: remindersCreated,
+      actionsTaken: doctorActivities.length,
+    };
+
+    const dayBuckets = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      dayBuckets.push({
+        key: toDateKey(d),
+        day: DAY_LABELS[d.getDay()],
+        doctorActions: 0,
+        patientRequests: 0,
+        approvals: 0,
+        rejections: 0,
+      });
+    }
+    const dayIndex = new Map(dayBuckets.map((bucket, idx) => [bucket.key, idx]));
+
+    doctorActivities.forEach((activity) => {
+      if (!activity.createdAt) return;
+      const date = new Date(activity.createdAt);
+      if (date < weekAgo) return;
+
+      const idx = dayIndex.get(toDateKey(date));
+      if (idx === undefined) return;
+
+      dayBuckets[idx].doctorActions += 1;
+      const text = `${activity.title || ''} ${activity.details || ''}`.toLowerCase();
+      if (/approve|approved/.test(text)) dayBuckets[idx].approvals += 1;
+      if (/reject|rejected/.test(text)) dayBuckets[idx].rejections += 1;
+    });
+
+    patientActivities.forEach((activity) => {
+      if (!activity.createdAt) return;
+      const date = new Date(activity.createdAt);
+      if (date < weekAgo) return;
+
+      const idx = dayIndex.get(toDateKey(date));
+      if (idx === undefined) return;
+
+      dayBuckets[idx].patientRequests += 1;
+    });
+
+    const recentDoctorActions = doctorActivities.slice(0, 10).map((item) => ({
+      id: String(item._id),
+      title: item.title,
+      details: item.details,
+      category: item.category,
+      createdAt: item.createdAt,
+    }));
+
+    const recentPatientSignals = patientActivities.slice(0, 10).map((item) => ({
+      id: String(item._id),
+      title: item.title,
+      details: item.details,
+      category: item.category,
+      createdAt: item.createdAt,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        generatedAt: new Date().toISOString(),
+        doctor: {
+          email: doctor.email,
+          name: doctor.doctorProfile?.fullName || doctor.userName || 'Doctor',
+          specialization: doctor.doctorProfile?.specialization || '',
+        },
+        appointments: {
+          total: appointments.length,
+          pending: pendingCount,
+          approved: approvedCount,
+          rejected: rejectedCount,
+        },
+        monitoring: {
+          assignedPatients: patientIds.length,
+          trackedPatientActivities: patientActivities.length,
+          moduleUsage,
+        },
+        outcomes: actionOutcomes,
+        reminders: {
+          created: remindersCreated,
+          upcomingNext7Days: pendingReminders,
+        },
+        trend7d: dayBuckets,
+        recentDoctorActions,
+        recentPatientSignals,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Error generating doctor dashboard analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating dashboard analytics',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });

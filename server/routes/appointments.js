@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import PatientActivity from '../models/PatientActivity.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -138,6 +139,22 @@ router.post('/', requireAuth, async (req, res) => {
     });
 
     await appointment.save();
+
+    try {
+      await PatientActivity.create({
+        userId: patient._id,
+        category: 'other',
+        title: 'Appointment request submitted',
+        details: `Requested appointment with ${doctor.doctorProfile?.fullName || doctor.userName || 'doctor'} on ${date} at ${time}`,
+        metadata: {
+          appointmentId: String(appointment._id),
+          doctorId: String(doctor._id),
+          doctorEmail: doctor.email,
+        },
+      });
+    } catch (activityError) {
+      console.warn('Patient activity log failed for appointment request:', activityError.message);
+    }
 
     // Create notification for doctor
     const doctorNotification = new Notification({
@@ -308,6 +325,39 @@ router.put('/:id/status', requireAuth, async (req, res) => {
       appointmentId: appointment._id
     });
     await patientNotification.save();
+
+    try {
+      await PatientActivity.create({
+        userId: req.user.id,
+        category: 'other',
+        title: `${status === 'approved' ? 'Approved' : 'Rejected'} appointment request`,
+        details: `${status === 'approved' ? 'Approved' : 'Rejected'} appointment for ${appointment.patientName} on ${appointment.date} at ${appointment.time}`,
+        metadata: {
+          appointmentId: String(appointment._id),
+          patientId: String(appointment.patientId),
+          patientEmail: appointment.patientEmail,
+          status,
+        },
+      });
+    } catch (activityError) {
+      console.warn('Doctor activity log failed for appointment decision:', activityError.message);
+    }
+
+    try {
+      await PatientActivity.create({
+        userId: appointment.patientId,
+        category: 'other',
+        title: `Appointment ${status}`,
+        details: `Your appointment with ${appointment.doctorName} on ${appointment.date} at ${appointment.time} was ${status}`,
+        metadata: {
+          appointmentId: String(appointment._id),
+          doctorEmail: appointment.doctorEmail,
+          status,
+        },
+      });
+    } catch (activityError) {
+      console.warn('Patient activity log failed for appointment outcome:', activityError.message);
+    }
 
     console.log(`✅ Appointment ${status}: ${appointment._id}`);
     console.log(`📧 Notification sent to patient: ${appointment.patientEmail}`);

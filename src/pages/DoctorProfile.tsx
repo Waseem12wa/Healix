@@ -5,6 +5,7 @@ import {
   Card,
   CardContent,
   Chip,
+  Avatar,
   FormControl,
   InputLabel,
   MenuItem,
@@ -22,8 +23,10 @@ import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import SchoolIcon from '@mui/icons-material/School'
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
 import BackButton from '../ui/BackButton'
 import { useNavigate } from 'react-router-dom'
+import { getMyProfile, uploadMyProfileImage } from '../services/patientService'
 
 interface DoctorProfileData {
   fullName: string
@@ -53,10 +56,13 @@ const COMMON_LANGUAGES = ['English', 'Urdu', 'Punjabi', 'Sindhi', 'Pashto', 'Bal
 
 export default function DoctorProfile() {
   const navigate = useNavigate()
+  const [doctorName, setDoctorName] = useState(() => localStorage.getItem('userName') || 'Doctor')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [profileImage, setProfileImage] = useState(() => localStorage.getItem('profileImage') || '')
   const [profile, setProfile] = useState<DoctorProfileData>({
     fullName: '',
     phoneNumber: '',
@@ -95,11 +101,17 @@ export default function DoctorProfile() {
           return
         }
 
-        const response = await fetch(`http://localhost:5000/api/doctors/profile?email=${encodeURIComponent(userEmail)}`)
-        const data = await response.json()
+        const [doctorProfileResponse, authProfile] = await Promise.all([
+          fetch(`http://localhost:5000/api/doctors/profile?email=${encodeURIComponent(userEmail)}`),
+          getMyProfile().catch(() => null),
+        ])
+        const data = await doctorProfileResponse.json()
 
         if (data.success && data.data.profile) {
           const existingProfile = data.data.profile
+          const nextDoctorName = existingProfile.fullName || data.data.userName || localStorage.getItem('userName') || 'Doctor'
+          setDoctorName(nextDoctorName)
+          localStorage.setItem('userName', nextDoctorName)
           setProfile({
             fullName: existingProfile.fullName || '',
             phoneNumber: existingProfile.phoneNumber || '',
@@ -123,6 +135,12 @@ export default function DoctorProfile() {
             onlineFee: existingProfile.onlineFee || 0
           })
         }
+
+        const nextImage = authProfile?.patientProfile?.profileImage || ''
+        setProfileImage(nextImage)
+        if (nextImage) {
+          localStorage.setItem('profileImage', nextImage)
+        }
       } catch (err: any) {
         console.error('Error loading profile:', err)
         // Don't show error if profile doesn't exist yet (first time)
@@ -136,6 +154,29 @@ export default function DoctorProfile() {
 
     loadProfile()
   }, [])
+
+  const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setUploadingImage(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const uploadedImage = await uploadMyProfileImage(file)
+      setProfileImage(uploadedImage)
+      if (uploadedImage) {
+        localStorage.setItem('profileImage', uploadedImage)
+      }
+      setSuccess('Profile picture updated successfully.')
+    } catch (err: any) {
+      setError(err?.message || 'Failed to upload profile picture. Please try again.')
+    } finally {
+      setUploadingImage(false)
+      event.target.value = ''
+    }
+  }
 
   const handleInputChange = (field: keyof DoctorProfileData, value: any) => {
     setProfile(prev => ({ ...prev, [field]: value }))
@@ -200,6 +241,9 @@ export default function DoctorProfile() {
       }
 
       if (data.success) {
+        const nextDoctorName = profile.fullName?.trim() || localStorage.getItem('userName') || 'Doctor'
+        setDoctorName(nextDoctorName)
+        localStorage.setItem('userName', nextDoctorName)
         setSuccess('Profile saved successfully! You are now visible to patients.')
         setTimeout(() => {
           navigate('/doctor-dashboard')
@@ -271,6 +315,42 @@ export default function DoctorProfile() {
 
           {error && <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>}
           {success && <Alert severity="success" sx={{ borderRadius: 2 }}>{success}</Alert>}
+
+          <Card elevation={0} sx={{ borderRadius: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
+            <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Avatar
+                    src={profileImage || undefined}
+                    sx={{ width: 76, height: 76, bgcolor: '#06D6A0', fontSize: '1.8rem', fontWeight: 700 }}
+                  >
+                    {(doctorName || 'D').charAt(0)}
+                  </Avatar>
+                  <Box>
+                    <Typography sx={{ fontSize: '1.15rem', fontWeight: 800, color: '#1A1A2E', mb: 0.25 }}>
+                      {doctorName}
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                <Button
+                  component="label"
+                  variant="outlined"
+                  startIcon={uploadingImage ? <CircularProgress size={18} color="inherit" /> : <PhotoCameraIcon />}
+                  disabled={uploadingImage}
+                  sx={{ borderRadius: 2, textTransform: 'none', px: 2.5 }}
+                >
+                  {uploadingImage ? 'Uploading...' : 'Upload Picture'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handleProfileImageUpload}
+                  />
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
 
           <form onSubmit={handleSubmit}>
             <Stack spacing={3}>

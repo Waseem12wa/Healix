@@ -26,6 +26,7 @@ import DoctorDashboard from './pages/DoctorDashboard'
 import ProviderDashboard from './pages/ProviderDashboard'
 import Appointments from './pages/Appointments'
 import DoctorProfile from './pages/DoctorProfile'
+import DoctorHistory from './pages/DoctorHistory'
 import MedicineShop from './pages/MedicineShop'
 import OrderHistory from './pages/OrderHistory'
 import PaymentCheckoutPage from './pages/PaymentCheckoutPage'
@@ -59,6 +60,7 @@ export const router = createBrowserRouter([
       // Protected routes - Doctor
       { path: 'doctor-dashboard', element: protect(<DoctorDashboard />) },
       { path: 'doctor-profile', element: protect(<DoctorProfile />) },
+      { path: 'doctor-history', element: protect(<DoctorHistory />) },
       
       // Protected routes - Admin
       { path: 'admin', element: protect(<AdminPanel />) },

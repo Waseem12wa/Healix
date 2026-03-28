@@ -1,714 +1,675 @@
-import { Box, Button, Card, CardContent, Chip, Stack, Typography, Avatar, Badge, IconButton, CircularProgress } from '@mui/material'
-import { Link } from 'react-router-dom'
+import {
+  Alert,
+  Avatar,
+  Badge,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControl,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Select,
+  Snackbar,
+  Stack,
+  TextField,
+  Typography,
+  Autocomplete,
+} from '@mui/material'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { Variants } from 'framer-motion'
 import NotificationsIcon from '@mui/icons-material/Notifications'
 import PersonIcon from '@mui/icons-material/Person'
 import LogoutIcon from '@mui/icons-material/Logout'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
-import EventIcon from '@mui/icons-material/Event'
 import ScienceIcon from '@mui/icons-material/Science'
 import FastfoodIcon from '@mui/icons-material/Fastfood'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
-import { useMemo, useState, useEffect } from 'react'
-import { useNotifications } from '../hooks/useNotifications'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
+import SmartToyIcon from '@mui/icons-material/SmartToy'
+import SummarizeIcon from '@mui/icons-material/Summarize'
+import EventIcon from '@mui/icons-material/Event'
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
+import SearchIcon from '@mui/icons-material/Search'
+import HistoryIcon from '@mui/icons-material/History'
 import AlarmIcon from '@mui/icons-material/Alarm'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import CancelIcon from '@mui/icons-material/Cancel'
+import RecommendIcon from '@mui/icons-material/Recommend'
+import GroupIcon from '@mui/icons-material/Group'
+import TrackChangesIcon from '@mui/icons-material/TrackChanges'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNotifications } from '../hooks/useNotifications'
+import { clearAuthData } from '../utils/auth'
+import { getMyProfile, logPatientActivity } from '../services/patientService'
+import { getDoctorDashboardLive, type DoctorDashboardLiveData } from '../services/doctorService'
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { LocalizationProvider, TimePicker, DatePicker } from '@mui/x-date-pickers'
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 
-interface Appointment {
-  _id?: string
-  id?: number
-  patientName: string
-  patientEmail?: string
-  date: string
-  time: string
-  reason?: string
-  notes?: string
-  status: 'pending' | 'approved' | 'rejected'
-  specialization?: string
-  location?: string
-  consultationType?: string
-  fee?: number
+const EMPTY_DASHBOARD: DoctorDashboardLiveData = {
+  generatedAt: new Date().toISOString(),
+  doctor: {
+    email: '',
+    name: 'Doctor',
+    specialization: '',
+  },
+  appointments: {
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  },
+  monitoring: {
+    assignedPatients: 0,
+    trackedPatientActivities: 0,
+    moduleUsage: {
+      ddi: 0,
+      dfi: 0,
+      sideEffects: 0,
+      medicationShop: 0,
+      healthSummary: 0,
+      aiAssistant: 0,
+      appointments: 0,
+      reminders: 0,
+      profileUpdates: 0,
+      total: 0,
+    },
+  },
+  outcomes: {
+    approvals: 0,
+    rejections: 0,
+    recommendationsGiven: 0,
+    actionsTaken: 0,
+  },
+  reminders: {
+    created: 0,
+    upcomingNext7Days: 0,
+  },
+  trend7d: [
+    { key: '0', day: 'Mon', doctorActions: 0, patientRequests: 0, approvals: 0, rejections: 0 },
+    { key: '1', day: 'Tue', doctorActions: 0, patientRequests: 0, approvals: 0, rejections: 0 },
+    { key: '2', day: 'Wed', doctorActions: 0, patientRequests: 0, approvals: 0, rejections: 0 },
+    { key: '3', day: 'Thu', doctorActions: 0, patientRequests: 0, approvals: 0, rejections: 0 },
+    { key: '4', day: 'Fri', doctorActions: 0, patientRequests: 0, approvals: 0, rejections: 0 },
+    { key: '5', day: 'Sat', doctorActions: 0, patientRequests: 0, approvals: 0, rejections: 0 },
+    { key: '6', day: 'Sun', doctorActions: 0, patientRequests: 0, approvals: 0, rejections: 0 },
+  ],
+  recentDoctorActions: [],
+  recentPatientSignals: [],
 }
 
-interface DrugInteraction {
-  id: number
-  patientName: string
-  drug1: string
-  drug2: string
-  severity: 'None' | 'Mild' | 'Severe'
-  note: string
-  status: 'pending' | 'approved' | 'rejected'
-  createdAt: string
-}
-
-interface DrugFoodInteraction {
-  id: number
-  patientName: string
-  drug: string
-  food: string
-  type: 'safe' | 'avoid'
+type FeatureItem = {
+  label: string
   description: string
-  status: 'pending' | 'approved' | 'rejected'
-  createdAt: string
+  icon: React.ReactElement
+  isSetReminder?: boolean
 }
 
 export default function DoctorDashboard() {
-  const userName = useMemo(() => {
-    return (localStorage.getItem('userName') || 'Doctor')
-  }, [])
+  const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [doctorName, setDoctorName] = useState(() => localStorage.getItem('userName') || 'Doctor')
+  const [profileImage, setProfileImage] = useState(() => localStorage.getItem('profileImage') || '')
+  const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null)
+  const [dashboardData, setDashboardData] = useState<DoctorDashboardLiveData>(EMPTY_DASHBOARD)
+  const [loadingDashboard, setLoadingDashboard] = useState(true)
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
+  const [reminderModalOpen, setReminderModalOpen] = useState(false)
+  const dashboardLoggedRef = useRef(false)
 
   const { unreadCount } = useNotifications()
 
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [loadingAppointments, setLoadingAppointments] = useState(false)
+  const recordActivity = async (title: string, details: string, metadata: Record<string, unknown> = {}) => {
+    try {
+      await logPatientActivity({
+        category: 'other',
+        title,
+        details,
+        metadata,
+      })
+    } catch {
+      // Do not block doctor workflows when logging fails.
+    }
+  }
 
-  // Reminder modal state
-  const [reminderModalOpen, setReminderModalOpen] = useState(false)
-
-  const [drugInteractions, setDrugInteractions] = useState<DrugInteraction[]>([
+  const featureItems: FeatureItem[] = [
     {
-      id: 1,
-      patientName: 'John Doe',
-      drug1: 'Metformin',
-      drug2: 'Lisinopril',
-      severity: 'Mild',
-      note: 'CYP3A4 inhibition can increase plasma levels.',
-      status: 'pending',
-      createdAt: '2025-01-10',
+      label: 'Set Reminder',
+      description: 'Create medication recommendations and schedules for your patients.',
+      icon: <AlarmIcon sx={{ color: '#FFD166' }} />,
+      isSetReminder: true,
     },
     {
-      id: 2,
-      patientName: 'Jane Smith',
-      drug1: 'Atorvastatin',
-      drug2: 'Warfarin',
-      severity: 'Severe',
-      note: 'Severe interaction requires careful monitoring.',
-      status: 'approved',
-      createdAt: '2025-01-09',
-    },
-  ])
-
-  const [drugFoodInteractions, setDrugFoodInteractions] = useState<DrugFoodInteraction[]>([
-    {
-      id: 1,
-      patientName: 'John Doe',
-      drug: 'Metformin',
-      food: 'Grapefruit',
-      type: 'avoid',
-      description: 'Grapefruit juice inhibits intestinal CYP3A4.',
-      status: 'pending',
-      createdAt: '2025-01-11',
+      label: 'Drug Interaction Checker',
+      description: 'Check interactions between medications in seconds.',
+      icon: <ScienceIcon sx={{ color: '#00B4D8' }} />,
     },
     {
-      id: 2,
-      patientName: 'Robert Johnson',
-      drug: 'Warfarin',
-      food: 'Leafy Greens',
-      type: 'avoid',
-      description: 'Vitamin K can antagonize anticoagulant effect.',
-      status: 'approved',
-      createdAt: '2025-01-10',
+      label: 'Drug-Food Interaction',
+      description: 'See how foods may affect your prescriptions.',
+      icon: <FastfoodIcon sx={{ color: '#06D6A0' }} />,
     },
-  ])
-
-  const featureItems = [
-    { label: 'Set Reminders', description: 'Schedule medication reminders for your patients.', icon: <AlarmIcon color="warning" />, onClick: () => setReminderModalOpen(true) },
-    { label: 'Drug Interaction Checker', description: 'Review and validate drug-drug interactions.', icon: <ScienceIcon color="primary" />, href: '/tools/drug-interactions' },
-    { label: 'Drug-Food Interaction', description: 'Check how diet impacts current medications.', icon: <FastfoodIcon color="success" />, href: '/tools/drug-food-interactions' },
-    { label: 'Drug Alternatives', description: 'Explore alternative therapies for your patients.', icon: <SwapHorizIcon color="info" />, href: '/tools/drug-alternatives' },
-    { label: 'Notifications', description: 'Stay on top of alerts across your panel.', icon: <NotificationsIcon color="error" />, href: '/tools/notifications' },
-    { label: 'Profile', description: 'Complete your profile to be visible to patients.', icon: <PersonIcon color="info" />, href: '/doctor-profile' },
-    { label: 'Logout', description: 'Securely sign out of your Healix account.', icon: <LogoutIcon color="secondary" />, href: '/login' },
+    {
+      label: 'Drug Alternatives',
+      description: 'Explore safer or more affordable alternatives.',
+      icon: <SwapHorizIcon sx={{ color: '#0096C7' }} />,
+    },
+    {
+      label: 'Side Effect Predictor',
+      description: 'Predict potential side effects from medications.',
+      icon: <TrendingUpIcon sx={{ color: '#EF476F' }} />,
+    },
+    {
+      label: 'Medicine Shop',
+      description: 'Purchase medicines directly from our store.',
+      icon: <ShoppingCartIcon sx={{ color: '#FFB703' }} />,
+    },
+    {
+      label: 'AI Health Assistant',
+      description: 'Chat with an AI to understand your health data.',
+      icon: <SmartToyIcon sx={{ color: '#90E0EF' }} />,
+    },
+    {
+      label: 'Record Summarization',
+      description: 'Turn complex reports into clear summaries.',
+      icon: <SummarizeIcon sx={{ color: '#00B4D8' }} />,
+    },
+    {
+      label: 'Doctor Appointments',
+      description: 'Manage and review upcoming visits.',
+      icon: <EventIcon sx={{ color: '#06D6A0' }} />,
+    },
   ]
 
-  useEffect(() => {
-    loadAppointments()
+  const filteredFeatureItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return featureItems
+
+    return featureItems.filter((item) => {
+      const haystack = `${item.label} ${item.description}`.toLowerCase()
+      return haystack.includes(query)
+    })
+  }, [featureItems, searchQuery])
+
+  const loadLiveDashboard = async () => {
     try {
-      const savedDrugs = localStorage.getItem('doctorDrugInteractions')
-      if (savedDrugs) setDrugInteractions(JSON.parse(savedDrugs))
-      const savedFoods = localStorage.getItem('doctorFoodInteractions')
-      if (savedFoods) setDrugFoodInteractions(JSON.parse(savedFoods))
-    } catch { }
+      const [authProfile, liveData] = await Promise.all([
+        getMyProfile().catch(() => null),
+        getDoctorDashboardLive().catch(() => EMPTY_DASHBOARD),
+      ])
+
+      setDashboardData(liveData || EMPTY_DASHBOARD)
+      const resolvedName = liveData?.doctor?.name || localStorage.getItem('userName') || 'Doctor'
+      setDoctorName(resolvedName)
+      localStorage.setItem('userName', resolvedName)
+
+      const nextImage = authProfile?.patientProfile?.profileImage || ''
+      setProfileImage(nextImage)
+      if (nextImage) {
+        localStorage.setItem('profileImage', nextImage)
+      } else {
+        localStorage.removeItem('profileImage')
+      }
+
+      setLastSyncedAt(new Date())
+    } finally {
+      setLoadingDashboard(false)
+    }
+  }
+
+  useEffect(() => {
+    let mounted = true
+
+    const safeReload = async () => {
+      if (!mounted) return
+      await loadLiveDashboard()
+    }
+
+    safeReload()
+
+    const intervalId = window.setInterval(() => {
+      safeReload()
+    }, 8000)
+
+    const onVisibility = () => {
+      if (!document.hidden) {
+        safeReload()
+      }
+    }
+
+    window.addEventListener('focus', safeReload)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    if (!dashboardLoggedRef.current) {
+      dashboardLoggedRef.current = true
+      recordActivity('Doctor dashboard opened', 'Doctor opened live monitoring dashboard', { source: 'doctor-dashboard' })
+    }
+
+    return () => {
+      mounted = false
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', safeReload)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
-  // Load appointments from API
-  const loadAppointments = async () => {
-    setLoadingAppointments(true)
-    try {
-      const userEmail = localStorage.getItem('userEmail')
-      if (!userEmail) {
-        console.error('User email not found')
-        return
-      }
-
-      const response = await fetch(`http://localhost:5000/api/appointments/doctor?email=${encodeURIComponent(userEmail)}`)
-      const data = await response.json()
-
-      if (data.success) {
-        // Map API data to component format
-        const mappedAppointments = data.data.map((apt: any) => ({
-          _id: apt._id,
-          id: apt._id,
-          patientName: apt.patientName,
-          patientEmail: apt.patientEmail,
-          date: apt.date,
-          time: apt.time,
-          reason: apt.notes || '',
-          notes: apt.notes || '',
-          status: apt.status === 'approved' ? 'approved' : apt.status === 'rejected' ? 'rejected' : 'pending',
-          specialization: apt.specialization,
-          location: apt.location,
-          consultationType: apt.consultationType,
-          fee: apt.fee
-        }))
-        setAppointments(mappedAppointments)
-      }
-    } catch (err) {
-      console.error('Error loading appointments:', err)
-    } finally {
-      setLoadingAppointments(false)
-    }
+  const handleOpenProfileMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setProfileMenuAnchor(event.currentTarget)
   }
 
-  const handleApprove = async (type: 'appointment' | 'drug' | 'food', id: number | string) => {
-    if (type === 'appointment') {
-      try {
-        const userEmail = localStorage.getItem('userEmail')
-        if (!userEmail) {
-          console.error('User email not found')
-          return
-        }
-
-        const appointmentId = typeof id === 'string' ? id : appointments.find(a => a.id === id)?._id
-        if (!appointmentId) {
-          console.error('Appointment not found')
-          return
-        }
-
-        const response = await fetch(`http://localhost:5000/api/appointments/${appointmentId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            status: 'approved',
-            doctorEmail: userEmail
-          })
-        })
-
-        const data = await response.json()
-
-        if (data.success) {
-          loadAppointments() // Reload appointments
-        } else {
-          console.error('Failed to approve appointment:', data.message)
-        }
-      } catch (err) {
-        console.error('Error approving appointment:', err)
-      }
-    } else if (type === 'drug') {
-      const updated = drugInteractions.map(di => di.id === id ? { ...di, status: 'approved' as const } : di)
-      setDrugInteractions(updated)
-      try { localStorage.setItem('doctorDrugInteractions', JSON.stringify(updated)) } catch { }
-    } else if (type === 'food') {
-      const updated = drugFoodInteractions.map(dfi => dfi.id === id ? { ...dfi, status: 'approved' as const } : dfi)
-      setDrugFoodInteractions(updated)
-      try { localStorage.setItem('doctorFoodInteractions', JSON.stringify(updated)) } catch { }
-    }
+  const handleCloseProfileMenu = () => {
+    setProfileMenuAnchor(null)
   }
 
-  const handleReject = async (type: 'appointment' | 'drug' | 'food', id: number | string) => {
-    if (type === 'appointment') {
-      try {
-        const userEmail = localStorage.getItem('userEmail')
-        if (!userEmail) {
-          console.error('User email not found')
-          return
-        }
-
-        const appointmentId = typeof id === 'string' ? id : appointments.find(a => a.id === id)?._id
-        if (!appointmentId) {
-          console.error('Appointment not found')
-          return
-        }
-
-        const response = await fetch(`http://localhost:5000/api/appointments/${appointmentId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            status: 'rejected',
-            doctorEmail: userEmail
-          })
-        })
-
-        const data = await response.json()
-
-        if (data.success) {
-          loadAppointments() // Reload appointments
-        } else {
-          console.error('Failed to reject appointment:', data.message)
-        }
-      } catch (err) {
-        console.error('Error rejecting appointment:', err)
-      }
-    } else if (type === 'drug') {
-      const updated = drugInteractions.map(di => di.id === id ? { ...di, status: 'rejected' as const } : di)
-      setDrugInteractions(updated)
-      try { localStorage.setItem('doctorDrugInteractions', JSON.stringify(updated)) } catch { }
-    } else if (type === 'food') {
-      const updated = drugFoodInteractions.map(dfi => dfi.id === id ? { ...dfi, status: 'rejected' as const } : dfi)
-      setDrugFoodInteractions(updated)
-      try { localStorage.setItem('doctorFoodInteractions', JSON.stringify(updated)) } catch { }
-    }
+  const handleProfileMenuNavigate = (path: string, title: string) => {
+    handleCloseProfileMenu()
+    recordActivity(title, `Navigated to ${path}`, { source: 'doctor-header-menu', path })
+    navigate(path)
   }
 
-  const pendingAppointments = appointments.filter(apt => apt.status === 'pending')
-  const approvedAppointments = appointments.filter(apt => apt.status === 'approved')
-  const pendingDrugInteractions = drugInteractions.filter(di => di.status === 'pending')
-  const approvedDrugInteractions = drugInteractions.filter(di => di.status === 'approved')
-  const pendingFoodInteractions = drugFoodInteractions.filter(dfi => dfi.status === 'pending')
-  const approvedFoodInteractions = drugFoodInteractions.filter(dfi => dfi.status === 'approved')
+  const handleOpenHistory = () => {
+    handleCloseProfileMenu()
+    recordActivity('Viewed doctor history', 'Opened doctor history page from profile menu', { source: 'doctor-header-menu' })
+    navigate('/doctor-history')
+  }
+
+  const handleLogout = () => {
+    clearAuthData()
+    handleCloseProfileMenu()
+    navigate('/login')
+  }
+
+  const summaryCards = [
+    {
+      title: 'Approved Requests',
+      value: dashboardData.outcomes.approvals,
+      hint: `${dashboardData.appointments.approved} approved appointments`,
+      icon: <CheckCircleIcon />,
+      color: '#10b981',
+    },
+    {
+      title: 'Rejected Requests',
+      value: dashboardData.outcomes.rejections,
+      hint: `${dashboardData.appointments.rejected} rejected appointments`,
+      icon: <CancelIcon />,
+      color: '#ef4444',
+    },
+    {
+      title: 'Recommendations Given',
+      value: dashboardData.outcomes.recommendationsGiven,
+      hint: `${dashboardData.reminders.upcomingNext7Days} reminders due in 7 days`,
+      icon: <RecommendIcon />,
+      color: '#0ea5e9',
+    },
+    {
+      title: 'Actions Taken',
+      value: dashboardData.outcomes.actionsTaken,
+      hint: `${dashboardData.monitoring.assignedPatients} assigned patients monitored`,
+      icon: <TrackChangesIcon />,
+      color: '#8b5cf6',
+    },
+  ]
+
+  const moduleChartData = [
+    { module: 'DDI', value: dashboardData.monitoring.moduleUsage.ddi },
+    { module: 'DFI', value: dashboardData.monitoring.moduleUsage.dfi },
+    { module: 'Side Effects', value: dashboardData.monitoring.moduleUsage.sideEffects },
+    { module: 'Shop', value: dashboardData.monitoring.moduleUsage.medicationShop },
+    { module: 'AI', value: dashboardData.monitoring.moduleUsage.aiAssistant },
+    { module: 'Summary', value: dashboardData.monitoring.moduleUsage.healthSummary },
+    { module: 'Appointments', value: dashboardData.monitoring.moduleUsage.appointments },
+    { module: 'Reminders', value: dashboardData.monitoring.moduleUsage.reminders },
+  ]
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
-    }
+        staggerChildren: 0.08,
+        delayChildren: 0.1,
+      },
+    },
   }
 
   const cardVariants: Variants = {
-    hidden: { opacity: 0, scale: 0.95 },
+    hidden: { opacity: 0, scale: 0.96 },
     visible: {
       opacity: 1,
       scale: 1,
-      transition: {
-        duration: 0.4,
-        ease: "easeOut"
-      }
+      transition: { duration: 0.35, ease: 'easeOut' },
     },
     hover: {
-      scale: 1.02,
-      transition: {
-        duration: 0.2,
-        ease: "easeInOut"
-      }
-    }
+      scale: 1.015,
+      transition: { duration: 0.18, ease: 'easeInOut' },
+    },
   }
 
   return (
-    <Box sx={{
-      width: '100%',
-      minHeight: '100vh',
-      display: 'flex',
-      bgcolor: '#f5f7fa',
-      overflowX: 'hidden'
-    }}>
-      {/* Main Content */}
+    <Box sx={{ width: '100%', minHeight: '100vh', display: 'flex', bgcolor: '#F5F7FA', overflowX: 'hidden' }}>
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
-        {/* Header */}
         <Box sx={{ bgcolor: '#ffffff', borderBottom: '1px solid', borderColor: 'divider', p: { xs: 2.5, md: 3.5 }, px: { xs: 3, md: 4 } }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
             <Stack direction="row" alignItems="center" spacing={2.5}>
-              <Box sx={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                bgcolor: '#06D6A0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
+              <Box sx={{ width: 44, height: 44, borderRadius: '50%', bgcolor: '#06D6A0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <LocalHospitalIcon sx={{ color: '#ffffff' }} />
               </Box>
               <Box>
-                <Typography sx={{ fontSize: { xs: '1.75rem', md: '2.5rem' }, fontWeight: 900, color: '#1A1A2E' }}>
+                <Typography sx={{ fontSize: { xs: '1.75rem', md: '2.35rem' }, fontWeight: 900, color: '#1A1A2E' }}>
                   Doctor Dashboard
                 </Typography>
                 <Typography sx={{ fontSize: '0.9rem', color: '#64748B' }}>
-                  Overview of your clinical workload and patient interactions
+                  Live monitoring of doctor actions and patient module activity
+                </Typography>
+                <Typography sx={{ fontSize: '0.78rem', color: '#94A3B8', mt: 0.25 }}>
+                  {loadingDashboard ? 'Syncing live data...' : `Live sync: ${lastSyncedAt ? lastSyncedAt.toLocaleTimeString() : 'not synced'}`}
                 </Typography>
               </Box>
             </Stack>
+
             <Stack direction="row" alignItems="center" spacing={2}>
-              <Badge badgeContent={unreadCount + pendingAppointments.length + pendingDrugInteractions.length + pendingFoodInteractions.length} color="error">
-                <IconButton component={Link} to="/tools/notifications"><NotificationsIcon /></IconButton>
+              <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', minWidth: { sm: 220, md: 280 }, bgcolor: '#F5F5F7', borderRadius: 2, border: '1px solid', borderColor: '#E2E8F0', '&:hover': { borderColor: '#00B4D8', bgcolor: '#FFFFFF' } }}>
+                <TextField
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search tools..."
+                  variant="standard"
+                  fullWidth
+                  InputProps={{
+                    disableUnderline: true,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ color: '#64748B', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ px: 2, py: 0.25, '& .MuiInputBase-input': { fontSize: '0.9375rem', color: '#1A1A2E' } }}
+                />
+              </Box>
+
+              <Badge badgeContent={unreadCount + dashboardData.appointments.pending} color="error">
+                <IconButton component={Link} to="/tools/notifications" onClick={() => recordActivity('Opened notifications', 'Viewed doctor notifications', { source: 'doctor-header' })}>
+                  <NotificationsIcon />
+                </IconButton>
               </Badge>
-              <Stack direction="row" alignItems="center" spacing={1.5}>
-                <Avatar sx={{ bgcolor: '#06D6A0', width: 40, height: 40 }}>{userName.charAt(0)}</Avatar>
+
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1.5}
+                onClick={handleOpenProfileMenu}
+                sx={{ cursor: 'pointer', px: 1.25, py: 0.75, borderRadius: 2, border: '1px solid', borderColor: 'transparent', '&:hover': { borderColor: '#E2E8F0', bgcolor: '#F8FAFC' } }}
+                role="button"
+                aria-label="Open doctor profile menu"
+              >
+                <Avatar src={profileImage || undefined} sx={{ bgcolor: '#06D6A0', width: 40, height: 40 }}>
+                  {doctorName.charAt(0)}
+                </Avatar>
                 <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                  <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#1A1A2E' }}>{userName}</Typography>
+                  <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#1A1A2E' }}>{doctorName}</Typography>
                   <Typography sx={{ fontSize: '0.75rem', color: '#64748B' }}>Doctor</Typography>
                 </Box>
+                <ArrowDropDownIcon sx={{ color: '#64748B', display: { xs: 'none', sm: 'block' } }} />
               </Stack>
+
+              <Menu
+                anchorEl={profileMenuAnchor}
+                open={Boolean(profileMenuAnchor)}
+                onClose={handleCloseProfileMenu}
+                PaperProps={{ sx: { mt: 1, minWidth: 220, borderRadius: 2, border: '1px solid', borderColor: '#E2E8F0', boxShadow: '0 12px 28px rgba(15, 23, 42, 0.12)' } }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                <MenuItem onClick={() => handleProfileMenuNavigate('/tools/notifications', 'Opened notifications')}>
+                  <ListItemIcon sx={{ color: '#64748B' }}>
+                    <NotificationsIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Notifications" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
+                </MenuItem>
+                <MenuItem onClick={() => handleProfileMenuNavigate('/doctor-profile', 'Opened doctor profile')}>
+                  <ListItemIcon sx={{ color: '#64748B' }}>
+                    <PersonIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Profile" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
+                </MenuItem>
+                <MenuItem onClick={handleOpenHistory}>
+                  <ListItemIcon sx={{ color: '#64748B' }}>
+                    <HistoryIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="History" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon sx={{ color: '#64748B' }}>
+                    <LogoutIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Logout" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
+                </MenuItem>
+              </Menu>
             </Stack>
           </Stack>
         </Box>
 
-        {/* Dashboard Content */}
         <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 2.5, md: 3.5 }, px: { xs: 3, md: 4 }, width: '100%' }}>
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <Stack spacing={4}>
-              {/* Feature Navigation - cards like patient dashboard */}
-              <Box sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' },
-                gap: { xs: 2, md: 3 },
-                mb: 1
-              }}>
-                {featureItems.map((item) => (
+          <motion.div variants={containerVariants} initial="hidden" animate="visible">
+            <Stack spacing={3.5}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5}>
+                <Typography sx={{ color: '#64748B', fontSize: '0.9rem' }}>
+                  Assigned Patients: {dashboardData.monitoring.assignedPatients} | Tracked patient activities: {dashboardData.monitoring.trackedPatientActivities}
+                </Typography>
+                <Button variant="outlined" size="small" onClick={loadLiveDashboard} sx={{ borderRadius: 2, textTransform: 'none' }}>
+                  Refresh live data
+                </Button>
+              </Stack>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 2, md: 3 } }}>
+                {filteredFeatureItems.map((item) => (
                   <motion.div key={item.label} variants={cardVariants} whileHover="hover">
                     <Card
-                      component={item.href ? Link : 'div'}
-                      to={item.href || undefined}
-                      onClick={item.onClick}
+                      onClick={() => {
+                        if (item.isSetReminder) {
+                          setReminderModalOpen(true)
+                          recordActivity('Opened reminder modal', 'Started preparing patient medication recommendations', { source: 'doctor-dashboard' })
+                        }
+                      }}
                       sx={{
-                        textDecoration: 'none',
-                        height: 180,
-                        borderRadius: 2,
-                        boxShadow: 3,
+                        height: 200,
+                        borderRadius: 3,
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
-                        p: 0,
                         overflow: 'hidden',
-                        bgcolor: '#ffffff',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        cursor: 'pointer',
+                        bgcolor: '#FFFFFF',
+                        border: '1px solid',
+                        borderColor: '#E2E8F0',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        cursor: item.isSetReminder ? 'pointer' : 'default',
                         '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: 6
-                        }
+                          transform: 'translateY(-6px)',
+                          borderColor: '#00B4D8',
+                          boxShadow: '0 12px 32px rgba(0, 180, 216, 0.2)',
+                        },
                       }}
                     >
-                      <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-                        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
-                          <Box sx={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 1.5,
-                            bgcolor: '#EEF2FF',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}>
+                      <CardContent sx={{ p: { xs: 3, md: 3.5 }, flex: 1 }}>
+                        <Stack direction="row" spacing={2.5} alignItems="center" sx={{ mb: 2 }}>
+                          <Box sx={{ width: 52, height: 52, borderRadius: 2, background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.1) 0%, rgba(6, 214, 160, 0.1) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid', borderColor: 'rgba(0, 180, 216, 0.2)' }}>
                             {item.icon}
                           </Box>
-                          <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
-                            {item.label}
-                          </Typography>
+                          <Typography sx={{ fontSize: '1.0625rem', fontWeight: 700, color: '#1A1A2E', lineHeight: 1.3 }}>{item.label}</Typography>
                         </Stack>
-                        <Typography sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
-                          {item.description}
-                        </Typography>
+                        <Typography sx={{ fontSize: '0.875rem', color: '#64748B', lineHeight: 1.6 }}>{item.description}</Typography>
+                      </CardContent>
+                      <Box sx={{ px: { xs: 3, md: 3.5 }, pb: 3, display: 'flex', justifyContent: 'flex-start' }}>
+                        <Chip label="Open tool" size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(0, 180, 216, 0.1)', color: '#00B4D8', height: 28, fontSize: '0.8125rem' }} />
+                      </Box>
+                    </Card>
+                  </motion.div>
+                ))}
+              </Box>
+
+              {filteredFeatureItems.length === 0 && (
+                <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: '#E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <CardContent>
+                    <Typography sx={{ color: '#1A1A2E', fontWeight: 700, mb: 0.5 }}>No tools found</Typography>
+                    <Typography sx={{ color: '#64748B', fontSize: '0.9rem' }}>Try a different search term.</Typography>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: { xs: 2, md: 3 } }}>
+                {summaryCards.map((card) => (
+                  <motion.div key={card.title} variants={cardVariants}>
+                    <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#ffffff' }}>
+                      <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+                        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
+                          <Box sx={{ width: 40, height: 40, borderRadius: 1.5, bgcolor: '#F3F4F6', color: card.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {card.icon}
+                          </Box>
+                          <Typography sx={{ fontWeight: 700, color: '#1F2937' }}>{card.title}</Typography>
+                        </Stack>
+                        <Typography sx={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1, color: '#111827', mb: 0.5 }}>{card.value}</Typography>
+                        <Typography sx={{ fontSize: '0.84rem', color: '#64748B' }}>{card.hint}</Typography>
                       </CardContent>
                     </Card>
                   </motion.div>
                 ))}
               </Box>
 
-              {/* Summary Cards */}
-              {/* Summary Cards */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: { xs: 2, md: 3 } }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.2fr 1fr' }, gap: { xs: 2, md: 3 } }}>
                 <motion.div variants={cardVariants}>
-                  <Card sx={{ borderRadius: 1.5, boxShadow: 2, bgcolor: '#ffffff', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 } }}>
-                    <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
-                      <Stack direction="row" alignItems="center" spacing={2}>
-                        <Box sx={{ width: 48, height: 48, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#1947D2', color: '#ffffff' }}>
-                          <EventIcon />
-                        </Box>
-                        <Box>
-                          <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#64748B', mb: 0.5 }}>Pending Appointments</Typography>
-                          <Typography sx={{ fontSize: '2rem', fontWeight: 900, color: '#1A1A2E', lineHeight: 1 }}>{pendingAppointments.length}</Typography>
-                        </Box>
-                      </Stack>
+                  <Card sx={{ boxShadow: 2, borderRadius: 2, bgcolor: '#ffffff' }}>
+                    <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
+                      <Typography sx={{ fontSize: { xs: '1.3rem', md: '1.6rem' }, fontWeight: 800, color: '#1A1A2E', mb: 2.5 }}>
+                        Patient Module Monitoring (Live)
+                      </Typography>
+                      <Box sx={{ height: { xs: 260, md: 320 } }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={moduleChartData} margin={{ top: 15, right: 20, left: 0, bottom: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                            <XAxis dataKey="module" tick={{ fill: '#6B7280', fontSize: 12 }} />
+                            <YAxis allowDecimals={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="value" name="Observed Requests" fill="#06B6D4" radius={[8, 8, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </Box>
                     </CardContent>
                   </Card>
                 </motion.div>
+
                 <motion.div variants={cardVariants}>
-                  <Card sx={{ borderRadius: 1.5, boxShadow: 2, bgcolor: '#ffffff', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 } }}>
-                    <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
-                      <Stack direction="row" alignItems="center" spacing={2}>
-                        <Box sx={{ width: 48, height: 48, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#10b981', color: '#ffffff' }}>
-                          <CheckCircleIcon />
-                        </Box>
-                        <Box>
-                          <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#64748B', mb: 0.5 }}>Approved Appointments</Typography>
-                          <Typography sx={{ fontSize: '2rem', fontWeight: 900, color: '#1A1A2E', lineHeight: 1 }}>{approvedAppointments.length}</Typography>
-                        </Box>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-                <motion.div variants={cardVariants}>
-                  <Card sx={{ borderRadius: 1.5, boxShadow: 2, bgcolor: '#ffffff', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 } }}>
-                    <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
-                      <Stack direction="row" alignItems="center" spacing={2}>
-                        <Box sx={{ width: 48, height: 48, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#ef4444', color: '#ffffff' }}>
-                          <ScienceIcon />
-                        </Box>
-                        <Box>
-                          <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#64748B', mb: 0.5 }}>Drug Interactions</Typography>
-                          <Typography sx={{ fontSize: '2rem', fontWeight: 900, color: '#1A1A2E', lineHeight: 1 }}>{pendingDrugInteractions.length}</Typography>
-                        </Box>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-                <motion.div variants={cardVariants}>
-                  <Card sx={{ borderRadius: 1.5, boxShadow: 2, bgcolor: '#ffffff', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 } }}>
-                    <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
-                      <Stack direction="row" alignItems="center" spacing={2}>
-                        <Box sx={{ width: 48, height: 48, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f59e0b', color: '#ffffff' }}>
-                          <FastfoodIcon />
-                        </Box>
-                        <Box>
-                          <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#64748B', mb: 0.5 }}>Food Interactions</Typography>
-                          <Typography sx={{ fontSize: '2rem', fontWeight: 900, color: '#1A1A2E', lineHeight: 1 }}>{pendingFoodInteractions.length}</Typography>
-                        </Box>
-                      </Stack>
+                  <Card sx={{ boxShadow: 2, borderRadius: 2, bgcolor: '#ffffff' }}>
+                    <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
+                      <Typography sx={{ fontSize: { xs: '1.3rem', md: '1.6rem' }, fontWeight: 800, color: '#1A1A2E', mb: 2.5 }}>
+                        Doctor Actions Trend (7 Days)
+                      </Typography>
+                      <Box sx={{ height: { xs: 260, md: 320 } }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={dashboardData.trend7d} margin={{ top: 15, right: 20, left: 0, bottom: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                            <XAxis dataKey="day" tick={{ fill: '#6B7280', fontSize: 12 }} />
+                            <YAxis allowDecimals={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
+                            <Tooltip />
+                            <Legend />
+                            <Line type="monotone" dataKey="doctorActions" stroke="#06B6D4" strokeWidth={3} name="Doctor Actions" />
+                            <Line type="monotone" dataKey="patientRequests" stroke="#10B981" strokeWidth={3} name="Patient Requests" />
+                            <Line type="monotone" dataKey="approvals" stroke="#2563EB" strokeWidth={2} name="Approvals" />
+                            <Line type="monotone" dataKey="rejections" stroke="#EF4444" strokeWidth={2} name="Rejections" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </Box>
                     </CardContent>
                   </Card>
                 </motion.div>
               </Box>
 
-              {/* Pending Appointments */}
-              <motion.div variants={cardVariants}>
-                <Card sx={{ boxShadow: 2, borderRadius: 1.5, border: 'none' }}>
-                  <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                    <Typography sx={{ fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 900, color: '#06D6A0', mb: 3 }}>
-                      Pending Appointments
-                    </Typography>
-                    {loadingAppointments ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                        <CircularProgress />
-                      </Box>
-                    ) : (
-                      <Stack spacing={2}>
-                        {pendingAppointments.map((apt) => (
-                          <Box key={apt._id || apt.id} sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                            <Box>
-                              <Typography sx={{ fontWeight: 700, color: '#1A1A2E', mb: 0.5 }}>{apt.patientName}</Typography>
-                              <Typography variant="body2" color="text.secondary">{apt.date} at {apt.time}</Typography>
-                              {apt.notes && <Typography variant="body2" color="text.secondary">{apt.notes}</Typography>}
-                              {apt.location && <Typography variant="body2" color="text.secondary">Location: {apt.location}</Typography>}
-                              {apt.fee && <Typography variant="body2" color="text.secondary">Fee: PKR {apt.fee.toLocaleString()}</Typography>}
-                            </Box>
-                            <Stack direction="row" spacing={1}>
-                              <Button variant="contained" color="success" size="small" onClick={() => {
-                                const appointmentId = apt._id || apt.id
-                                if (appointmentId) handleApprove('appointment', appointmentId)
-                              }}>
-                                Approve
-                              </Button>
-                              <Button variant="outlined" color="error" size="small" onClick={() => {
-                                const appointmentId = apt._id || apt.id
-                                if (appointmentId) handleReject('appointment', appointmentId)
-                              }}>
-                                Reject
-                              </Button>
-                            </Stack>
-                          </Box>
-                        ))}
-                        {pendingAppointments.length === 0 && (
-                          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                            No pending appointments
-                          </Typography>
-                        )}
-                      </Stack>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Approved Appointments */}
-              {approvedAppointments.length > 0 && (
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: { xs: 2, md: 3 } }}>
                 <motion.div variants={cardVariants}>
-                  <Card sx={{ boxShadow: 2, borderRadius: 1.5, border: 'none' }}>
-                    <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                      <Typography sx={{ fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 900, color: '#06D6A0', mb: 3 }}>
-                        Approved Appointments
-                      </Typography>
-                      <Stack spacing={2}>
-                        {approvedAppointments.map((apt) => (
-                          <Box key={apt.id} sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: '#f0fdf4', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Box>
-                              <Typography sx={{ fontWeight: 700, color: '#1A1A2E', mb: 0.5 }}>{apt.patientName}</Typography>
-                              <Typography variant="body2" color="text.secondary">{apt.date} at {apt.time}</Typography>
-                              <Typography variant="body2" color="text.secondary">{apt.reason}</Typography>
-                            </Box>
-                            <Chip label="Approved" color="success" size="small" />
-                          </Box>
-                        ))}
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-
-              {/* Pending Drug-Drug Interactions */}
-              <motion.div variants={cardVariants}>
-                <Card sx={{ boxShadow: 2, borderRadius: 1.5, border: 'none' }}>
-                  <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                    <Typography sx={{ fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 900, color: '#06D6A0', mb: 3 }}>
-                      Pending Drug-Drug Interactions
-                    </Typography>
-                    <Stack spacing={2}>
-                      {pendingDrugInteractions.map((di) => (
-                        <Box key={di.id} sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: '#ffffff' }}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="start" sx={{ mb: 2 }} flexWrap="wrap" gap={2}>
-                            <Box>
-                              <Typography sx={{ fontWeight: 700, color: '#1A1A2E', mb: 0.5 }}>{di.patientName}</Typography>
-                              <Typography variant="body2" color="text.secondary">{di.drug1} + {di.drug2}</Typography>
-                              <Chip label={di.severity} color={di.severity === 'Severe' ? 'error' : di.severity === 'Mild' ? 'warning' : 'success'} size="small" sx={{ mt: 1 }} />
-                            </Box>
-                            <Stack direction="row" spacing={1}>
-                              <Button variant="contained" color="success" size="small" onClick={() => handleApprove('drug', di.id)}>
-                                Approve
-                              </Button>
-                              <Button variant="outlined" color="error" size="small" onClick={() => handleReject('drug', di.id)}>
-                                Reject
-                              </Button>
-                            </Stack>
-                          </Stack>
-                          <Typography variant="body2" color="text.secondary">{di.note}</Typography>
-                        </Box>
-                      ))}
-                      {pendingDrugInteractions.length === 0 && (
-                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                          No pending drug interactions
+                  <Card sx={{ boxShadow: 2, borderRadius: 2, bgcolor: '#ffffff' }}>
+                    <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
+                      <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 2.25 }}>
+                        <GroupIcon sx={{ color: '#06D6A0' }} />
+                        <Typography sx={{ fontSize: { xs: '1.2rem', md: '1.45rem' }, fontWeight: 800, color: '#1A1A2E' }}>
+                          Recent Patient Signals
                         </Typography>
-                      )}
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Approved Drug-Drug Interactions */}
-              {approvedDrugInteractions.length > 0 && (
-                <motion.div variants={cardVariants}>
-                  <Card sx={{ boxShadow: 2, borderRadius: 1.5, border: 'none' }}>
-                    <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                      <Typography sx={{ fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 900, color: '#06D6A0', mb: 3 }}>
-                        Approved Drug-Drug Interactions
-                      </Typography>
-                      <Stack spacing={2}>
-                        {approvedDrugInteractions.map((di) => (
-                          <Box key={di.id} sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: '#f0fdf4' }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="start">
-                              <Box>
-                                <Typography sx={{ fontWeight: 700, color: '#1A1A2E', mb: 0.5 }}>{di.patientName}</Typography>
-                                <Typography variant="body2" color="text.secondary">{di.drug1} + {di.drug2}</Typography>
-                                <Chip label={di.severity} color={di.severity === 'Severe' ? 'error' : di.severity === 'Mild' ? 'warning' : 'success'} size="small" sx={{ mt: 1 }} />
-                              </Box>
-                              <Chip label="Approved" color="success" size="small" />
-                            </Stack>
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>{di.note}</Typography>
-                          </Box>
-                        ))}
                       </Stack>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
 
-              {/* Pending Drug-Food Interactions */}
-              <motion.div variants={cardVariants}>
-                <Card sx={{ boxShadow: 2, borderRadius: 1.5, border: 'none' }}>
-                  <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                    <Typography sx={{ fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 900, color: '#06D6A0', mb: 3 }}>
-                      Pending Drug-Food Interactions
-                    </Typography>
-                    <Stack spacing={2}>
-                      {pendingFoodInteractions.map((dfi) => (
-                        <Box key={dfi.id} sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: '#ffffff' }}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="start" sx={{ mb: 2 }} flexWrap="wrap" gap={2}>
-                            <Box>
-                              <Typography sx={{ fontWeight: 700, color: '#1A1A2E', mb: 0.5 }}>{dfi.patientName}</Typography>
-                              <Typography variant="body2" color="text.secondary">{dfi.drug} + {dfi.food}</Typography>
-                              <Chip label={dfi.type} color={dfi.type === 'avoid' ? 'warning' : 'success'} size="small" sx={{ mt: 1 }} />
+                      {dashboardData.recentPatientSignals.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">No patient activity signals yet.</Typography>
+                      ) : (
+                        <Stack spacing={1.25}>
+                          {dashboardData.recentPatientSignals.map((item, index) => (
+                            <Box key={item.id || index}>
+                              <Stack direction="row" justifyContent="space-between" alignItems="start" gap={1.5}>
+                                <Box>
+                                  <Typography sx={{ fontWeight: 700, color: '#1A1A2E' }}>{item.title || 'Patient activity'}</Typography>
+                                  <Typography variant="caption" sx={{ color: '#64748B' }}>
+                                    {item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
+                                  </Typography>
+                                </Box>
+                              </Stack>
+                              {item.details && <Typography variant="body2" sx={{ mt: 0.6, color: 'text.secondary' }}>{item.details}</Typography>}
+                              {index < dashboardData.recentPatientSignals.length - 1 && <Divider sx={{ mt: 1.1 }} />}
                             </Box>
-                            <Stack direction="row" spacing={1}>
-                              <Button variant="contained" color="success" size="small" onClick={() => handleApprove('food', dfi.id)}>
-                                Approve
-                              </Button>
-                              <Button variant="outlined" color="error" size="small" onClick={() => handleReject('food', dfi.id)}>
-                                Reject
-                              </Button>
-                            </Stack>
-                          </Stack>
-                          <Typography variant="body2" color="text.secondary">{dfi.description}</Typography>
-                        </Box>
-                      ))}
-                      {pendingFoodInteractions.length === 0 && (
-                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                          No pending food interactions
-                        </Typography>
+                          ))}
+                        </Stack>
                       )}
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Approved Drug-Food Interactions */}
-              {approvedFoodInteractions.length > 0 && (
-                <motion.div variants={cardVariants}>
-                  <Card sx={{ boxShadow: 2, borderRadius: 1.5, border: 'none' }}>
-                    <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                      <Typography sx={{ fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 900, color: '#06D6A0', mb: 3 }}>
-                        Approved Drug-Food Interactions
-                      </Typography>
-                      <Stack spacing={2}>
-                        {approvedFoodInteractions.map((dfi) => (
-                          <Box key={dfi.id} sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 2, bgcolor: '#f0fdf4' }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="start">
-                              <Box>
-                                <Typography sx={{ fontWeight: 700, color: '#1A1A2E', mb: 0.5 }}>{dfi.patientName}</Typography>
-                                <Typography variant="body2" color="text.secondary">{dfi.drug} + {dfi.food}</Typography>
-                                <Chip label={dfi.type} color={dfi.type === 'avoid' ? 'warning' : 'success'} size="small" sx={{ mt: 1 }} />
-                              </Box>
-                              <Chip label="Approved" color="success" size="small" />
-                            </Stack>
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>{dfi.description}</Typography>
-                          </Box>
-                        ))}
-                      </Stack>
                     </CardContent>
                   </Card>
                 </motion.div>
-              )}
+              </Box>
             </Stack>
           </motion.div>
         </Box>
       </Box>
 
-      {/* Set Reminder Modal */}
       <SetReminderModal
         open={reminderModalOpen}
         onClose={() => setReminderModalOpen(false)}
+        onReminderCreated={(payload) => {
+          recordActivity(
+            'Created patient recommendation',
+            `Created reminders for ${payload.patientName} (${payload.medicineName})`,
+            {
+              source: 'doctor-reminder-modal',
+              frequency: payload.frequency,
+              duration: payload.duration,
+            }
+          )
+          loadLiveDashboard()
+        }}
       />
     </Box>
   )
 }
 
-// Set Reminder Modal Component
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Select, MenuItem, FormControl, InputLabel, Snackbar, Alert, Autocomplete } from '@mui/material'
-import { LocalizationProvider, TimePicker, DatePicker } from '@mui/x-date-pickers'
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
-
 interface SetReminderModalProps {
   open: boolean
   onClose: () => void
+  onReminderCreated?: (payload: {
+    patientName: string
+    medicineName: string
+    frequency: number
+    duration: number
+  }) => void
 }
 
 interface ApprovedPatient {
@@ -718,12 +679,11 @@ interface ApprovedPatient {
   appointmentId: string
 }
 
-function SetReminderModal({ open, onClose }: SetReminderModalProps) {
+function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModalProps) {
   const [loading, setLoading] = useState(false)
   const [patients, setPatients] = useState<ApprovedPatient[]>([])
   const [selectedPatient, setSelectedPatient] = useState<ApprovedPatient | null>(null)
 
-  // Form fields  
   const [medicineName, setMedicineName] = useState('')
   const [dose, setDose] = useState('')
   const [frequency, setFrequency] = useState<1 | 2 | 3>(1)
@@ -731,32 +691,30 @@ function SetReminderModal({ open, onClose }: SetReminderModalProps) {
   const [startDate, setStartDate] = useState<Date>(new Date())
   const [duration, setDuration] = useState(7)
 
-  // Snackbar
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
 
-  // Load approved patients when modal opens
   useEffect(() => {
-    if (open) {
-      loadApprovedPatients()
-      // Reset form
-      setSelectedPatient(null)
-      setMedicineName('')
-      setDose('')
-      setFrequency(1)
-      setTimes([new Date()])
-      setStartDate(new Date())
-      setDuration(7)
-    }
+    if (!open) return
+
+    loadApprovedPatients()
+    setSelectedPatient(null)
+    setMedicineName('')
+    setDose('')
+    setFrequency(1)
+    setTimes([new Date()])
+    setStartDate(new Date())
+    setDuration(7)
   }, [open])
 
-  // Update times array when frequency changes
   useEffect(() => {
-    const newTimes = Array(frequency).fill(null).map((_, i) => {
-      if (times[i]) return times[i]
-      const defaultTime = new Date()
-      defaultTime.setHours(9 + i * 6, 0, 0, 0) // 9 AM, 3 PM, 9 PM
-      return defaultTime
-    })
+    const newTimes = Array(frequency)
+      .fill(null)
+      .map((_, i) => {
+        if (times[i]) return times[i]
+        const defaultTime = new Date()
+        defaultTime.setHours(9 + i * 6, 0, 0, 0)
+        return defaultTime
+      })
     setTimes(newTimes)
   }, [frequency])
 
@@ -765,9 +723,7 @@ function SetReminderModal({ open, onClose }: SetReminderModalProps) {
       const doctorEmail = localStorage.getItem('userEmail')
       const response = await fetch(`http://localhost:5000/api/reminders/approved-patients?doctorEmail=${encodeURIComponent(doctorEmail || '')}`)
       const data = await response.json()
-      if (data.success) {
-        setPatients(data.data)
-      }
+      if (data.success) setPatients(data.data)
     } catch (error) {
       console.error('Error loading approved patients:', error)
       setSnackbar({ open: true, message: 'Failed to load patients', severity: 'error' })
@@ -780,7 +736,7 @@ function SetReminderModal({ open, onClose }: SetReminderModalProps) {
       const doctorEmail = localStorage.getItem('userEmail')
       const doctorName = localStorage.getItem('userName')
 
-      const formattedTimes = times.map(t => {
+      const formattedTimes = times.map((t) => {
         const hours = t.getHours().toString().padStart(2, '0')
         const minutes = t.getMinutes().toString().padStart(2, '0')
         return `${hours}:${minutes}`
@@ -803,15 +759,21 @@ function SetReminderModal({ open, onClose }: SetReminderModalProps) {
           frequency,
           times: formattedTimes,
           startDate: formattedStartDate,
-          duration
-        })
+          duration,
+        }),
       })
 
       const data = await response.json()
 
       if (data.success) {
+        onReminderCreated?.({
+          patientName: selectedPatient?.patientName || 'Unknown patient',
+          medicineName,
+          frequency,
+          duration,
+        })
         setSnackbar({ open: true, message: `Successfully created ${data.data.count} reminders!`, severity: 'success' })
-        setTimeout(() => onClose(), 1500)
+        setTimeout(() => onClose(), 1200)
       } else {
         setSnackbar({ open: true, message: data.message || 'Failed to create reminders', severity: 'error' })
       }
@@ -833,7 +795,6 @@ function SetReminderModal({ open, onClose }: SetReminderModalProps) {
         </DialogTitle>
         <DialogContent sx={{ mt: 3 }}>
           <Stack spacing={4}>
-            {/* Section 1: Select Patient */}
             <Box>
               <Typography variant="h6" gutterBottom sx={{ color: '#06D6A0', fontWeight: 700 }}>
                 1. Select Patient
@@ -848,34 +809,16 @@ function SetReminderModal({ open, onClose }: SetReminderModalProps) {
               />
             </Box>
 
-            {/* Section 2: Medicine Details */}
             <Box>
               <Typography variant="h6" gutterBottom sx={{ color: '#06D6A0', fontWeight: 700 }}>
                 2. Medicine Details
               </Typography>
               <Stack spacing={2} sx={{ mt: 1 }}>
-                <TextField
-                  label="Medicine Name"
-                  value={medicineName}
-                  onChange={(e) => setMedicineName(e.target.value)}
-                  required
-                  fullWidth
-                />
-                <TextField
-                  label="Dose"
-                  value={dose}
-                  onChange={(e) => setDose(e.target.value)}
-                  placeholder="e.g., 1 tablet, 2 capsules"
-                  required
-                  fullWidth
-                />
+                <TextField label="Medicine Name" value={medicineName} onChange={(e) => setMedicineName(e.target.value)} required fullWidth />
+                <TextField label="Dose" value={dose} onChange={(e) => setDose(e.target.value)} placeholder="e.g., 1 tablet, 2 capsules" required fullWidth />
                 <FormControl fullWidth>
                   <InputLabel>Frequency (times per day)</InputLabel>
-                  <Select
-                    value={frequency}
-                    onChange={(e) => setFrequency(e.target.value as 1 | 2 | 3)}
-                    label="Frequency (times per day)"
-                  >
+                  <Select value={frequency} onChange={(e) => setFrequency(e.target.value as 1 | 2 | 3)} label="Frequency (times per day)">
                     <MenuItem value={1}>Once daily</MenuItem>
                     <MenuItem value={2}>Twice daily</MenuItem>
                     <MenuItem value={3}>Three times daily</MenuItem>
@@ -884,7 +827,6 @@ function SetReminderModal({ open, onClose }: SetReminderModalProps) {
               </Stack>
             </Box>
 
-            {/* Section 3: Reminder Times */}
             <Box>
               <Typography variant="h6" gutterBottom sx={{ color: '#06D6A0', fontWeight: 700 }}>
                 3. Set Reminder Times
@@ -908,7 +850,6 @@ function SetReminderModal({ open, onClose }: SetReminderModalProps) {
               </LocalizationProvider>
             </Box>
 
-            {/* Section 4: Duration */}
             <Box>
               <Typography variant="h6" gutterBottom sx={{ color: '#06D6A0', fontWeight: 700 }}>
                 4. Set Duration
@@ -930,8 +871,7 @@ function SetReminderModal({ open, onClose }: SetReminderModalProps) {
                     fullWidth
                   />
                   <Alert severity="info">
-                    This will create <strong>{getTotalReminders()} reminders</strong> from{' '}
-                    {startDate.toLocaleDateString()} for {duration} days
+                    This will create <strong>{getTotalReminders()} reminders</strong> from {startDate.toLocaleDateString()} for {duration} days
                   </Alert>
                 </Stack>
               </LocalizationProvider>
@@ -940,21 +880,13 @@ function SetReminderModal({ open, onClose }: SetReminderModalProps) {
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={onClose}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={loading || !selectedPatient || !medicineName || !dose}
-          >
+          <Button variant="contained" onClick={handleSubmit} disabled={loading || !selectedPatient || !medicineName || !dose}>
             {loading ? <CircularProgress size={24} /> : 'Create Reminders'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
     </>

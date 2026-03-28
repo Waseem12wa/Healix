@@ -19,6 +19,7 @@ import DescriptionIcon from '@mui/icons-material/Description'
 import { motion, AnimatePresence } from 'framer-motion'
 import BackButton from '../ui/BackButton'
 import { summarizeMedicalRecord } from '../utils/medicalRecordClient'
+import { logPatientActivity } from '../services/patientService'
 
 export default function HealthRecordSummarization() {
     const theme = useTheme()
@@ -48,6 +49,19 @@ export default function HealthRecordSummarization() {
                 setSummary(result.summary || 'Summary generated successfully')
                 setEntities(result.entities)
                 setMedicalSummary(result.medical_summary || null)
+                try {
+                    await logPatientActivity({
+                        category: 'other',
+                        title: 'Uploaded health record',
+                        details: `Generated summary for ${f.name}`,
+                        metadata: {
+                            fileName: f.name,
+                            fileType: f.type || 'unknown',
+                        },
+                    })
+                } catch {
+                    // Do not block user flow if activity logging fails.
+                }
             } else {
                 setError(result.error || 'Failed to summarize medical record')
                 setMedicalSummary(null)

@@ -6,12 +6,14 @@ import HealthAssistant from '../pages/HealthAssistant'
 import footerBg from '../images/footer.jpg'
 import { useEffect, useRef } from 'react'
 import { getCurrentUserRole, isRouteAllowed, getDashboardPath } from '../utils/roleRoutes'
+import { logPatientActivity } from '../services/patientService'
 
 export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const userRole = getCurrentUserRole()
   const previousPathRef = useRef<string>(location.pathname)
+  const lastActivityPathRef = useRef<string>('')
 
   // Validate route on location change (handles both programmatic and browser navigation)
   useEffect(() => {
@@ -42,6 +44,35 @@ export function AppLayout() {
       }
     }
   }, [location.pathname, userRole, navigate])
+
+  // Track section visits for patient and doctor real-time dashboard analytics.
+  useEffect(() => {
+    if (userRole !== 'patient' && userRole !== 'doctor') {
+      return
+    }
+
+    const currentPath = location.pathname
+    const ignoredPaths = ['/', '/about', '/contact', '/login', '/signup', '/forgot-password', '/reset-password']
+    if (ignoredPaths.includes(currentPath)) {
+      return
+    }
+
+    if (lastActivityPathRef.current === currentPath) {
+      return
+    }
+
+    lastActivityPathRef.current = currentPath
+
+    logPatientActivity({
+      category: 'other',
+      title: userRole === 'doctor' ? 'Doctor visited section' : 'Visited section',
+      details: `Navigated to ${currentPath}`,
+      metadata: { path: currentPath, role: userRole },
+    }).catch(() => {
+      // Navigation should remain uninterrupted if logging fails.
+    })
+  }, [location.pathname, userRole])
+
   return (
     <Box display="flex" flexDirection="column" minHeight="100vh">
       <AppBar
