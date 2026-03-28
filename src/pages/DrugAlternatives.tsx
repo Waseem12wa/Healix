@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import PaymentModal from '../components/PaymentModal'
+import DoctorReviewPrompt from '../components/DoctorReviewPrompt'
 import type { Medicine } from '../services/paymentService'
 import { correctDrugTerm } from '../utils/medicalAutoCorrect'
 
@@ -307,6 +308,15 @@ export default function DrugAlternatives() {
                     )}
 
                     {/* Results */}
+                    {result && result.alternatives.length > 0 && (
+                        <DoctorReviewPrompt
+                            feature="alternatives"
+                            patientQuery={result.matched_name || result.medicine || query}
+                            aiResultText={result.alternatives.map((alt) => `${alt.name} (${alt.similarity}% similar)`).join('\n')}
+                            aiResultData={result}
+                        />
+                    )}
+
                     {result && result.alternatives.length > 0 && (
                         <Card sx={{
                             borderRadius: '24px',

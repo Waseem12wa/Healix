@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import { sendChatMessage } from '../utils/healthAssistantClient'
+import DoctorReviewPrompt from '../components/DoctorReviewPrompt'
 
 type AssistantAction = { label: string; path: string }
 type Msg = { id: string; role: 'user' | 'bot'; text: string; actions?: AssistantAction[] }
@@ -186,6 +187,14 @@ export default function AIChatbot() {
   }
 
   const history = useMemo(() => messages.filter((m) => m.role === 'user').slice(-10).map((m, i) => ({ id: m.id, title: m.text.slice(0, 24) || `Chat ${i + 1}` })), [messages])
+  const latestBotMessage = useMemo(() => {
+    const botMessages = messages.filter((message) => message.role === 'bot')
+    return botMessages.length > 0 ? botMessages[botMessages.length - 1] : null
+  }, [messages])
+  const latestUserMessage = useMemo(() => {
+    const userMessages = messages.filter((message) => message.role === 'user')
+    return userMessages.length > 0 ? userMessages[userMessages.length - 1] : null
+  }, [messages])
 
   return (
     <Box sx={{
@@ -503,6 +512,15 @@ export default function AIChatbot() {
               </Box>
             </Card>
           </Box>
+
+          {latestBotMessage && (
+            <DoctorReviewPrompt
+              feature="ai-assistant"
+              patientQuery={latestUserMessage?.text || 'AI consultation'}
+              aiResultText={latestBotMessage.text}
+              aiResultData={latestBotMessage}
+            />
+          )}
         </Stack>
       </Box>
     </Box>

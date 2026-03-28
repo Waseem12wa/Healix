@@ -244,6 +244,7 @@ export default function DoctorProfile() {
         const nextDoctorName = profile.fullName?.trim() || localStorage.getItem('userName') || 'Doctor'
         setDoctorName(nextDoctorName)
         localStorage.setItem('userName', nextDoctorName)
+        localStorage.setItem('profileCompleted', 'true')
         setSuccess('Profile saved successfully! You are now visible to patients.')
         setTimeout(() => {
           navigate('/doctor-dashboard')

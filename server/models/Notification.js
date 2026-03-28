@@ -13,7 +13,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['appointment_request', 'appointment_approved', 'appointment_rejected', 'appointment_cancelled'],
+    enum: ['appointment_request', 'appointment_approved', 'appointment_rejected', 'appointment_cancelled', 'doctor_review_request', 'doctor_review_result'],
     required: [true, 'Notification type is required']
   },
   title: {
@@ -28,6 +28,11 @@ const notificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Appointment',
     default: null
+  },
+  reviewRequestId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DoctorReviewRequest',
+    default: null,
   },
   read: {
     type: Boolean,

@@ -39,6 +39,9 @@ const sanitizeProfilePayload = (payload = {}) => {
 
   const profileUpdate = {};
   if (typeof patientProfile.profileImage === 'string') profileUpdate.profileImage = patientProfile.profileImage;
+  if (typeof patientProfile.assignedDoctorId === 'string' || patientProfile.assignedDoctorId === null) {
+    profileUpdate.assignedDoctorId = patientProfile.assignedDoctorId;
+  }
   if (typeof patientProfile.age === 'number' || typeof patientProfile.age === 'string') {
     const age = Number(patientProfile.age);
     if (Number.isFinite(age)) profileUpdate.age = age;
@@ -51,14 +54,62 @@ const sanitizeProfilePayload = (payload = {}) => {
   return next;
 };
 
+const isPatientProfileCompleted = (user) => {
+  const profile = user?.patientProfile || {};
+  const age = Number(profile.age);
+
+  return Boolean(
+    String(user?.userName || '').trim() &&
+    String(user?.email || '').trim() &&
+    Number.isFinite(age) &&
+    age > 0 &&
+    Boolean(profile.assignedDoctorId) &&
+    String(profile.gender || '').trim() &&
+    String(profile.mobileNumber || '').trim()
+  );
+};
+
+const isProfileCompletedForUser = (user) => {
+  if (!user) return false;
+
+  if (user.role === 'doctor') {
+    return Boolean(user.doctorProfile?.profileCompleted);
+  }
+
+  if (user.role === 'patient') {
+    return isPatientProfileCompleted(user);
+  }
+
+  return true;
+};
+
 const serializeUserForClient = (user) => ({
+  
   id: String(user._id),
   email: user.email,
   role: user.role,
   userName: user.userName,
   createdAt: user.createdAt,
-  patientProfile: user.patientProfile || {},
+  patientProfile: {
+    ...(user.patientProfile || {}),
+    assignedDoctorId: user?.patientProfile?.assignedDoctorId
+      ? String(user.patientProfile.assignedDoctorId)
+      : null,
+  },
+  profileCompleted: isProfileCompletedForUser(user),
 });
+
+const ensureDatabaseConnected = (res) => {
+  if (mongoose.connection.readyState === 1) {
+    return true;
+  }
+
+  return res.status(503).json({
+    success: false,
+    message: 'Database is currently unavailable. Please start MongoDB and try again.',
+    code: 'DB_UNAVAILABLE',
+  });
+};
 
 /**
  * @route   POST /api/auth/signup
@@ -67,6 +118,10 @@ const serializeUserForClient = (user) => ({
  */
 router.post('/signup', async (req, res) => {
   try {
+    if (!ensureDatabaseConnected(res)) {
+      return;
+    }
+
     const { email, password, role, userName } = req.body;
 
     // Validate email
@@ -223,7 +278,8 @@ router.post('/signup', async (req, res) => {
         email: user.email,
         role: user.role,
         userName: user.userName,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        profileCompleted: isProfileCompletedForUser(user),
       }
     });
 
@@ -282,6 +338,10 @@ router.post('/signup', async (req, res) => {
  */
 router.post('/login', async (req, res) => {
   try {
+    if (!ensureDatabaseConnected(res)) {
+      return;
+    }
+
     const { email, password, role } = req.body;
 
     // Log the incoming request
@@ -410,7 +470,8 @@ router.post('/login', async (req, res) => {
         email: user.email,
         role: user.role,
         userName: userName,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        profileCompleted: isProfileCompletedForUser(user),
       }
     });
 
@@ -531,6 +592,38 @@ router.get('/me', requireAuth, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/auth/doctors/available
+ * @desc    Get list of available doctors for patient assignment
+ * @access  Private (Patient)
+ */
+router.get('/doctors/available', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'patient') {
+      return res.status(403).json({ success: false, message: 'Only patients can access doctor assignment list' });
+    }
+
+    const doctors = await User.find({
+      role: 'doctor',
+      'doctorProfile.profileCompleted': true,
+    })
+      .select('_id email userName doctorProfile.fullName doctorProfile.specialization doctorProfile.city')
+      .sort({ 'doctorProfile.fullName': 1, userName: 1, email: 1 });
+
+    const data = doctors.map((doctor) => ({
+      id: String(doctor._id),
+      name: doctor.doctorProfile?.fullName || doctor.userName || doctor.email,
+      email: doctor.email,
+      specialization: doctor.doctorProfile?.specialization || '',
+      city: doctor.doctorProfile?.city || '',
+    }));
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
  * @route   PUT /api/auth/me/profile
  * @desc    Update patient profile fields and persist permanently
  * @access  Private
@@ -543,6 +636,30 @@ router.put('/me/profile', requireAuth, async (req, res) => {
     }
 
     const incoming = sanitizeProfilePayload(req.body || {});
+
+    if (Object.prototype.hasOwnProperty.call(incoming.patientProfile || {}, 'assignedDoctorId')) {
+      const nextAssignedDoctorId = incoming.patientProfile.assignedDoctorId;
+
+      if (nextAssignedDoctorId === '' || nextAssignedDoctorId === null) {
+        incoming.patientProfile.assignedDoctorId = null;
+      } else {
+        if (!mongoose.Types.ObjectId.isValid(String(nextAssignedDoctorId))) {
+          return res.status(400).json({ success: false, message: 'Invalid doctor selection', field: 'assignedDoctorId' });
+        }
+
+        const doctor = await User.findOne({
+          _id: String(nextAssignedDoctorId),
+          role: 'doctor',
+          'doctorProfile.profileCompleted': true,
+        }).select('_id');
+
+        if (!doctor) {
+          return res.status(400).json({ success: false, message: 'Selected doctor is not available', field: 'assignedDoctorId' });
+        }
+
+        incoming.patientProfile.assignedDoctorId = doctor._id;
+      }
+    }
 
     if (incoming.userName) {
       const validation = validateUserName(incoming.userName);

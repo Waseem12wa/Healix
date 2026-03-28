@@ -17,6 +17,7 @@ import sideEffectsRoutes from './routes/sideEffects.js';
 import reminderRoutes from './routes/reminders.js';
 import healthAssistantRoutes from './routes/healthAssistant.js';
 import paymentRoutes from './routes/payments.js';
+import reviewRoutes from './routes/reviews.js';
 import { reminderEmailJob } from './jobs/reminderEmailJob.js';
 
 dotenv.config();
@@ -46,6 +47,7 @@ app.use('/api/side-effects', sideEffectsRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/assistant', healthAssistantRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Test endpoint
 app.get('/', (req, res) => {
@@ -179,6 +181,34 @@ async function waitForMicroservices(maxRetries = 60, delayMs = 2000) {
 // Connect to MongoDB and Start Server
 const startServer = async () => {
   let dbConnected = false;
+  let reminderJobStarted = false;
+
+  const startReminderJobIfNeeded = () => {
+    if (reminderJobStarted) return;
+    cron.schedule('* * * * *', reminderEmailJob);
+    reminderJobStarted = true;
+    console.log('⏰ Reminder email job scheduled (runs every minute)\n');
+  };
+
+  const scheduleMongoReconnect = () => {
+    const retryMs = 5000;
+    const timer = setInterval(async () => {
+      if (dbConnected) {
+        clearInterval(timer);
+        return;
+      }
+
+      try {
+        await connectDB();
+        dbConnected = true;
+        console.log('✅ MongoDB connection restored. DB-backed routes are now available.');
+        startReminderJobIfNeeded();
+        clearInterval(timer);
+      } catch (error) {
+        console.log(`⏳ Retrying MongoDB connection in ${retryMs / 1000}s... (${error.message})`);
+      }
+    }, retryMs);
+  };
 
   // Try DB first, but do not hard-exit if unavailable.
   try {
@@ -187,6 +217,7 @@ const startServer = async () => {
   } catch (error) {
     console.error(`⚠️ MongoDB unavailable at startup: ${error.message}`);
     console.error('⚠️ Continuing API startup in degraded mode (DB-backed routes may fail).');
+    scheduleMongoReconnect();
   }
 
   // Start Server immediately; microservice readiness checks run in background.
@@ -199,8 +230,7 @@ const startServer = async () => {
 
     // Start reminder email cron job only when DB is available
     if (dbConnected) {
-      cron.schedule('* * * * *', reminderEmailJob);
-      console.log('⏰ Reminder email job scheduled (runs every minute)\n');
+      startReminderJobIfNeeded();
     } else {
       console.log('⚠️ Reminder email job disabled until MongoDB is available\n');
     }

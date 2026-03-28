@@ -30,6 +30,11 @@ const userSchema = new mongoose.Schema({
       type: String,
       default: ''
     },
+    assignedDoctorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     age: {
       type: Number,
       min: 0,

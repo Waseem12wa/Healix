@@ -21,6 +21,7 @@ export type PatientProfilePayload = {
   email?: string;
   patientProfile?: {
     profileImage?: string;
+    assignedDoctorId?: string | null;
     age?: number;
     gender?: string;
     mobileNumber?: string;
@@ -28,9 +29,22 @@ export type PatientProfilePayload = {
   };
 };
 
+export type AvailableDoctor = {
+  id: string;
+  name: string;
+  email: string;
+  specialization?: string;
+  city?: string;
+};
+
 export const getMyProfile = async () => {
   const response = await api.get('/me');
   return response.data?.data;
+};
+
+export const getAvailableDoctors = async (): Promise<AvailableDoctor[]> => {
+  const response = await api.get('/doctors/available');
+  return response.data?.data || [];
 };
 
 export const updateMyProfile = async (payload: PatientProfilePayload) => {

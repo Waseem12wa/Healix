@@ -46,6 +46,14 @@ export const roleRoutes: RouteConfig[] = [
   { path: '/doctor-dashboard', allowedRoles: ['doctor'] },
   { path: '/doctor-profile', allowedRoles: ['doctor'] },
   { path: '/doctor-history', allowedRoles: ['doctor'] },
+  { path: '/doctor-assigned-patients', allowedRoles: ['doctor'] },
+  { path: '/doctor-reviews/ddi', allowedRoles: ['doctor'] },
+  { path: '/doctor-reviews/dfi', allowedRoles: ['doctor'] },
+  { path: '/doctor-reviews/alternatives', allowedRoles: ['doctor'] },
+  { path: '/doctor-reviews/side-effects', allowedRoles: ['doctor'] },
+  { path: '/doctor-reviews/ai-assistant', allowedRoles: ['doctor'] },
+  { path: '/doctor-reviews/medication-pharmacy', allowedRoles: ['doctor'] },
+  { path: '/doctor-reviews/health-summary', allowedRoles: ['doctor'] },
   
   // Admin-specific routes
   { path: '/admin', allowedRoles: ['admin'] },

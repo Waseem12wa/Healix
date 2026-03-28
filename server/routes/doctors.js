@@ -457,5 +457,55 @@ router.get('/dashboard-live', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/doctors/assigned-patients
+ * @desc    Get patients assigned to authenticated doctor
+ * @access  Private (Doctor only)
+ */
+router.get('/assigned-patients', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'doctor') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only doctors can access assigned patients',
+      });
+    }
+
+    const doctor = await User.findById(req.user.id).select('_id');
+    if (!doctor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Doctor not found',
+      });
+    }
+
+    const assignedPatients = await User.find({
+      role: 'patient',
+      'patientProfile.assignedDoctorId': doctor._id,
+    })
+      .select('email userName patientProfile.age patientProfile.gender patientProfile.mobileNumber patientProfile.bio')
+      .sort({ updatedAt: -1, createdAt: -1 });
+
+    const data = assignedPatients.map((patient) => ({
+      id: String(patient._id),
+      patientName: patient.userName || patient.email,
+      email: patient.email,
+      age: patient.patientProfile?.age ?? null,
+      gender: patient.patientProfile?.gender || '',
+      mobileNumber: patient.patientProfile?.mobileNumber || '',
+      bio: patient.patientProfile?.bio || '',
+    }));
+
+    return res.json({ success: true, count: data.length, data });
+  } catch (error) {
+    console.error('❌ Error fetching assigned patients:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching assigned patients',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
 export default router;
 

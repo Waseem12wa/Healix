@@ -78,7 +78,22 @@ export type DoctorDashboardLiveData = {
   }>
 }
 
+export type AssignedPatientItem = {
+  id: string
+  patientName: string
+  email: string
+  age?: number | null
+  gender?: string
+  mobileNumber?: string
+  bio?: string
+}
+
 export const getDoctorDashboardLive = async (): Promise<DoctorDashboardLiveData> => {
   const response = await api.get('/dashboard-live')
   return response.data?.data
+}
+
+export const getAssignedPatients = async (): Promise<AssignedPatientItem[]> => {
+  const response = await api.get('/assigned-patients')
+  return response.data?.data || []
 }

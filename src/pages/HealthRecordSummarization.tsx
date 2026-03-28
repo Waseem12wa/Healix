@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import BackButton from '../ui/BackButton'
 import { summarizeMedicalRecord } from '../utils/medicalRecordClient'
 import { logPatientActivity } from '../services/patientService'
+import DoctorReviewPrompt from '../components/DoctorReviewPrompt'
 
 export default function HealthRecordSummarization() {
     const theme = useTheme()
@@ -308,6 +309,18 @@ export default function HealthRecordSummarization() {
                                 exit={{ opacity: 0, y: -20 }}
                                 transition={{ duration: 0.3 }}
                             >
+                                <DoctorReviewPrompt
+                                    feature="health-summary"
+                                    patientQuery={fileName || 'Uploaded health record summary'}
+                                    aiResultText={summary}
+                                    aiResultData={{
+                                        fileName,
+                                        summary,
+                                        entities,
+                                        medicalSummary,
+                                    }}
+                                />
+
                                 <Card sx={{
                                     borderRadius: '24px',
                                     boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.05)}`,

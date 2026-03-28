@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "npx concurrently -n UI,API -c cyan,green \"npm:dev:ui\" \"npm:start:backend\"",
+    "dev": "node scripts/ensure-mongodb.cjs && npx concurrently -n UI,API -c cyan,green \"npm:dev:ui\" \"npm:start:backend\"",
     "dev:ui": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",

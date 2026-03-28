@@ -20,7 +20,14 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
 import SaveIcon from '@mui/icons-material/Save'
 import HistoryIcon from '@mui/icons-material/History'
 import { useNavigate } from 'react-router-dom'
-import { getMyProfile, getPatientActivities, updateMyProfile, uploadMyProfileImage } from '../services/patientService'
+import {
+  getAvailableDoctors,
+  getMyProfile,
+  getPatientActivities,
+  updateMyProfile,
+  uploadMyProfileImage,
+  type AvailableDoctor,
+} from '../services/patientService'
 
 type FormState = {
   userName: string
@@ -28,6 +35,7 @@ type FormState = {
   age: string
   gender: string
   mobileNumber: string
+  assignedDoctorId: string
   profileImage: string
   bio: string
 }
@@ -38,6 +46,7 @@ const defaultForm: FormState = {
   age: '',
   gender: '',
   mobileNumber: '',
+  assignedDoctorId: '',
   profileImage: '',
   bio: '',
 }
@@ -51,6 +60,7 @@ export default function Profile() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [form, setForm] = useState<FormState>(defaultForm)
   const [activities, setActivities] = useState<any[]>([])
+  const [availableDoctors, setAvailableDoctors] = useState<AvailableDoctor[]>([])
 
   useEffect(() => {
     const role = localStorage.getItem('authRole')
@@ -66,12 +76,17 @@ export default function Profile() {
           getMyProfile(),
           getPatientActivities(undefined, 20),
         ])
+
+        const doctors = await getAvailableDoctors().catch(() => [])
+        setAvailableDoctors(Array.isArray(doctors) ? doctors : [])
+
         setForm({
           userName: profile?.userName || '',
           email: profile?.email || '',
           age: profile?.patientProfile?.age ? String(profile.patientProfile.age) : '',
           gender: profile?.patientProfile?.gender || '',
           mobileNumber: profile?.patientProfile?.mobileNumber || '',
+          assignedDoctorId: profile?.patientProfile?.assignedDoctorId || '',
           profileImage: profile?.patientProfile?.profileImage || '',
           bio: profile?.patientProfile?.bio || '',
         })
@@ -139,6 +154,7 @@ export default function Profile() {
           age: form.age ? Number(form.age) : undefined,
           gender: form.gender,
           mobileNumber: form.mobileNumber,
+          assignedDoctorId: form.assignedDoctorId || null,
           profileImage: form.profileImage,
           bio: form.bio,
         },
@@ -148,6 +164,15 @@ export default function Profile() {
       localStorage.setItem('userName', updated?.userName || form.userName)
       localStorage.setItem('userEmail', updated?.email || form.email)
       localStorage.setItem('profileImage', updated?.patientProfile?.profileImage || form.profileImage || '')
+      const completedFromApi = typeof updated?.profileCompleted === 'boolean' ? updated.profileCompleted : null
+      const completedFallback = Boolean(
+        (updated?.userName || form.userName || '').trim() &&
+        Number(form.age) > 0 &&
+        (form.gender || '').trim() &&
+        (form.assignedDoctorId || '').trim() &&
+        (form.mobileNumber || '').trim()
+      )
+      localStorage.setItem('profileCompleted', (completedFromApi ?? completedFallback) ? 'true' : 'false')
 
       setSuccess('Profile saved successfully')
     } catch (err: any) {
@@ -245,6 +270,28 @@ export default function Profile() {
                     value={form.mobileNumber}
                     onChange={(e) => updateField('mobileNumber', e.target.value)}
                   />
+
+                  <TextField
+                    label="Assigned Doctor"
+                    select
+                    fullWidth
+                    required
+                    value={form.assignedDoctorId}
+                    onChange={(e) => updateField('assignedDoctorId', e.target.value)}
+                    helperText={
+                      availableDoctors.length
+                        ? 'Choose one registered doctor to complete your profile'
+                        : 'No doctors available right now. Please try again later.'
+                    }
+                  >
+                    {availableDoctors.map((doctor) => (
+                      <MenuItem key={doctor.id} value={doctor.id}>
+                        {doctor.name}
+                        {doctor.specialization ? ` - ${doctor.specialization}` : ''}
+                        {doctor.city ? ` (${doctor.city})` : ''}
+                      </MenuItem>
+                    ))}
+                  </TextField>
 
                   <TextField
                     label="Bio (optional)"

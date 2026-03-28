@@ -49,6 +49,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
+import DoctorReviewPrompt from '../components/DoctorReviewPrompt'
 import { getMedicineFilterOptions, getMedicines } from '../services/paymentService'
 import type { Medicine, MedicineFilterOptions, MedicineQueryOptions } from '../services/paymentService'
 import { getCart, addToCart, removeFromCart, clearCart, syncCartFromServer } from '../services/cartService'
@@ -498,6 +499,23 @@ export default function MedicineShop() {
             {category && <Chip label={`Category: ${category}`} size="small" color="success" variant="outlined" />}
           </Stack>
         </Stack>
+
+        {medicines.length > 0 && (
+          <DoctorReviewPrompt
+            feature="medication-pharmacy"
+            patientQuery={searchQuery || formulaQuery || typeQuery || category || 'Medicine shop search'}
+            aiResultText={medicines
+              .slice(0, 10)
+              .map((medicine) => `${medicine.medicineName} - ${formatPkr(medicine.sellingPrice)} - stock ${medicine.quantity}`)
+              .join('\n')}
+            aiResultData={{
+              filters: { searchQuery, formulaQuery, typeQuery, category },
+              page,
+              totalCount,
+              medicines: medicines.slice(0, 20),
+            }}
+          />
+        )}
 
         {/* Medicines Table Layout */}
         {loading ? (

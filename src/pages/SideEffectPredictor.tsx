@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import { correctDrugTerm } from '../utils/medicalAutoCorrect'
+import DoctorReviewPrompt from '../components/DoctorReviewPrompt'
 
 type SideEffect = {
   effect: string
@@ -293,6 +294,15 @@ export default function SideEffectPredictor() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
+              <DoctorReviewPrompt
+                feature="side-effects"
+                patientQuery={medicines.join(', ')}
+                aiResultText={predictions
+                  .map((item) => `${item.medicine}: ${item.success ? `${item.sideEffects.length} side effects detected` : item.error || 'failed'}`)
+                  .join('\n')}
+                aiResultData={predictions}
+              />
+
               <Stack spacing={2}>
                 {predictions.map((prediction, idx) => (
                   <motion.div

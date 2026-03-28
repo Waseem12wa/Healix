@@ -30,6 +30,7 @@ import { useSearchParams } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import { correctDrugTerm } from '../utils/medicalAutoCorrect'
 import { logPatientActivity } from '../services/patientService'
+import DoctorReviewPrompt from '../components/DoctorReviewPrompt'
 
 type Interaction = {
   drug1: string
@@ -178,6 +179,13 @@ export default function DrugInteractionChecker() {
     results.forEach((r) => { counts[r.severity] += 1 })
     const total = results.length
     return { total, ...counts }
+  }, [results])
+
+  const reviewResultText = useMemo(() => {
+    if (results.length === 0) return ''
+    return results
+      .map((item) => `${item.drug1} + ${item.drug2}: ${item.severityLabel} (${item.percentage}%)`)
+      .join('\n')
   }, [results])
 
   const severityColor = (s: Interaction['severity']) => {
@@ -504,6 +512,15 @@ export default function DrugInteractionChecker() {
           )}
 
           {/* Results Card */}
+          {results.length > 0 && (
+            <DoctorReviewPrompt
+              feature="ddi"
+              patientQuery={drugs.join(', ')}
+              aiResultText={reviewResultText}
+              aiResultData={results}
+            />
+          )}
+
           {results.length > 0 && (
             <Card sx={{
               borderRadius: '24px',

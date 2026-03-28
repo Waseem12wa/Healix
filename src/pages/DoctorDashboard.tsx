@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormHelperText,
   FormControl,
   IconButton,
   InputAdornment,
@@ -52,11 +53,13 @@ import CancelIcon from '@mui/icons-material/Cancel'
 import RecommendIcon from '@mui/icons-material/Recommend'
 import GroupIcon from '@mui/icons-material/Group'
 import TrackChangesIcon from '@mui/icons-material/TrackChanges'
+import EditNoteIcon from '@mui/icons-material/EditNote'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNotifications } from '../hooks/useNotifications'
 import { clearAuthData } from '../utils/auth'
 import { getMyProfile, logPatientActivity } from '../services/patientService'
 import { getDoctorDashboardLive, type DoctorDashboardLiveData } from '../services/doctorService'
+import { getMyReviewRequests, takeReviewAction, type DoctorReviewRequest } from '../services/reviewService'
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { LocalizationProvider, TimePicker, DatePicker } from '@mui/x-date-pickers'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
@@ -118,6 +121,8 @@ type FeatureItem = {
   description: string
   icon: React.ReactElement
   isSetReminder?: boolean
+  href?: string
+  reviewFeature?: 'ddi' | 'dfi' | 'alternatives' | 'side-effects' | 'ai-assistant' | 'medication-pharmacy' | 'health-summary'
 }
 
 export default function DoctorDashboard() {
@@ -130,6 +135,9 @@ export default function DoctorDashboard() {
   const [loadingDashboard, setLoadingDashboard] = useState(true)
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
   const [reminderModalOpen, setReminderModalOpen] = useState(false)
+  const [reviewRequests, setReviewRequests] = useState<DoctorReviewRequest[]>([])
+  const [reviewActionLoadingId, setReviewActionLoadingId] = useState<string | null>(null)
+  const [modifyTextById, setModifyTextById] = useState<Record<string, string>>({})
   const dashboardLoggedRef = useRef(false)
 
   const { unreadCount } = useNotifications()
@@ -155,39 +163,59 @@ export default function DoctorDashboard() {
       isSetReminder: true,
     },
     {
+      label: 'Assigned Patient',
+      description: 'Open the list of patients who selected you in their profile.',
+      icon: <GroupIcon sx={{ color: '#06D6A0' }} />,
+      href: '/doctor-assigned-patients',
+    },
+    {
       label: 'Drug Interaction Checker',
       description: 'Check interactions between medications in seconds.',
       icon: <ScienceIcon sx={{ color: '#00B4D8' }} />,
+      reviewFeature: 'ddi',
+      href: '/doctor-reviews/ddi',
     },
     {
       label: 'Drug-Food Interaction',
       description: 'See how foods may affect your prescriptions.',
       icon: <FastfoodIcon sx={{ color: '#06D6A0' }} />,
+      reviewFeature: 'dfi',
+      href: '/doctor-reviews/dfi',
     },
     {
       label: 'Drug Alternatives',
       description: 'Explore safer or more affordable alternatives.',
       icon: <SwapHorizIcon sx={{ color: '#0096C7' }} />,
+      reviewFeature: 'alternatives',
+      href: '/doctor-reviews/alternatives',
     },
     {
       label: 'Side Effect Predictor',
       description: 'Predict potential side effects from medications.',
       icon: <TrendingUpIcon sx={{ color: '#EF476F' }} />,
+      reviewFeature: 'side-effects',
+      href: '/doctor-reviews/side-effects',
     },
     {
       label: 'Medicine Shop',
       description: 'Purchase medicines directly from our store.',
       icon: <ShoppingCartIcon sx={{ color: '#FFB703' }} />,
+      reviewFeature: 'medication-pharmacy',
+      href: '/doctor-reviews/medication-pharmacy',
     },
     {
       label: 'AI Health Assistant',
       description: 'Chat with an AI to understand your health data.',
       icon: <SmartToyIcon sx={{ color: '#90E0EF' }} />,
+      reviewFeature: 'ai-assistant',
+      href: '/doctor-reviews/ai-assistant',
     },
     {
       label: 'Record Summarization',
       description: 'Turn complex reports into clear summaries.',
       icon: <SummarizeIcon sx={{ color: '#00B4D8' }} />,
+      reviewFeature: 'health-summary',
+      href: '/doctor-reviews/health-summary',
     },
     {
       label: 'Doctor Appointments',
@@ -208,12 +236,14 @@ export default function DoctorDashboard() {
 
   const loadLiveDashboard = async () => {
     try {
-      const [authProfile, liveData] = await Promise.all([
+      const [authProfile, liveData, reviews] = await Promise.all([
         getMyProfile().catch(() => null),
         getDoctorDashboardLive().catch(() => EMPTY_DASHBOARD),
+        getMyReviewRequests({ status: 'pending', limit: 100 }).catch(() => []),
       ])
 
       setDashboardData(liveData || EMPTY_DASHBOARD)
+      setReviewRequests(Array.isArray(reviews) ? reviews : [])
       const resolvedName = liveData?.doctor?.name || localStorage.getItem('userName') || 'Doctor'
       setDoctorName(resolvedName)
       localStorage.setItem('userName', resolvedName)
@@ -325,6 +355,34 @@ export default function DoctorDashboard() {
     },
   ]
 
+  const featureLabelByCode: Record<string, string> = {
+    ddi: 'Drug-Drug Interaction',
+    dfi: 'Drug-Food Interaction',
+    alternatives: 'Drug Alternatives',
+    'side-effects': 'Side Effects',
+    'ai-assistant': 'AI Health Assistant',
+    'medication-pharmacy': 'Medication / Pharmacy',
+    'health-summary': 'Record Summarization',
+  }
+
+  const handleReviewAction = async (item: DoctorReviewRequest, action: 'approved' | 'rejected' | 'modified') => {
+    try {
+      setReviewActionLoadingId(item.id)
+      const modifiedText = modifyTextById[item.id] || ''
+      const next = await takeReviewAction(item.id, {
+        action,
+        doctorActionMessage: action === 'modified' ? 'Result modified by doctor' : `Result ${action} by doctor`,
+        modifiedResultText: action === 'modified' ? modifiedText : undefined,
+      })
+
+      setReviewRequests((prev) => prev.filter((request) => request.id !== next.id))
+    } catch (error) {
+      console.error('Failed to process review action:', error)
+    } finally {
+      setReviewActionLoadingId(null)
+    }
+  }
+
   const moduleChartData = [
     { module: 'DDI', value: dashboardData.monitoring.moduleUsage.ddi },
     { module: 'DFI', value: dashboardData.monitoring.moduleUsage.dfi },
@@ -335,6 +393,15 @@ export default function DoctorDashboard() {
     { module: 'Appointments', value: dashboardData.monitoring.moduleUsage.appointments },
     { module: 'Reminders', value: dashboardData.monitoring.moduleUsage.reminders },
   ]
+
+  const pendingByFeature = useMemo(() => {
+    const bucket: Record<string, number> = {}
+    for (const item of reviewRequests) {
+      const key = item.feature
+      bucket[key] = (bucket[key] || 0) + 1
+    }
+    return bucket
+  }, [reviewRequests])
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -480,11 +547,22 @@ export default function DoctorDashboard() {
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 2, md: 3 } }}>
                 {filteredFeatureItems.map((item) => (
                   <motion.div key={item.label} variants={cardVariants} whileHover="hover">
+                    {(() => {
+                      const pendingCount = item.reviewFeature ? (pendingByFeature[item.reviewFeature] || 0) : 0
+                      const hasPending = pendingCount > 0
+
+                      return (
                     <Card
                       onClick={() => {
                         if (item.isSetReminder) {
                           setReminderModalOpen(true)
                           recordActivity('Opened reminder modal', 'Started preparing patient medication recommendations', { source: 'doctor-dashboard' })
+                          return
+                        }
+
+                        if (item.href) {
+                          recordActivity('Opened assigned patients', `Navigated to ${item.href}`, { source: 'doctor-dashboard', path: item.href })
+                          navigate(item.href)
                         }
                       }}
                       sx={{
@@ -494,16 +572,16 @@ export default function DoctorDashboard() {
                         flexDirection: 'column',
                         justifyContent: 'space-between',
                         overflow: 'hidden',
-                        bgcolor: '#FFFFFF',
+                        bgcolor: hasPending ? 'rgba(254, 243, 199, 0.75)' : '#FFFFFF',
                         border: '1px solid',
-                        borderColor: '#E2E8F0',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        borderColor: hasPending ? '#F59E0B' : '#E2E8F0',
+                        boxShadow: hasPending ? '0 6px 18px rgba(245, 158, 11, 0.25)' : '0 2px 8px rgba(0,0,0,0.04)',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        cursor: item.isSetReminder ? 'pointer' : 'default',
+                        cursor: item.isSetReminder || item.href ? 'pointer' : 'default',
                         '&:hover': {
                           transform: 'translateY(-6px)',
-                          borderColor: '#00B4D8',
-                          boxShadow: '0 12px 32px rgba(0, 180, 216, 0.2)',
+                          borderColor: hasPending ? '#D97706' : '#00B4D8',
+                          boxShadow: hasPending ? '0 12px 32px rgba(245, 158, 11, 0.28)' : '0 12px 32px rgba(0, 180, 216, 0.2)',
                         },
                       }}
                     >
@@ -515,11 +593,25 @@ export default function DoctorDashboard() {
                           <Typography sx={{ fontSize: '1.0625rem', fontWeight: 700, color: '#1A1A2E', lineHeight: 1.3 }}>{item.label}</Typography>
                         </Stack>
                         <Typography sx={{ fontSize: '0.875rem', color: '#64748B', lineHeight: 1.6 }}>{item.description}</Typography>
+
+                        {hasPending && (
+                          <Chip
+                            label={`${pendingCount} new patient request${pendingCount > 1 ? 's' : ''}`}
+                            size="small"
+                            sx={{ mt: 1.5, fontWeight: 700, bgcolor: '#FEF3C7', color: '#92400E' }}
+                          />
+                        )}
                       </CardContent>
                       <Box sx={{ px: { xs: 3, md: 3.5 }, pb: 3, display: 'flex', justifyContent: 'flex-start' }}>
-                        <Chip label="Open tool" size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(0, 180, 216, 0.1)', color: '#00B4D8', height: 28, fontSize: '0.8125rem' }} />
+                        <Chip
+                          label={item.reviewFeature ? 'Open requests' : 'Open tool'}
+                          size="small"
+                          sx={{ fontWeight: 600, bgcolor: 'rgba(0, 180, 216, 0.1)', color: '#00B4D8', height: 28, fontSize: '0.8125rem' }}
+                        />
                       </Box>
                     </Card>
+                      )
+                    })()}
                   </motion.div>
                 ))}
               </Box>
@@ -551,6 +643,99 @@ export default function DoctorDashboard() {
                   </motion.div>
                 ))}
               </Box>
+
+              <motion.div variants={cardVariants}>
+                <Card sx={{ boxShadow: 2, borderRadius: 2, bgcolor: '#ffffff' }}>
+                  <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
+                    <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 2 }}>
+                      <EditNoteIcon sx={{ color: '#F59E0B' }} />
+                      <Typography sx={{ fontSize: { xs: '1.2rem', md: '1.45rem' }, fontWeight: 800, color: '#1A1A2E' }}>
+                        Patient Review Requests ({reviewRequests.length})
+                      </Typography>
+                    </Stack>
+
+                    {reviewRequests.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">No pending review requests right now.</Typography>
+                    ) : (
+                      <Stack spacing={1.5}>
+                        {reviewRequests.map((item) => {
+                          const modifyText = modifyTextById[item.id] || ''
+                          const isBusy = reviewActionLoadingId === item.id
+
+                          return (
+                            <Card key={item.id} variant="outlined" sx={{ borderRadius: 2 }}>
+                              <CardContent>
+                                <Stack spacing={1.2}>
+                                  <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={0.75}>
+                                    <Typography sx={{ fontWeight: 700, color: '#1A1A2E' }}>
+                                      {item.patientName}
+                                    </Typography>
+                                    <Chip
+                                      label={featureLabelByCode[item.feature] || item.featureLabel || item.feature}
+                                      size="small"
+                                      sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }}
+                                    />
+                                  </Stack>
+
+                                  <Typography variant="body2" color="text.secondary">
+                                    Query: {item.patientQuery || 'N/A'}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: '#111827', whiteSpace: 'pre-wrap' }}>
+                                    AI Result: {item.aiResultText}
+                                  </Typography>
+
+                                  <TextField
+                                    label="Modify result (optional)"
+                                    value={modifyText}
+                                    onChange={(event) => {
+                                      const value = event.target.value
+                                      setModifyTextById((prev) => ({ ...prev, [item.id]: value }))
+                                    }}
+                                    multiline
+                                    minRows={2}
+                                    size="small"
+                                  />
+                                  <FormHelperText>Required only for Modify action.</FormHelperText>
+
+                                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                                    <Button
+                                      size="small"
+                                      color="success"
+                                      variant="contained"
+                                      onClick={() => handleReviewAction(item, 'approved')}
+                                      disabled={isBusy}
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      color="error"
+                                      variant="contained"
+                                      onClick={() => handleReviewAction(item, 'rejected')}
+                                      disabled={isBusy}
+                                    >
+                                      Reject
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      color="info"
+                                      variant="contained"
+                                      onClick={() => handleReviewAction(item, 'modified')}
+                                      disabled={isBusy || !modifyText.trim()}
+                                    >
+                                      Modify
+                                    </Button>
+                                  </Stack>
+                                </Stack>
+                              </CardContent>
+                            </Card>
+                          )
+                        })}
+                      </Stack>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
 
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.2fr 1fr' }, gap: { xs: 2, md: 3 } }}>
                 <motion.div variants={cardVariants}>

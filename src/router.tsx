@@ -27,6 +27,8 @@ import ProviderDashboard from './pages/ProviderDashboard'
 import Appointments from './pages/Appointments'
 import DoctorProfile from './pages/DoctorProfile'
 import DoctorHistory from './pages/DoctorHistory'
+import AssignedPatients from './pages/AssignedPatients'
+import DoctorFeatureReviews from './pages/DoctorFeatureReviews'
 import MedicineShop from './pages/MedicineShop'
 import OrderHistory from './pages/OrderHistory'
 import PaymentCheckoutPage from './pages/PaymentCheckoutPage'
@@ -61,6 +63,14 @@ export const router = createBrowserRouter([
       { path: 'doctor-dashboard', element: protect(<DoctorDashboard />) },
       { path: 'doctor-profile', element: protect(<DoctorProfile />) },
       { path: 'doctor-history', element: protect(<DoctorHistory />) },
+      { path: 'doctor-assigned-patients', element: protect(<AssignedPatients />) },
+      { path: 'doctor-reviews/ddi', element: protect(<DoctorFeatureReviews feature="ddi" />) },
+      { path: 'doctor-reviews/dfi', element: protect(<DoctorFeatureReviews feature="dfi" />) },
+      { path: 'doctor-reviews/alternatives', element: protect(<DoctorFeatureReviews feature="alternatives" />) },
+      { path: 'doctor-reviews/side-effects', element: protect(<DoctorFeatureReviews feature="side-effects" />) },
+      { path: 'doctor-reviews/ai-assistant', element: protect(<DoctorFeatureReviews feature="ai-assistant" />) },
+      { path: 'doctor-reviews/medication-pharmacy', element: protect(<DoctorFeatureReviews feature="medication-pharmacy" />) },
+      { path: 'doctor-reviews/health-summary', element: protect(<DoctorFeatureReviews feature="health-summary" />) },
       
       // Protected routes - Admin
       { path: 'admin', element: protect(<AdminPanel />) },

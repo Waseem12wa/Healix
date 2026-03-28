@@ -30,6 +30,7 @@ import { useSearchParams } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import { correctDrugTerm, correctFoodTerm } from '../utils/medicalAutoCorrect'
 import { logPatientActivity } from '../services/patientService'
+import DoctorReviewPrompt from '../components/DoctorReviewPrompt'
 
 type FoodInteraction = {
   medicine: string
@@ -213,6 +214,13 @@ export default function DrugFoodInteractionChecker() {
     return { total, ...counts }
   }, [results])
 
+  const reviewResultText = useMemo(() => {
+    if (results.length === 0) return ''
+    return results
+      .map((item) => `${item.medicine} + ${item.food}: ${item.severityLabel} (${item.percentage}%)`)
+      .join('\n')
+  }, [results])
+
   const severityColor = (s: FoodInteraction['severity']) => {
     if (s === 'Low') return theme.palette.success.main
     if (s === 'Moderate') return theme.palette.warning.main
@@ -374,6 +382,13 @@ export default function DrugFoodInteractionChecker() {
         {/* Results */}
         {results.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <DoctorReviewPrompt
+              feature="dfi"
+              patientQuery={`${medicines.join(', ')} with ${foods.join(', ')}`}
+              aiResultText={reviewResultText}
+              aiResultData={results}
+            />
+
             <Card sx={{ mb: 4 }}>
               <CardContent>
                 <Typography variant="h5" gutterBottom>

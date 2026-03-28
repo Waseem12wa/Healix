@@ -91,6 +91,7 @@ export default function LoginPage() {
         localStorage.setItem('userRole', data.data.role)
         localStorage.setItem('userEmail', data.data.email)
         localStorage.setItem('userId', data.data.id)
+        localStorage.setItem('profileCompleted', data.data.profileCompleted ? 'true' : 'false')
         if (data.token) {
           localStorage.setItem('token', data.token)
         }

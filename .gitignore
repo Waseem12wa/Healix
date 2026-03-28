@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# MongoDB runtime artifacts
+.mongo-data/
+.mongo-data-legacy/
+.mongo-log/
+
+# Runtime user uploads
+server/uploads/profile-images/
