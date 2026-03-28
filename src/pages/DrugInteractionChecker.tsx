@@ -27,6 +27,7 @@ import ErrorIcon from '@mui/icons-material/Error'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { motion, AnimatePresence } from 'framer-motion'
 import BackButton from '../ui/BackButton'
+import { correctDrugTerm } from '../utils/medicalAutoCorrect'
 
 type Interaction = {
   drug1: string
@@ -44,50 +45,6 @@ type Interaction = {
   }
 }
 
-const DRUG_SPELL_CORRECTIONS: Record<string, string> = {
-  asprin: 'aspirin',
-  ibuprophen: 'ibuprofen',
-  paracetmol: 'paracetamol',
-  metphormin: 'metformin',
-  amoxcillin: 'amoxicillin',
-}
-
-const KNOWN_DRUGS = [
-  'aspirin', 'ibuprofen', 'paracetamol', 'acetaminophen', 'metformin', 'warfarin',
-  'amoxicillin', 'lisinopril', 'atorvastatin', 'omeprazole', 'simvastatin'
-]
-
-function getLevenshteinDistance(a: string, b: string): number {
-  const dp: number[][] = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0))
-  for (let i = 0; i <= a.length; i++) dp[i][0] = i
-  for (let j = 0; j <= b.length; j++) dp[0][j] = j
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1
-      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
-    }
-  }
-  return dp[a.length][b.length]
-}
-
-function correctDrugName(candidate: string): string {
-  const normalized = candidate.trim().toLowerCase()
-  if (!normalized) return candidate
-  if (DRUG_SPELL_CORRECTIONS[normalized]) return DRUG_SPELL_CORRECTIONS[normalized]
-  if (KNOWN_DRUGS.includes(normalized)) return normalized
-
-  let best = normalized
-  let bestDistance = Infinity
-  KNOWN_DRUGS.forEach((drug) => {
-    const distance = getLevenshteinDistance(normalized, drug)
-    if (distance < bestDistance) {
-      bestDistance = distance
-      best = drug
-    }
-  })
-
-  return bestDistance <= 2 ? best : candidate
-}
 
 export default function DrugInteractionChecker() {
   const theme = useTheme()
@@ -101,7 +58,7 @@ export default function DrugInteractionChecker() {
     const rawName = input.trim()
     if (!rawName) return
 
-    const correctedName = correctDrugName(rawName)
+    const correctedName = correctDrugTerm(rawName)
     const displayName = correctedName === rawName ? rawName : correctedName
 
     if (!drugs.includes(displayName)) {

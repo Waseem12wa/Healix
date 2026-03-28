@@ -174,9 +174,13 @@ def initialize_models():
         return
 
     models_init_attempted = True
-    if not load_models():
-        logger.error("❌ Failed to load side effect predictor models. Exiting (no fallback).")
-        raise RuntimeError("Side effect predictor model load failed")
+    loaded = load_models()
+    if not loaded:
+        # Keep the service alive and use deterministic offline fallback predictions.
+        logger.warning("⚠️ Side effect predictor heavy models unavailable; running in offline fallback mode")
+
+    # Optional embeddings can improve unknown-medicine fallback quality.
+    _try_load_embedding_model()
 
 
 # ============================================
@@ -207,7 +211,13 @@ def predict_side_effects_zero_shot(
     medicine_lower = medicine_name.lower().strip()
 
     if zero_shot_clf is None:
-        return {"success": False, "error": "Model not loaded", "medicine": medicine_name}
+        return predict_side_effects_offline_fallback(
+            medicine_lower=medicine_lower,
+            medicine_name=medicine_name,
+            patient_age=patient_age,
+            patient_conditions=patient_conditions,
+            dosage=dosage,
+        )
     
     try:
         # Get candidate side effects

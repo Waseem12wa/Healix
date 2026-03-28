@@ -326,11 +326,41 @@ def route_to_medical_summary(query: str) -> Dict[str, Any]:
     Route query to Medical Record Summarization service
     """
     try:
-        # Would typically receive file from context or database
+        text = query
+        for marker in ['summarize', 'summary of', 'medical record', ':']:
+            text = text.replace(marker, ' ')
+        text = ' '.join(text.split())
+
+        if len(text) < 20:
+            return {
+                'success': False,
+                'error': 'Medical record text not provided',
+                'suggestion': 'Please paste clinical notes after your request, e.g. "Summarize: ..."'
+            }
+
+        payload = {
+            'text': text,
+            'max_length': 140,
+            'min_length': 40
+        }
+
+        response = requests.post(
+            f'{MEDICAL_RECORD_SERVICE_URL}/summarize-text',
+            json=payload,
+            timeout=60
+        )
+
+        if response.status_code == 200:
+            return {
+                'success': True,
+                'data': response.json(),
+                'source': 'medical-record-summarization'
+            }
+
         return {
             'success': False,
-            'error': 'Medical record not provided',
-            'suggestion': 'Please upload your medical record first via "Summarize Medical Record" feature'
+            'error': 'Medical record service unavailable',
+            'suggestion': 'Please try again in a few moments.'
         }
     except Exception as e:
         logger.error(f"Error routing to medical summary: {e}")

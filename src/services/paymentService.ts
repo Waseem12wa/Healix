@@ -215,14 +215,14 @@ export const getTransactionDetails = async (
  * Get medicines catalog
  */
 export const getMedicines = async (
-  query?: string,
+  search?: string,
   limit = 20,
-  skip = 0
-): Promise<{ medicines: Medicine[]; total: number }> => {
+  page = 1
+): Promise<{ medicines: Medicine[]; total: number; pagination?: { total: number; page: number; limit: number; pages: number } }> => {
   try {
-    const response = await apiClient.get<{ medicines: Medicine[]; total: number }>(
+    const response = await apiClient.get<{ medicines: Medicine[]; total: number; pagination?: { total: number; page: number; limit: number; pages: number } }>(
       '/medicines',
-      { params: { query, limit, skip } }
+      { params: { search, limit, page } }
     )
     return response.data
   } catch (error) {

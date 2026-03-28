@@ -8,7 +8,12 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "start:backend": "cd server && npm start",
-    "start": "npm run start:backend"
+    "start": "npm run start:backend",
+    "seed:medicines": "node scripts/seed-medicines.js",
+    "seed:medicines:million": "node scripts/seed-medicines.js --clear --generate 1000000",
+    "seed:medicines:csv": "node scripts/seed-medicines.js --csv server/data/medicines.csv",
+    "seed:drug-food:million": "cd server && py scripts/generate-drug-food-data.py --drugs 1000000 --foods 1000000",
+    "db:indexes": "node scripts/create-medicine-indexes.js"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

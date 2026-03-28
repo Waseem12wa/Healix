@@ -34,6 +34,13 @@ import type { Medicine } from '../services/paymentService'
 import { getCart, addToCart, removeFromCart, clearCart } from '../services/cartService'
 import { format } from 'date-fns'
 
+const formatDateSafe = (value?: string) => {
+  if (!value) return 'N/A'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return 'N/A'
+  return format(parsed, 'MMM dd, yyyy')
+}
+
 export default function MedicineShop() {
   const theme = useTheme()
   const [medicines, setMedicines] = useState<Medicine[]>([])
@@ -354,7 +361,7 @@ export default function MedicineShop() {
                                 variant="body2"
                                 color={expired ? 'error.main' : 'textSecondary'}
                               >
-                                {format(new Date(medicine.expiryDate), 'MMM dd, yyyy')}
+                                {formatDateSafe(medicine.expiryDate)}
                               </Typography>
                             </Stack>
 
@@ -491,7 +498,7 @@ export default function MedicineShop() {
                       Expires
                     </Typography>
                     <Typography variant="body2">
-                      {format(new Date(selectedMedInfo.expiryDate), 'MMM dd, yyyy')}
+                      {formatDateSafe(selectedMedInfo.expiryDate)}
                     </Typography>
                   </Grid>
                   <Grid size={{ xs: 6 }}>

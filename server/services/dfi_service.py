@@ -37,6 +37,51 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'Models', 'XGB-
 smiles_cache = {}
 descriptor_cache = {}
 
+# Clinical safety overrides for known high-risk interactions.
+# These rules ensure dangerous pairs are never reported as "Low Risk"
+# even if the ML score underestimates them.
+CLINICAL_DFI_OVERRIDES = {
+    ('warfarin', 'alcohol'): {
+        'percentage': 88.0,
+        'severity': 'High',
+        'severity_label': 'High Risk',
+        'reason': 'Alcohol can increase bleeding risk and destabilize anticoagulation control with warfarin.'
+    },
+    ('warfarin', 'cranberry juice'): {
+        'percentage': 82.0,
+        'severity': 'High',
+        'severity_label': 'High Risk',
+        'reason': 'Cranberry may potentiate warfarin effect and increase bleeding risk.'
+    },
+    ('simvastatin', 'grapefruit'): {
+        'percentage': 86.0,
+        'severity': 'High',
+        'severity_label': 'High Risk',
+        'reason': 'Grapefruit inhibits CYP3A4 and can raise simvastatin concentration, increasing toxicity risk.'
+    },
+    ('atorvastatin', 'grapefruit'): {
+        'percentage': 74.0,
+        'severity': 'High',
+        'severity_label': 'High Risk',
+        'reason': 'Grapefruit can increase atorvastatin exposure and adverse effect risk.'
+    },
+    ('metformin', 'alcohol'): {
+        'percentage': 63.0,
+        'severity': 'Moderate',
+        'severity_label': 'Moderate Risk',
+        'reason': 'Excess alcohol may increase lactic acidosis risk with metformin.'
+    },
+}
+
+
+def get_clinical_override(medicine, food):
+    """
+    Return clinical override for specific high-risk combinations when available.
+    """
+    med_key = medicine.lower().strip()
+    food_key = food.lower().strip()
+    return CLINICAL_DFI_OVERRIDES.get((med_key, food_key))
+
 
 def align_features_to_model(features_df):
     """
@@ -330,8 +375,9 @@ def predict_food_interaction():
         
         # Predict interaction probability using model
         try:
-            probability = dfi_model.predict_proba(features_df)[0][1]
-            percentage = round(probability * 100, 2)
+            # Convert numpy types to Python floats for JSON serialization
+            probability = float(dfi_model.predict_proba(features_df)[0][1])
+            percentage = float(round(probability * 100, 2))
             
             # Determine severity
             if percentage > 70:
@@ -353,8 +399,23 @@ def predict_food_interaction():
                 "error": f"Model prediction failed: {str(e)}"
             }), 500
         
-        # Use a concise consistency-based explanation
+        # Apply clinical override for known dangerous combinations if needed.
+        override = get_clinical_override(medicine, food)
+        source = 'model'
+        if override:
+            percentage = float(override['percentage'])
+            probability = float(round(percentage / 100.0, 4))
+            severity = override['severity']
+            severity_label = override['severity_label']
+            source = 'clinical_rule_override'
+            logger.warning(
+                f"Applied clinical override for {medicine} + {food}: {percentage}% ({severity})"
+            )
+
+        # Use a concise consistency-based explanation.
         details = get_simple_interaction_details(medicine, food, percentage, severity)
+        if override:
+            details['mechanism'] = override.get('reason', details.get('mechanism', ''))
 
         response_data = {
             "success": True,
@@ -365,7 +426,7 @@ def predict_food_interaction():
             "severity": severity,
             "severity_label": severity_label,
             "details": details,
-            "source": "model"
+            "source": source
         }
 
         return jsonify(response_data)

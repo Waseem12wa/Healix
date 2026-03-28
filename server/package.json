@@ -8,7 +8,11 @@
     "start": "concurrently -n API,ALT,DDI,DFI,SIDE,HEALTH,MEDREC \"node server.js\" \"py services/alternative_service.py\" \"py services/ddi_service.py\" \"py services/dfi_service.py\" \"py services/side_effect_service.py\" \"py services/health_assistant_service.py\" \"py services/medical_record_service.py\"",
     "start:core": "concurrently -n API,ALT,DDI,DFI,SIDE,HEALTH \"node server.js\" \"py services/alternative_service.py\" \"py services/ddi_service.py\" \"py services/dfi_service.py\" \"py services/side_effect_service.py\" \"py services/health_assistant_service.py\"",
     "dev": "nodemon server.js",
-    "seed:doctors": "node scripts/seed-doctors.js"
+    "seed:doctors": "node scripts/seed-doctors.js",
+    "seed:medicines": "node scripts/seed-medicines.js",
+    "seed:medicines:million": "node scripts/seed-medicines.js --clear --generate 1000000",
+    "seed:drug-food:million": "py scripts/generate-drug-food-data.py --drugs 1000000 --foods 1000000",
+    "db:indexes": "node scripts/create-medicine-indexes.js"
   },
   "keywords": [
     "healthcare",
@@ -21,6 +25,7 @@
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "mongoose": "^8.0.0",

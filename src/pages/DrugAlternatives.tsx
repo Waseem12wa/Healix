@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import BackButton from '../ui/BackButton'
 import PaymentModal from '../components/PaymentModal'
 import type { Medicine } from '../services/paymentService'
+import { correctDrugTerm } from '../utils/medicalAutoCorrect'
 
 type Alternative = {
     name: string
@@ -39,6 +40,13 @@ type Alternative = {
     indications: string
     category: string
     atc_code: string
+    medicineId?: string | null
+    actualSellingPrice?: number
+    actualCostPrice?: number
+    inventoryQuantity?: number
+    inStock?: boolean
+    expiryDate?: string
+    note?: string
 }
 
 type ApiResponse = {
@@ -51,50 +59,6 @@ type ApiResponse = {
     error?: string
 }
 
-const DRUG_SPELL_CORRECTIONS: Record<string, string> = {
-    asprin: 'aspirin',
-    ibuprophen: 'ibuprofen',
-    paracetmol: 'paracetamol',
-    metphormin: 'metformin',
-    amoxcillin: 'amoxicillin',
-}
-
-const KNOWN_DRUGS = [
-    'aspirin', 'ibuprofen', 'paracetamol', 'acetaminophen', 'metformin', 'warfarin',
-    'amoxicillin', 'lisinopril', 'atorvastatin', 'omeprazole', 'simvastatin'
-]
-
-function getLevenshteinDistance(a: string, b: string): number {
-    const dp: number[][] = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0))
-    for (let i = 0; i <= a.length; i++) dp[i][0] = i
-    for (let j = 0; j <= b.length; j++) dp[0][j] = j
-    for (let i = 1; i <= a.length; i++) {
-        for (let j = 1; j <= b.length; j++) {
-            const cost = a[i - 1] === b[j - 1] ? 0 : 1
-            dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
-        }
-    }
-    return dp[a.length][b.length]
-}
-
-function correctDrugName(candidate: string): string {
-    const normalized = candidate.trim().toLowerCase()
-    if (!normalized) return candidate
-    if (DRUG_SPELL_CORRECTIONS[normalized]) return DRUG_SPELL_CORRECTIONS[normalized]
-    if (KNOWN_DRUGS.includes(normalized)) return normalized
-
-    let best = normalized
-    let bestDistance = Infinity
-    KNOWN_DRUGS.forEach((drug) => {
-        const distance = getLevenshteinDistance(normalized, drug)
-        if (distance < bestDistance) {
-            bestDistance = distance
-            best = drug
-        }
-    })
-
-    return bestDistance <= 2 ? best : candidate
-}
 
 export default function DrugAlternatives() {
     const theme = useTheme()
@@ -110,7 +74,7 @@ export default function DrugAlternatives() {
         if (!query.trim()) return
 
         const rawQuery = query.trim()
-        const correctedQuery = correctDrugName(rawQuery)
+        const correctedQuery = correctDrugTerm(rawQuery)
 
         setLoading(true)
         setError(null)
@@ -156,18 +120,23 @@ export default function DrugAlternatives() {
     }
 
     const handleAddToCart = (alternative: Alternative) => {
+        if (!alternative.inStock || !alternative.medicineId) {
+            setToastMessage(`${alternative.name} is not available in inventory. Alternative recommendation only.`)
+            return
+        }
+
         const medicineToCart: Medicine = {
-            _id: alternative.name.toLowerCase().replace(/\s+/g, '-'),
+            _id: alternative.medicineId,
             medicineName: alternative.name,
-            quantity: 100,
-            sellingPrice: alternative.price || 25,
-            expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-            batchNumber: `ALT-${Math.random().toString(36).substr(2, 9)}`,
+            quantity: alternative.inventoryQuantity || 0,
+            sellingPrice: alternative.actualSellingPrice || alternative.price || 25,
+            expiryDate: alternative.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            batchNumber: `ALT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             supplierName: 'Alternative Medicine'
         }
 
         addAlternativeToCart(medicineToCart)
-        setToastMessage(`Added ${alternative.name} to cart.`)
+        setToastMessage(`Added ${alternative.name} (Rs. ${alternative.actualSellingPrice}) to cart.`)
     }
 
     return (
@@ -423,8 +392,14 @@ export default function DrugAlternatives() {
                                                                         Price:
                                                                     </Typography>
                                                                     <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                                                                        ${alt.price?.toFixed(2) ?? 'N/A'}
+                                                                        Rs. {alt.actualSellingPrice ? alt.actualSellingPrice.toFixed(2) : (alt.price?.toFixed(2) ?? 'N/A')}
                                                                     </Typography>
+                                                                    {alt.inStock === false && (
+                                                                        <Chip label="Out of Stock" size="small" color="error" variant="filled" />
+                                                                    )}
+                                                                    {alt.inStock === true && (
+                                                                        <Chip label={`${alt.inventoryQuantity || 0} in stock`} size="small" color="success" variant="filled" />
+                                                                    )}
                                                                 </Stack>
                                                             </Box>
                                                         </Stack>
@@ -506,26 +481,30 @@ export default function DrugAlternatives() {
                                                                 variant="outlined"
                                                                 fullWidth
                                                                 onClick={() => handleAddToCart(alt)}
+                                                                disabled={!alt.inStock || !alt.medicineId}
                                                                 startIcon={<ShoppingCartIcon />}
                                                             >
-                                                                Add to Cart
+                                                                {alt.inStock && alt.medicineId ? 'Add to Cart' : 'Not In Stock'}
                                                             </Button>
 
                                                             <Button
                                                                 variant="contained"
                                                                 fullWidth
+                                                                disabled={!alt.inStock || !alt.medicineId}
                                                                 startIcon={<ShoppingCartIcon />}
                                                                 onClick={() => {
-                                                                    setSelectedMedicine({
-                                                                        _id: alt.name.replace(/\s+/g, '-').toLowerCase(),
-                                                                        medicineName: alt.name,
-                                                                        quantity: 100,
-                                                                        sellingPrice: alt.price || 25,
-                                                                        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-                                                                        batchNumber: 'ALT-' + Math.random().toString(36).substr(2, 9),
-                                                                        supplierName: 'Alternative Medicine'
-                                                                    })
-                                                                    setPaymentOpen(true)
+                                                                    if (alt.medicineId && alt.inStock) {
+                                                                        setSelectedMedicine({
+                                                                            _id: alt.medicineId,
+                                                                            medicineName: alt.name,
+                                                                            quantity: alt.inventoryQuantity || 0,
+                                                                            sellingPrice: alt.actualSellingPrice || alt.price || 25,
+                                                                            expiryDate: alt.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                                                                            batchNumber: 'ALT-' + Date.now(),
+                                                                            supplierName: 'Alternative Medicine'
+                                                                        })
+                                                                        setPaymentOpen(true)
+                                                                    }
                                                                 }}
                                                                 sx={{
                                                                     background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
@@ -534,7 +513,7 @@ export default function DrugAlternatives() {
                                                                     }
                                                                 }}
                                                             >
-                                                                Buy Now
+                                                                {alt.inStock && alt.medicineId ? 'Buy Now' : 'Unavailable'}
                                                             </Button>
                                                         </Stack>
                                                     </CardContent>
