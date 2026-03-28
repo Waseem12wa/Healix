@@ -1,9 +1,64 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import multer from 'multer';
 import User from '../models/User.js';
+import PatientActivity from '../models/PatientActivity.js';
+import { requireAuth, signAuthToken } from '../middleware/auth.js';
+import { uploadProfileImageObject } from '../services/objectStorage.js';
 import { validatePassword, validateEmail, validateRole, validateUserName } from '../utils/validation.js';
 
 const router = express.Router();
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+      cb(new Error('Only image files are allowed'));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+const sanitizeProfilePayload = (payload = {}) => {
+  const next = {};
+
+  if (typeof payload.userName === 'string') {
+    next.userName = payload.userName.trim();
+  }
+  if (typeof payload.email === 'string') {
+    next.email = payload.email.trim().toLowerCase();
+  }
+
+  const patientProfile = payload.patientProfile && typeof payload.patientProfile === 'object'
+    ? payload.patientProfile
+    : payload;
+
+  const profileUpdate = {};
+  if (typeof patientProfile.profileImage === 'string') profileUpdate.profileImage = patientProfile.profileImage;
+  if (typeof patientProfile.age === 'number' || typeof patientProfile.age === 'string') {
+    const age = Number(patientProfile.age);
+    if (Number.isFinite(age)) profileUpdate.age = age;
+  }
+  if (typeof patientProfile.gender === 'string') profileUpdate.gender = patientProfile.gender;
+  if (typeof patientProfile.mobileNumber === 'string') profileUpdate.mobileNumber = patientProfile.mobileNumber.trim();
+  if (typeof patientProfile.bio === 'string') profileUpdate.bio = patientProfile.bio.trim();
+
+  next.patientProfile = profileUpdate;
+  return next;
+};
+
+const serializeUserForClient = (user) => ({
+  id: String(user._id),
+  email: user.email,
+  role: user.role,
+  userName: user.userName,
+  createdAt: user.createdAt,
+  patientProfile: user.patientProfile || {},
+});
 
 /**
  * @route   POST /api/auth/signup
@@ -162,6 +217,7 @@ router.post('/signup', async (req, res) => {
     res.status(201).json({ 
       success: true, 
       message: 'Account created successfully! You can now log in.',
+      token: signAuthToken(user),
       data: {
         id: user._id,
         email: user.email,
@@ -348,6 +404,7 @@ router.post('/login', async (req, res) => {
     res.json({ 
       success: true, 
       message: 'Login successful',
+      token: signAuthToken(user),
       data: {
         id: user._id,
         email: user.email,
@@ -449,6 +506,263 @@ router.get('/check-email', async (req, res) => {
       success: false, 
       message: 'An error occurred. Please try again later.' 
     });
+  }
+});
+
+/**
+ * @route   GET /api/auth/me
+ * @desc    Get currently authenticated user with profile
+ * @access  Private
+ */
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return res.json({
+      success: true,
+      data: serializeUserForClient(user),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   PUT /api/auth/me/profile
+ * @desc    Update patient profile fields and persist permanently
+ * @access  Private
+ */
+router.put('/me/profile', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const incoming = sanitizeProfilePayload(req.body || {});
+
+    if (incoming.userName) {
+      const validation = validateUserName(incoming.userName);
+      if (!validation.isValid) {
+        return res.status(400).json({ success: false, message: validation.error, field: 'userName' });
+      }
+      user.userName = validation.userName;
+    }
+
+    if (incoming.email && incoming.email !== user.email) {
+      const emailValidation = validateEmail(incoming.email);
+      if (!emailValidation.isValid) {
+        return res.status(400).json({ success: false, message: emailValidation.error, field: 'email' });
+      }
+
+      const existing = await User.findOne({ email: incoming.email, _id: { $ne: user._id } });
+      if (existing) {
+        return res.status(409).json({ success: false, message: 'Email is already in use by another account', field: 'email' });
+      }
+
+      user.email = incoming.email;
+    }
+
+    user.patientProfile = {
+      ...(user.patientProfile || {}),
+      ...(incoming.patientProfile || {}),
+    };
+
+    await user.save();
+
+    await PatientActivity.create({
+      userId: user._id,
+      category: 'profile-update',
+      title: 'Profile updated',
+      details: 'Patient profile information updated',
+      metadata: {
+        updatedFields: Object.keys(incoming.patientProfile || {}),
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: serializeUserForClient(user),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/auth/me/profile-image
+ * @desc    Upload profile image to object storage and persist URL
+ * @access  Private
+ */
+router.post('/me/profile-image', requireAuth, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Image file is required' });
+    }
+
+    const uploaded = await uploadProfileImageObject({
+      userId: req.user.id,
+      fileBuffer: req.file.buffer,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+    });
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.patientProfile = {
+      ...(user.patientProfile || {}),
+      profileImage: uploaded.url,
+    };
+
+    await user.save();
+
+    await PatientActivity.create({
+      userId: user._id,
+      category: 'profile-update',
+      title: 'Profile image updated',
+      details: 'Patient uploaded a new profile image',
+      metadata: {
+        provider: uploaded.provider,
+        key: uploaded.key,
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: 'Profile image uploaded successfully',
+      data: {
+        profileImage: uploaded.url,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/auth/me/cart
+ * @desc    Retrieve persistent cart for authenticated user
+ * @access  Private
+ */
+router.get('/me/cart', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('patientCart');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const cart = (user.patientCart || []).reduce((acc, entry) => {
+      acc[entry.medicineId] = {
+        medicine: entry.medicine,
+        quantity: entry.quantity,
+      };
+      return acc;
+    }, {});
+
+    return res.json({ success: true, cart });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   PUT /api/auth/me/cart
+ * @desc    Persist authenticated user's cart
+ * @access  Private
+ */
+router.put('/me/cart', requireAuth, async (req, res) => {
+  try {
+    const cart = req.body?.cart;
+    if (!cart || typeof cart !== 'object') {
+      return res.status(400).json({ success: false, message: 'Invalid cart payload' });
+    }
+
+    const cartEntries = Object.entries(cart)
+      .filter(([_, value]) => value && typeof value === 'object')
+      .map(([medicineId, value]) => ({
+        medicineId,
+        medicine: value.medicine,
+        quantity: Math.max(1, Number.parseInt(value.quantity || 1, 10)),
+      }));
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { patientCart: cartEntries } },
+      { new: true }
+    ).select('patientCart');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    await PatientActivity.create({
+      userId: req.user.id,
+      category: 'cart-update',
+      title: 'Cart updated',
+      details: `Cart synchronized with ${cartEntries.length} items`,
+      metadata: { items: cartEntries.length },
+    });
+
+    return res.json({ success: true, message: 'Cart saved successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/auth/activity
+ * @desc    Save a user activity entry
+ * @access  Private
+ */
+router.post('/activity', requireAuth, async (req, res) => {
+  try {
+    const { category = 'other', title, details = '', metadata = {} } = req.body || {};
+
+    if (!title || typeof title !== 'string') {
+      return res.status(400).json({ success: false, message: 'Activity title is required' });
+    }
+
+    const activity = await PatientActivity.create({
+      userId: req.user.id,
+      category,
+      title: title.trim(),
+      details: typeof details === 'string' ? details.trim() : '',
+      metadata: typeof metadata === 'object' && metadata !== null ? metadata : {},
+    });
+
+    return res.status(201).json({ success: true, activity });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/auth/activity
+ * @desc    Get authenticated user's activities
+ * @access  Private
+ */
+router.get('/activity', requireAuth, async (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(200, Number.parseInt(String(req.query.limit || '50'), 10)));
+    const category = req.query.category ? String(req.query.category) : null;
+
+    const query = { userId: req.user.id };
+    if (category) query.category = category;
+
+    const activities = await PatientActivity.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+    return res.json({ success: true, activities });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 

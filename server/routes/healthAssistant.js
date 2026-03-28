@@ -7,6 +7,8 @@
 
 import express from 'express';
 import axios from 'axios';
+import { requireAuth } from '../middleware/auth.js';
+import PatientActivity from '../models/PatientActivity.js';
 
 const router = express.Router();
 
@@ -56,7 +58,7 @@ router.get('/health', asyncHandler(async (req, res) => {
  *   "user_id": "user123" (optional)
  * }
  */
-router.post('/chat', asyncHandler(async (req, res) => {
+router.post('/chat', requireAuth, asyncHandler(async (req, res) => {
     try {
         const { query, user_id } = req.body;
 
@@ -79,6 +81,23 @@ router.post('/chat', asyncHandler(async (req, res) => {
         );
 
         console.log(`✅ Query processed successfully`);
+
+        // Activity logging must never break chat delivery.
+        try {
+            await PatientActivity.create({
+                userId: req.user.id,
+                category: 'ai-assistant',
+                title: 'AI assistant chat',
+                details: query.trim(),
+                metadata: {
+                    intent: response.data?.intent,
+                    source: response.data?.source,
+                    response: response.data?.response,
+                }
+            });
+        } catch (activityError) {
+            console.warn('AI activity log failed:', activityError.message);
+        }
         
         res.json({
             success: true,
@@ -215,17 +234,20 @@ router.post('/reset-metrics', asyncHandler(async (req, res) => {
  * GET /api/assistant/conversation-history
  * Get user's conversation history
  */
-router.get('/conversation-history', asyncHandler(async (req, res) => {
+router.get('/conversation-history', requireAuth, asyncHandler(async (req, res) => {
     try {
-        const response = await axios.get(
-            `${HEALTH_ASSISTANT_SERVICE_URL}/conversation-history`,
-            { timeout: 5000 }
-        );
+        const limit = Math.max(1, Math.min(100, Number.parseInt(String(req.query.limit || '50'), 10)));
+        const history = await PatientActivity.find({
+            userId: req.user.id,
+            category: 'ai-assistant'
+        })
+            .sort({ createdAt: -1 })
+            .limit(limit);
 
         res.json({
             success: true,
-            history: response.data.history,
-            total_queries: response.data.total_queries
+            history,
+            total_queries: history.length
         });
     } catch (error) {
         console.error('Error fetching conversation history:', error.message);
@@ -246,7 +268,7 @@ router.get('/conversation-history', asyncHandler(async (req, res) => {
  *   "user_id": "user123"
  * }
  */
-router.post('/batch-queries', asyncHandler(async (req, res) => {
+router.post('/batch-queries', requireAuth, asyncHandler(async (req, res) => {
     try {
         const { queries, user_id } = req.body;
 

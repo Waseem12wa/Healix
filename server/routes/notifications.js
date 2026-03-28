@@ -1,6 +1,7 @@
 import express from 'express';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -9,18 +10,9 @@ const router = express.Router();
  * @desc    Get notifications for a user
  * @access  Private
  */
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
-    const { email } = req.query;
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -58,19 +50,10 @@ router.get('/', async (req, res) => {
  * @desc    Mark a notification as read
  * @access  Private
  */
-router.put('/:id/read', async (req, res) => {
+router.put('/:id/read', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -117,18 +100,9 @@ router.put('/:id/read', async (req, res) => {
  * @desc    Mark all notifications as read for a user
  * @access  Private
  */
-router.put('/read-all', async (req, res) => {
+router.put('/read-all', requireAuth, async (req, res) => {
   try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
         success: false,

@@ -38,6 +38,7 @@ export const roleRoutes: RouteConfig[] = [
   { path: '/tools/notifications', allowedRoles: ['patient', 'doctor', 'admin', 'provider'] },
   { path: '/tools/profile', allowedRoles: ['patient', 'doctor'] },
   { path: '/shop/medicines', allowedRoles: ['patient', 'doctor'] },
+  { path: '/shop/checkout', allowedRoles: ['patient', 'doctor'] },
   { path: '/shop/orders', allowedRoles: ['patient', 'doctor'] },
   { path: '/profile/patient', allowedRoles: ['patient'] },
   
@@ -93,8 +94,9 @@ export function isRouteAllowed(path: string, role: UserRole | null): boolean {
  * Get the current user role from localStorage
  */
 export function getCurrentUserRole(): UserRole | null {
+  const token = localStorage.getItem('token')
   const role = localStorage.getItem('authRole')
-  if (!role) return null
+  if (!token || !role) return null
   
   const validRoles: UserRole[] = ['patient', 'doctor', 'admin', 'provider']
   return validRoles.includes(role as UserRole) ? (role as UserRole) : null

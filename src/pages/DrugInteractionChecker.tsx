@@ -28,6 +28,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { motion, AnimatePresence } from 'framer-motion'
 import BackButton from '../ui/BackButton'
 import { correctDrugTerm } from '../utils/medicalAutoCorrect'
+import { logPatientActivity } from '../services/patientService'
 
 type Interaction = {
   drug1: string
@@ -86,6 +87,7 @@ export default function DrugInteractionChecker() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {}),
         },
         body: JSON.stringify({ drugs }),
       })
@@ -112,6 +114,20 @@ export default function DrugInteractionChecker() {
       }))
 
       setResults(interactions)
+
+      await logPatientActivity({
+        category: 'drug-interaction',
+        title: 'Drug interaction check',
+        details: `Checked ${drugs.length} medicines`,
+        metadata: {
+          drugs,
+          totalPairs: data.totalPairs,
+          successfulPredictions: data.successfulPredictions,
+          failedPredictions: data.failedPredictions,
+        }
+      }).catch(() => {
+        // non-blocking
+      })
 
       // Show errors if any predictions failed
       if (data.errors && data.errors.length > 0) {

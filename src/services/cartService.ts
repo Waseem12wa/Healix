@@ -1,6 +1,8 @@
 import type { Medicine } from './paymentService'
+import { getMyCart, saveMyCart } from './patientService'
 
-const CART_KEY = 'healix_cart_v1'
+const CART_KEY_PREFIX = 'healix_cart_v2'
+let hydratedUserId: string | null = null
 
 export type CartData = {
   [medicineId: string]: {
@@ -11,7 +13,7 @@ export type CartData = {
 
 const readCartFromStorage = (): CartData => {
   try {
-    const raw = localStorage.getItem(CART_KEY)
+    const raw = localStorage.getItem(getCartStorageKey())
     if (!raw) return {}
     const data = JSON.parse(raw)
     return typeof data === 'object' && data !== null ? data : {}
@@ -20,17 +22,31 @@ const readCartFromStorage = (): CartData => {
   }
 }
 
+const getCurrentUserId = (): string => localStorage.getItem('userId') || 'guest'
+
+const getCartStorageKey = (): string => `${CART_KEY_PREFIX}:${getCurrentUserId()}`
+
 const writeCartToStorage = (cart: CartData) => {
   try {
-    localStorage.setItem(CART_KEY, JSON.stringify(cart))
+    localStorage.setItem(getCartStorageKey(), JSON.stringify(cart))
   } catch {
     // ignore
   }
 }
 
+const persistCartBackground = (cart: CartData) => {
+  if (!localStorage.getItem('token')) return
+  saveMyCart(cart).catch(() => {
+    // keep local cart if server sync fails
+  })
+}
+
 export const getCart = (): CartData => readCartFromStorage()
 
-export const setCart = (cart: CartData): void => writeCartToStorage(cart)
+export const setCart = (cart: CartData): void => {
+  writeCartToStorage(cart)
+  persistCartBackground(cart)
+}
 
 export const addToCart = (medicine: Medicine, quantity = 1): void => {
   const cart = readCartFromStorage()
@@ -46,6 +62,7 @@ export const addToCart = (medicine: Medicine, quantity = 1): void => {
     }
   }
   writeCartToStorage(cart)
+  persistCartBackground(cart)
 }
 
 export const removeFromCart = (medicineId: string, quantity = 1): void => {
@@ -59,13 +76,35 @@ export const removeFromCart = (medicineId: string, quantity = 1): void => {
     cart[medicineId] = existing
   }
   writeCartToStorage(cart)
+  persistCartBackground(cart)
 }
 
 export const clearCart = (): void => {
   writeCartToStorage({})
+  persistCartBackground({})
 }
 
 export const getCartItemCount = (): number => {
   const cart = readCartFromStorage()
   return Object.values(cart).reduce((sum, item) => sum + item.quantity, 0)
+}
+
+export const syncCartFromServer = async (): Promise<CartData> => {
+  const currentUserId = getCurrentUserId()
+  if (!localStorage.getItem('token') || currentUserId === 'guest') {
+    return readCartFromStorage()
+  }
+
+  if (hydratedUserId === currentUserId) {
+    return readCartFromStorage()
+  }
+
+  try {
+    const serverCart = await getMyCart()
+    writeCartToStorage(serverCart)
+    hydratedUserId = currentUserId
+    return serverCart
+  } catch {
+    return readCartFromStorage()
+  }
 }

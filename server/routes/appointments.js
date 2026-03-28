@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -11,18 +12,26 @@ const router = express.Router();
  * @desc    Create a new appointment (Patient)
  * @access  Private
  */
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
     console.log('📅 Appointment creation request received');
     console.log('   Request body:', JSON.stringify(req.body));
     
-    const { patientEmail, doctorId, date, time, consultationType, notes } = req.body;
+    const { doctorId, date, time, consultationType, notes } = req.body;
+    const patientEmail = req.user.email;
 
     if (!patientEmail || !doctorId || !date || !time) {
       console.log('❌ Missing required fields');
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: patientEmail, doctorId, date, time'
+        message: 'Missing required fields: doctorId, date, time'
+      });
+    }
+
+    if (req.user.role !== 'patient') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only patients can create appointments'
       });
     }
 
@@ -164,18 +173,13 @@ router.post('/', async (req, res) => {
  * @desc    Get appointments for a patient
  * @access  Private
  */
-router.get('/patient', async (req, res) => {
+router.get('/patient', requireAuth, async (req, res) => {
   try {
-    const { email } = req.query;
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
+    if (req.user.role !== 'patient') {
+      return res.status(403).json({ success: false, message: 'Only patients can access this endpoint' });
     }
 
-    const patient = await User.findOne({ email: email.toLowerCase().trim(), role: 'patient' });
+    const patient = await User.findById(req.user.id);
     if (!patient) {
       return res.status(404).json({
         success: false,
@@ -206,18 +210,13 @@ router.get('/patient', async (req, res) => {
  * @desc    Get appointments for a doctor
  * @access  Private
  */
-router.get('/doctor', async (req, res) => {
+router.get('/doctor', requireAuth, async (req, res) => {
   try {
-    const { email } = req.query;
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
+    if (req.user.role !== 'doctor') {
+      return res.status(403).json({ success: false, message: 'Only doctors can access this endpoint' });
     }
 
-    const doctor = await User.findOne({ email: email.toLowerCase().trim(), role: 'doctor' });
+    const doctor = await User.findById(req.user.id);
     if (!doctor) {
       return res.status(404).json({
         success: false,
@@ -248,22 +247,23 @@ router.get('/doctor', async (req, res) => {
  * @desc    Update appointment status (Doctor: approve/reject)
  * @access  Private
  */
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, doctorEmail } = req.body;
+    const { status } = req.body;
+    const doctorEmail = req.user.email;
+
+    if (req.user.role !== 'doctor') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only doctors can update appointment status'
+      });
+    }
 
     if (!status || !['approved', 'rejected'].includes(status)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid status. Must be "approved" or "rejected"'
-      });
-    }
-
-    if (!doctorEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'Doctor email is required'
       });
     }
 
@@ -332,17 +332,10 @@ router.put('/:id/status', async (req, res) => {
  * @desc    Cancel/delete an appointment
  * @access  Private
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { userEmail } = req.query;
-
-    if (!userEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'User email is required'
-      });
-    }
+    const userEmail = req.user.email;
 
     const appointment = await Appointment.findById(id);
     if (!appointment) {

@@ -11,6 +11,7 @@
  * Usage:
  *   node scripts/seed-medicines.js              - Seed from defaults
  *   node scripts/seed-medicines.js --csv FILE  - Seed from CSV
+ *   node scripts/seed-medicines.js --csv FILE --strict-pk-pricing - Strict Pakistan-verified CSV import
  *   node scripts/seed-medicines.js --clear     - Clear inventory first
  */
 
@@ -85,6 +86,57 @@ const DEFAULT_MEDICINES = [
     { medicineName: 'Fexofenadine', genericName: 'Fexofenadine HCl', category: 'Antihistamine', sellingPrice: 100, costPrice: 40, quantity: 1000, activeIngredients: ['fexofenadine'], therapeuticUse: 'Allergies' },
 ];
 
+// Pakistan retail reference prices (PKR) for common medicines.
+// Synthetic generation scales around these anchors for large catalogs.
+const PK_MARKET_PRICE_REFERENCE = {
+    aspirin: 55,
+    ibuprofen: 68,
+    paracetamol: 48,
+    naproxen: 88,
+    ketorolac: 120,
+    metformin: 165,
+    glipizide: 145,
+    sitagliptin: 285,
+    linagliptin: 305,
+    'insulin glargine': 890,
+    lisinopril: 130,
+    amlodipine: 150,
+    enalapril: 135,
+    metoprolol: 115,
+    losartan: 165,
+    atorvastatin: 175,
+    simvastatin: 135,
+    rosuvastatin: 220,
+    amoxicillin: 95,
+    azithromycin: 145,
+    ciprofloxacin: 125,
+    cephalexin: 118,
+    omeprazole: 145,
+    ranitidine: 98,
+    metoclopramide: 88,
+    levothyroxine: 130,
+    cetirizine: 92,
+    loratadine: 98,
+    fexofenadine: 120,
+}
+
+const PKR_CATEGORY_RANGE = {
+    Analgesic: [40, 110],
+    NSAID: [60, 150],
+    Antidiabetic: [120, 900],
+    Antibiotic: [85, 260],
+    Statin: [110, 260],
+    'ACE Inhibitor': [100, 180],
+    'Calcium Channel Blocker': [120, 200],
+    'Beta Blocker': [90, 170],
+    ARB: [120, 220],
+    PPI: [100, 190],
+    Vitamin: [35, 110],
+    Supplement: [45, 130],
+    Antihistamine: [70, 150],
+    General: [50, 160],
+}
+
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
@@ -118,21 +170,120 @@ async function clearMedicines() {
     }
 }
 
-function toDocument(raw, idx = 0) {
-    const medicineName = String(raw.medicineName || raw.name || raw.brand_name || `medicine-${idx + 1}`).trim();
-    const category = String(raw.category || 'General').trim();
-    const genericName = String(raw.genericName || raw.generic_name || '').trim();
-    const sellingPrice = Number.parseFloat(raw.sellingPrice ?? raw.price ?? 100);
-    const costPrice = Number.parseFloat(raw.costPrice ?? raw.cost ?? Math.max(1, sellingPrice * 0.6));
-    const quantity = Number.parseInt(raw.quantity ?? 1000, 10);
-    const activeIngredients = Array.isArray(raw.activeIngredients)
-        ? raw.activeIngredients
-        : String(raw.activeIngredients || raw.active_ingredients || '')
+function fieldValue(raw, keys = []) {
+    const table = new Map(
+        Object.entries(raw || {}).map(([k, v]) => [String(k).trim().toLowerCase(), v])
+    );
+
+    for (const key of keys) {
+        const candidate = table.get(String(key).trim().toLowerCase());
+        if (candidate !== undefined && candidate !== null && String(candidate).trim() !== '') {
+            return String(candidate).trim();
+        }
+    }
+
+    return '';
+}
+
+function isTruthyLike(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    return ['true', 'yes', 'y', '1', 'verified'].includes(normalized);
+}
+
+function normalizePakistanVerifiedPricing(raw, idx) {
+    const medicineName = fieldValue(raw, ['medicineName', 'name', 'brand_name']);
+    if (!medicineName) {
+        throw new Error(`Missing medicine name (expected one of: medicineName, name, brand_name)`);
+    }
+
+    const category = fieldValue(raw, ['category']);
+    if (!category) {
+        throw new Error(`Missing category for strict import`);
+    }
+
+    const currency = fieldValue(raw, ['currency', 'price_currency', 'mrp_currency']);
+    if (currency && currency.toUpperCase() !== 'PKR') {
+        throw new Error(`Invalid currency '${currency}'. Strict mode requires PKR.`);
+    }
+
+    const priceText = fieldValue(raw, ['price_pkr', 'selling_price_pkr', 'mrp_pkr', 'retail_price_pkr', 'unit_price_pkr']);
+    const sellingPrice = Number.parseFloat(priceText);
+    if (!Number.isFinite(sellingPrice) || sellingPrice <= 0) {
+        throw new Error(`Missing or invalid PKR price (expected one of: price_pkr, selling_price_pkr, mrp_pkr, retail_price_pkr, unit_price_pkr)`);
+    }
+
+    const source = fieldValue(raw, ['verification_source', 'price_source', 'source', 'drap_source', 'authority']);
+    if (!source) {
+        throw new Error(`Missing verification source (expected one of: verification_source, price_source, source, drap_source, authority)`);
+    }
+
+    const country = fieldValue(raw, ['country', 'market', 'region']);
+    if (!country || !/(^pk$|pakistan)/i.test(country)) {
+        throw new Error(`Invalid country/market '${country || 'N/A'}'. Strict mode requires Pakistan.`);
+    }
+
+    const verifiedFlag = fieldValue(raw, ['price_verified', 'is_verified', 'verified']);
+    if (verifiedFlag && !isTruthyLike(verifiedFlag)) {
+        throw new Error(`Row explicitly marked as not verified (price_verified/is_verified/verified=${verifiedFlag})`);
+    }
+
+    const verifiedDateText = fieldValue(raw, ['verification_date', 'price_verified_on', 'source_date', 'last_verified']);
+    if (!verifiedDateText) {
+        throw new Error(`Missing verification date (expected one of: verification_date, price_verified_on, source_date, last_verified)`);
+    }
+
+    const verifiedDate = new Date(verifiedDateText);
+    if (Number.isNaN(verifiedDate.getTime())) {
+        throw new Error(`Invalid verification date '${verifiedDateText}'`);
+    }
+
+    const nowPlusOneDay = Date.now() + 24 * 60 * 60 * 1000;
+    if (verifiedDate.getTime() > nowPlusOneDay) {
+        throw new Error(`Verification date cannot be in the future: '${verifiedDateText}'`);
+    }
+
+    return {
+        ...raw,
+        medicineName,
+        category,
+        sellingPrice,
+        currency: 'PKR',
+        _strictMeta: {
+            source,
+            country,
+            verificationDate: verifiedDateText,
+            row: idx,
+        }
+    };
+}
+
+function toDocument(raw, idx = 0, options = {}) {
+    const strictPkPricing = options.strictPkPricing === true;
+    const normalizedRaw = strictPkPricing ? normalizePakistanVerifiedPricing(raw, idx) : raw;
+
+    const medicineName = String(normalizedRaw.medicineName || normalizedRaw.name || normalizedRaw.brand_name || `medicine-${idx + 1}`).trim();
+    const category = String(normalizedRaw.category || 'General').trim();
+    const genericName = String(normalizedRaw.genericName || normalizedRaw.generic_name || '').trim();
+
+    const refKey = medicineName.toLowerCase();
+    const [minPkr, maxPkr] = PKR_CATEGORY_RANGE[category] || PKR_CATEGORY_RANGE.General;
+    const categoryBandPrice = minPkr + (idx % Math.max(1, (maxPkr - minPkr + 1)));
+    const resolvedSellingPrice = strictPkPricing
+        ? Number.parseFloat(normalizedRaw.sellingPrice)
+        : Number.parseFloat(
+            normalizedRaw.sellingPrice ?? normalizedRaw.price_pkr ?? normalizedRaw.price ?? PK_MARKET_PRICE_REFERENCE[refKey] ?? categoryBandPrice
+        );
+    const sellingPrice = Number.isFinite(resolvedSellingPrice) ? resolvedSellingPrice : categoryBandPrice;
+    const costPrice = Number.parseFloat(normalizedRaw.costPrice ?? normalizedRaw.cost ?? Math.max(1, sellingPrice * 0.62));
+    const quantity = Number.parseInt(normalizedRaw.quantity ?? 1000, 10);
+    const activeIngredients = Array.isArray(normalizedRaw.activeIngredients)
+        ? normalizedRaw.activeIngredients
+        : String(normalizedRaw.activeIngredients || normalizedRaw.active_ingredients || '')
             .split(',')
             .map((x) => x.trim())
             .filter(Boolean);
-    const therapeuticUse = String(raw.therapeuticUse || raw.use || '').trim();
-    const commonDosage = String(raw.commonDosage || raw.dosage || 'As prescribed').trim();
+    const therapeuticUse = String(normalizedRaw.therapeuticUse || normalizedRaw.use || '').trim();
+    const commonDosage = String(normalizedRaw.commonDosage || normalizedRaw.dosage || 'As prescribed').trim();
 
     const years = 2 + (idx % 4);
     const expiryDate = new Date(Date.now() + years * 365 * 24 * 60 * 60 * 1000);
@@ -148,7 +299,8 @@ function toDocument(raw, idx = 0) {
         therapeuticUse,
         commonDosage,
         expiryDate,
-        imageUrl: raw.imageUrl || raw.image_url || ''
+        imageUrl: normalizedRaw.imageUrl || normalizedRaw.image_url || '',
+        currency: 'PKR'
     };
 }
 
@@ -179,12 +331,16 @@ async function seedDefaultMedicines() {
     }
 }
 
-async function seedFromCSV(filePath) {
+async function seedFromCSV(filePath, options = {}) {
+    const strictPkPricing = options.strictPkPricing === true;
     const absolute = path.isAbsolute(filePath)
         ? filePath
         : path.resolve(process.cwd(), filePath);
 
     console.log(`📥 Loading medicines from CSV: ${absolute}`);
+    if (strictPkPricing) {
+        console.log('🔒 Strict Pakistan verified pricing mode: ENABLED');
+    }
 
     if (!fs.existsSync(absolute)) {
         throw new Error(`CSV file not found: ${absolute}`);
@@ -194,7 +350,17 @@ async function seedFromCSV(filePath) {
         const batch = [];
         let seen = 0;
         let inserted = 0;
+        let failed = false;
         let parserRef = null;
+
+        const failImport = (error) => {
+            if (failed) return;
+            failed = true;
+            if (parserRef) {
+                parserRef.destroy(error);
+            }
+            reject(error);
+        };
 
         const flush = async () => {
             if (batch.length === 0) return;
@@ -204,6 +370,9 @@ async function seedFromCSV(filePath) {
                 inserted += result.length;
             } catch (e) {
                 if (e?.writeErrors?.length) {
+                    if (strictPkPricing) {
+                        throw new Error(`Strict import rejected ${e.writeErrors.length} invalid/duplicate row(s). First error: ${e.writeErrors[0]?.errmsg || e.message}`);
+                    }
                     inserted += docs.length - e.writeErrors.length;
                     console.warn(`⚠️ Skipped ${e.writeErrors.length} duplicate/invalid rows in a batch`);
                 } else {
@@ -215,23 +384,34 @@ async function seedFromCSV(filePath) {
         fs.createReadStream(absolute)
             .pipe((parserRef = csv()))
             .on('data', async (row) => {
+                if (failed) return;
                 seen += 1;
-                batch.push(toDocument(row, seen));
+                try {
+                    batch.push(toDocument(row, seen, { strictPkPricing }));
+                } catch (rowError) {
+                    if (strictPkPricing) {
+                        return failImport(new Error(`Strict PK pricing validation failed at CSV row ${seen}: ${rowError.message}`));
+                    }
+                    console.warn(`⚠️ Skipping CSV row ${seen}: ${rowError.message}`);
+                    return;
+                }
+
                 if (batch.length >= 5000) {
                     parserRef.pause();
-                    flush().then(() => parserRef.resume()).catch(reject);
+                    flush().then(() => parserRef.resume()).catch(failImport);
                 }
             })
             .on('end', async () => {
+                if (failed) return;
                 try {
                     await flush();
                     console.log(`✅ CSV load complete. Read=${seen}, Inserted=${inserted}`);
                     resolve({ seen, inserted });
                 } catch (e) {
-                    reject(e);
+                    failImport(e);
                 }
             })
-            .on('error', reject);
+            .on('error', failImport);
     });
 }
 
@@ -310,7 +490,9 @@ async function main() {
             if (!csvFile) {
                 throw new Error('Missing CSV path. Usage: --csv <filePath>');
             }
-            await seedFromCSV(csvFile);
+            await seedFromCSV(csvFile, {
+                strictPkPricing: has('--strict-pk-pricing')
+            });
         } else {
             await seedDefaultMedicines();
         }

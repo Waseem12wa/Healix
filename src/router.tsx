@@ -28,6 +28,7 @@ import Appointments from './pages/Appointments'
 import DoctorProfile from './pages/DoctorProfile'
 import MedicineShop from './pages/MedicineShop'
 import OrderHistory from './pages/OrderHistory'
+import PaymentCheckoutPage from './pages/PaymentCheckoutPage'
 
 // Helper to wrap protected routes
 const protect = (element: React.ReactElement) => (
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
       
       // Protected routes - Payment & Shopping
       { path: 'shop/medicines', element: protect(<MedicineShop />) },
+      { path: 'shop/checkout', element: protect(<PaymentCheckoutPage />) },
       { path: 'shop/orders', element: protect(<OrderHistory />) },
     ],
   },

@@ -1,0 +1,4 @@
+medicineName,genericName,category,price_pkr,currency,verification_source,verification_date,country,price_verified,quantity,activeIngredients,therapeuticUse,commonDosage,image_url
+Panadol,Paracetamol,Analgesic,120,PKR,DRAP Gazette 2026-01,2026-01-15,Pakistan,true,2000,paracetamol,Pain relief and fever reduction,500 mg every 6-8 hours,
+Augmentin,Amoxicillin + Clavulanic Acid,Antibiotic,540,PKR,Official Pharmacy Price List 2026-02,2026-02-01,Pakistan,true,1200,"amoxicillin, clavulanic acid",Bacterial infections,625 mg twice daily,
+Concor,Bisoprolol,Beta Blocker,310,PKR,Hospital Procurement Rate Card 2026-Q1,2026-03-01,Pakistan,true,900,bisoprolol,Hypertension and cardiac rate control,5 mg once daily,

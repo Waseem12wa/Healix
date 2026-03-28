@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
 import axios from 'axios';
+import path from 'path';
 import { connectDB } from './config/db.js';
 import authRoutes from './routes/auth.js';
 import passwordRoutes from './routes/password.js';
@@ -30,6 +31,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);

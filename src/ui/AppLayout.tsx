@@ -170,9 +170,11 @@ export function AppLayout() {
                 onClick={() => {
                   // Clear all auth data
                   localStorage.removeItem('userRole')
+                  localStorage.removeItem('authRole')
                   localStorage.removeItem('userEmail')
                   localStorage.removeItem('userName')
                   localStorage.removeItem('userId')
+                  localStorage.removeItem('token')
                   // Redirect to login
                   navigate('/login')
                 }}

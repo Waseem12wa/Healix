@@ -104,13 +104,17 @@ export default function Appointments() {
   const loadAppointments = async () => {
     setLoadingAppointments(true)
     try {
-      const userEmail = localStorage.getItem('userEmail')
-      if (!userEmail) {
-        setError('User email not found. Please login again.')
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setError('Authentication required. Please login again.')
         return
       }
 
-      const response = await fetch(`http://localhost:5000/api/appointments/patient?email=${encodeURIComponent(userEmail)}`)
+      const response = await fetch('/api/appointments/patient', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
       const data = await response.json()
 
       if (data.success) {
@@ -171,15 +175,14 @@ export default function Appointments() {
     setError('')
 
     try {
-      const userEmail = localStorage.getItem('userEmail')
-      if (!userEmail) {
-        setError('User email not found. Please login again.')
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setError('Authentication required. Please login again.')
         setLoading(false)
         return
       }
 
       const bookingData = {
-        patientEmail: userEmail,
         doctorId: selectedDoctor.id,
         date: bookingForm.date,
         time: bookingForm.time,
@@ -193,10 +196,11 @@ export default function Appointments() {
         selectedDoctor: selectedDoctor
       })
 
-      const response = await fetch('http://localhost:5000/api/appointments', {
+      const response = await fetch('/api/appointments', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(bookingData)
       })
@@ -259,9 +263,9 @@ export default function Appointments() {
 
   const handleDelete = async (id: number | string) => {
     try {
-      const userEmail = localStorage.getItem('userEmail')
-      if (!userEmail) {
-        setError('User email not found. Please login again.')
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setError('Authentication required. Please login again.')
         return
       }
 
@@ -271,8 +275,11 @@ export default function Appointments() {
         return
       }
 
-      const response = await fetch(`http://localhost:5000/api/appointments/${appointmentId}?userEmail=${encodeURIComponent(userEmail)}`, {
-        method: 'DELETE'
+      const response = await fetch(`/api/appointments/${appointmentId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       })
 
       const data = await response.json()

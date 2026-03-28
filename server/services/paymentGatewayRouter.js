@@ -1,6 +1,5 @@
 import stripeService from './stripeService.js';
-import easyPaisaService from './easyPaisaService.js';
-import jazzcashService from './jazzcashService.js';
+import nayaPayService from './nayaPayService.js';
 
 /**
  * Payment Gateway Router
@@ -19,12 +18,18 @@ class PaymentGatewayRouter {
       switch (paymentGateway.toLowerCase()) {
         case 'stripe':
           return await stripeService.createPaymentIntent(orderData);
-        
-        case 'easypaisa':
-          return await easyPaisaService.createPaymentSession(orderData);
-        
-        case 'jazzcash':
-          return await jazzcashService.createPaymentSession(orderData);
+
+        case 'paypal':
+          return await stripeService.createPaymentIntent({
+            ...orderData,
+            metadata: {
+              ...(orderData.metadata || {}),
+              preferredMethod: 'paypal'
+            }
+          });
+
+        case 'nayapay':
+          return await nayaPayService.createPaymentSession(orderData);
         
         default:
           // Fallback to Stripe if unknown gateway
@@ -51,16 +56,14 @@ class PaymentGatewayRouter {
     try {
       switch (gateway.toLowerCase()) {
         case 'stripe':
+        case 'paypal':
           return await stripeService.confirmPayment(
             confirmationData.paymentIntentId,
             confirmationData.transactionId
           );
-        
-        case 'easypaisa':
-          return await easyPaisaService.verifyPaymentResponse(confirmationData);
-        
-        case 'jazzcash':
-          return await jazzcashService.verifyPaymentResponse(confirmationData);
+
+        case 'nayapay':
+          return await nayaPayService.verifyPaymentResponse(confirmationData);
         
         default:
           throw new Error(`Unknown gateway: ${gateway}`);
@@ -85,25 +88,21 @@ class PaymentGatewayRouter {
     try {
       switch (gateway.toLowerCase()) {
         case 'stripe':
+        case 'paypal':
           return await stripeService.processRefund(
             refundData.paymentIntentId,
             refundData.transactionId,
             refundData.refundAmount
           );
-        
-        case 'easypaisa':
-          return await easyPaisaService.processRefund(
-            refundData.transactionId,
-            refundData.gatewayTransactionId,
-            refundData.refundAmount
-          );
-        
-        case 'jazzcash':
-          return await jazzcashService.processRefund(
-            refundData.transactionId,
-            refundData.gatewayTransactionId,
-            refundData.refundAmount
-          );
+
+        case 'nayapay':
+          // NayaPay refund simulation handled at transaction layer in this implementation.
+          return {
+            success: true,
+            message: 'NayaPay refund accepted for processing',
+            refundId: `NAYA-REF-${Date.now()}`,
+            amount: refundData.refundAmount
+          };
         
         default:
           throw new Error(`Unknown gateway: ${gateway}`);
@@ -129,16 +128,10 @@ class PaymentGatewayRouter {
       switch (gateway.toLowerCase()) {
         case 'stripe':
           return await stripeService.handleWebhookEvent(event);
-        
-        case 'easypaisa':
-          // Easypaisa typically uses callback approach
-          console.log('📨 Easypaisa webhook received');
-          return { handled: true, gateway: 'easypaisa' };
-        
-        case 'jazzcash':
-          // JazzCash also uses callback approach
-          console.log('📨 JazzCash webhook received');
-          return { handled: true, gateway: 'jazzcash' };
+
+        case 'nayapay':
+          console.log('📨 NayaPay webhook received');
+          return { handled: true, gateway: 'nayapay' };
         
         default:
           console.warn(`⚠️  Unknown gateway webhook: ${gateway}`);
@@ -164,13 +157,16 @@ class PaymentGatewayRouter {
     try {
       switch (gateway.toLowerCase()) {
         case 'stripe':
+        case 'paypal':
           return await stripeService.getTransactionDetails(transactionId);
-        
-        case 'easypaisa':
-          return await easyPaisaService.getTransactionDetails(transactionId);
-        
-        case 'jazzcash':
-          return await jazzcashService.getTransactionDetails(transactionId);
+
+        case 'nayapay':
+          return {
+            success: true,
+            gateway: 'nayapay',
+            transactionId,
+            message: 'NayaPay transaction details available through local transaction record'
+          };
         
         default:
           throw new Error(`Unknown gateway: ${gateway}`);
@@ -193,27 +189,27 @@ class PaymentGatewayRouter {
     return [
       {
         name: 'stripe',
-        displayName: 'Stripe',
-        description: 'International card payments',
+        displayName: 'Card Payment',
+        description: 'Visa, Mastercard, American Express and other cards',
         type: 'card',
         priority: 1,
         isActive: Boolean(process.env.STRIPE_SECRET_KEY)
       },
       {
-        name: 'easypaisa',
-        displayName: 'Easypaisa',
-        description: 'Pakistan mobile wallet',
-        type: 'mobile_wallet',
+        name: 'paypal',
+        displayName: 'PayPal',
+        description: 'Pay securely with PayPal',
+        type: 'wallet',
         priority: 2,
-        isActive: Boolean(process.env.EASYPAISA_STORE_ID && process.env.EASYPAISA_MERCHANT_ID)
+        isActive: Boolean(process.env.STRIPE_SECRET_KEY)
       },
       {
-        name: 'jazzcash',
-        displayName: 'JazzCash',
-        description: 'Pakistan mobile wallet',
+        name: 'nayapay',
+        displayName: 'NayaPay',
+        description: 'Pakistan digital wallet',
         type: 'mobile_wallet',
         priority: 3,
-        isActive: Boolean(process.env.JAZZCASH_MERCHANT_ID)
+        isActive: true
       }
     ].filter(gateway => gateway.isActive);
   }

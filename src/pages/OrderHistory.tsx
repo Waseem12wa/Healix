@@ -116,10 +116,10 @@ export default function OrderHistory() {
     switch (gateway) {
       case 'stripe':
         return '💳'
-      case 'easypaisa':
-        return '📱'
-      case 'jazzcash':
-        return '📞'
+      case 'paypal':
+        return '🅿️'
+      case 'nayapay':
+        return '🟢'
       default:
         return '💰'
     }

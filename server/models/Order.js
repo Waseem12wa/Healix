@@ -65,7 +65,7 @@ const orderSchema = new mongoose.Schema({
   // Payment Information
   paymentGateway: {
     type: String,
-    enum: ['stripe', 'easypaisa', 'jazzcash'],
+    enum: ['stripe', 'paypal', 'nayapay', 'easypaisa', 'jazzcash'],
     required: true
   },
   paymentStatus: {

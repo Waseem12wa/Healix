@@ -17,6 +17,7 @@ from flask import Flask, request, jsonify
 import requests
 import json
 import time
+import os
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import logging
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 SERVICE_PORT = 5006
-INTERNAL_API_URL = 'http://localhost:3000'  # Express.js server
+INTERNAL_API_URL = os.environ.get('INTERNAL_API_URL', 'http://localhost:5000')  # Express.js server
 
 # Backend service URLs
 SIDE_EFFECT_SERVICE_URL = 'http://localhost:5004'

@@ -33,12 +33,14 @@ import type { PaymentGateway, Medicine } from '../services/paymentService'
 import { loadStripe } from '@stripe/stripe-js'
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js'
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '')
+const stripePublishableKey = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '').trim()
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
 
 interface PaymentModalProps {
   open: boolean
   onClose: () => void
   medicines: Medicine[]
+  quantities?: Record<string, number>
   totalAmount: number
   onSuccess: (orderId: string) => void
 }
@@ -46,18 +48,20 @@ interface PaymentModalProps {
 interface PaymentFormData {
   email: string
   phone: string
-  gateway: 'stripe' | 'easypaisa' | 'jazzcash'
+  gateway: 'stripe' | 'paypal' | 'nayapay'
 }
 
 function StripePaymentForm({
   amount,
   medicines,
+  quantities,
   formData,
   onSuccess,
   onClose,
 }: {
   amount: number
   medicines: Medicine[]
+  quantities: Record<string, number>
   formData: PaymentFormData
   onSuccess: (orderId: string) => void
   onClose: () => void
@@ -77,16 +81,17 @@ function StripePaymentForm({
     try {
       // Create payment intent
       const intent = await createPaymentIntent({
+        userEmail: formData.email,
         amount,
-        currency: 'USD',
+        currency: 'PKR',
         paymentGateway: 'stripe',
         medicines: medicines.map((m) => ({
           medicineId: m._id,
-          quantity: 1,
+          quantity: quantities[m._id] || 1,
           price: m.sellingPrice,
         })),
-        email: formData.email,
-        phone: formData.phone,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
       })
 
       if (!intent.clientSecret) throw new Error('No client secret received')
@@ -144,7 +149,7 @@ function StripePaymentForm({
           disabled={!stripe || loading}
           startIcon={loading ? <CircularProgress size={20} /> : <CreditCardIcon />}
         >
-          {loading ? 'Processing...' : `Pay $${amount.toFixed(2)}`}
+          {loading ? 'Processing...' : `Pay PKR ${amount.toLocaleString()}`}
         </Button>
       </Stack>
     </form>
@@ -155,12 +160,14 @@ function GatewayPaymentForm({
   gateway,
   amount,
   medicines,
+  quantities,
   formData,
   onClose,
 }: {
-  gateway: 'easypaisa' | 'jazzcash'
+  gateway: 'nayapay' | 'paypal'
   amount: number
   medicines: Medicine[]
+  quantities: Record<string, number>
   formData: PaymentFormData
   onClose: () => void
 }) {
@@ -171,16 +178,17 @@ function GatewayPaymentForm({
     setLoading(true)
     try {
       const intent = await createPaymentIntent({
+        userEmail: formData.email,
         amount,
         currency: 'PKR',
         paymentGateway: gateway,
         medicines: medicines.map((m) => ({
           medicineId: m._id,
-          quantity: 1,
+          quantity: quantities[m._id] || 1,
           price: m.sellingPrice,
         })),
-        email: formData.email,
-        phone: formData.phone,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
       })
 
       if (intent.redirectUrl) {
@@ -200,7 +208,7 @@ function GatewayPaymentForm({
     return (
       <Stack spacing={2} alignItems="center" justifyContent="center" sx={{ py: 3 }}>
         <CheckCircleIcon sx={{ fontSize: 48, color: 'success.main' }} />
-        <Typography>Redirecting to {gateway === 'easypaisa' ? 'Easypaisa' : 'JazzCash'}...</Typography>
+        <Typography>Redirecting to {gateway === 'nayapay' ? 'NayaPay' : 'PayPal'}...</Typography>
       </Stack>
     )
   }
@@ -208,7 +216,7 @@ function GatewayPaymentForm({
   return (
     <Stack spacing={2}>
       <Alert severity="info">
-        You will be redirected to {gateway === 'easypaisa' ? 'Easypaisa' : 'JazzCash'} to complete payment
+        You will be redirected to {gateway === 'nayapay' ? 'NayaPay' : 'PayPal'} to complete payment
       </Alert>
       <Button
         variant="contained"
@@ -217,7 +225,7 @@ function GatewayPaymentForm({
         disabled={loading}
         startIcon={loading ? <CircularProgress size={20} /> : <LocalAtmIcon />}
       >
-        {loading ? 'Proceeding...' : `Pay PKR ${amount.toLocaleString()}`}
+        {loading ? 'Proceeding...' : `Continue with ${gateway === 'nayapay' ? 'NayaPay' : 'PayPal'}`}
       </Button>
     </Stack>
   )
@@ -227,6 +235,7 @@ export default function PaymentModal({
   open,
   onClose,
   medicines,
+  quantities = {},
   totalAmount,
   onSuccess,
 }: PaymentModalProps) {
@@ -279,7 +288,7 @@ export default function PaymentModal({
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Typography variant="h6">Checkout</Typography>
           <Chip
-            label={`Total: $${totalAmount.toFixed(2)}`}
+            label={`Total: PKR ${totalAmount.toLocaleString()}`}
             color="primary"
             variant="outlined"
           />
@@ -306,9 +315,11 @@ export default function PaymentModal({
                     <Stack spacing={1}>
                       {medicines.map((med) => (
                         <Stack key={med._id} direction="row" justifyContent="space-between">
-                          <Typography variant="body2">{med.medicineName}</Typography>
+                          <Typography variant="body2">
+                            {med.medicineName} x {quantities[med._id] || 1}
+                          </Typography>
                           <Typography variant="body2" fontWeight={600}>
-                            ${med.sellingPrice.toFixed(2)}
+                            PKR {(med.sellingPrice * (quantities[med._id] || 1)).toLocaleString()}
                           </Typography>
                         </Stack>
                       ))}
@@ -317,7 +328,7 @@ export default function PaymentModal({
                     <Stack direction="row" justifyContent="space-between">
                       <Typography fontWeight={600}>Total</Typography>
                       <Typography variant="h6" color="primary" fontWeight={700}>
-                        ${totalAmount.toFixed(2)}
+                        PKR {totalAmount.toLocaleString()}
                       </Typography>
                     </Stack>
                   </CardContent>
@@ -430,20 +441,28 @@ export default function PaymentModal({
             >
               <Stack spacing={3} sx={{ mt: 2 }}>
                 {formData.gateway === 'stripe' ? (
-                  <Elements stripe={stripePromise}>
-                    <StripePaymentForm
-                      amount={totalAmount}
-                      medicines={medicines}
-                      formData={formData}
-                      onSuccess={onSuccess}
-                      onClose={onClose}
-                    />
-                  </Elements>
+                  stripePromise ? (
+                    <Elements stripe={stripePromise}>
+                      <StripePaymentForm
+                        amount={totalAmount}
+                        medicines={medicines}
+                        quantities={quantities}
+                        formData={formData}
+                        onSuccess={onSuccess}
+                        onClose={onClose}
+                      />
+                    </Elements>
+                  ) : (
+                    <Alert severity="error">
+                      Stripe is not configured. Please set VITE_STRIPE_PUBLISHABLE_KEY in your frontend environment.
+                    </Alert>
+                  )
                 ) : (
                   <GatewayPaymentForm
                     gateway={formData.gateway}
                     amount={totalAmount}
                     medicines={medicines}
+                    quantities={quantities}
                     formData={formData}
                     onClose={onClose}
                   />

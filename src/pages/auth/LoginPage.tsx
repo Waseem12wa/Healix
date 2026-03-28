@@ -88,7 +88,12 @@ export default function LoginPage() {
       if (data.success) {
         localStorage.setItem('userName', data.data.userName)
         localStorage.setItem('authRole', data.data.role)
+        localStorage.setItem('userRole', data.data.role)
         localStorage.setItem('userEmail', data.data.email)
+        localStorage.setItem('userId', data.data.id)
+        if (data.token) {
+          localStorage.setItem('token', data.token)
+        }
 
         // Navigate based on role
         if (selectedRole === 'patient') { 

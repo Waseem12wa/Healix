@@ -1,5 +1,5 @@
-import { Box, Button, Card, CardContent, Chip, Stack, Typography, Avatar, Badge, IconButton } from '@mui/material'
-import { Link } from 'react-router-dom'
+import { Box, Button, Card, CardContent, Chip, Stack, Typography, Avatar, Badge, IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Divider, TextField, InputAdornment } from '@mui/material'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { Variants } from 'framer-motion'
 import NotificationsIcon from '@mui/icons-material/Notifications'
@@ -15,8 +15,11 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import EventIcon from '@mui/icons-material/Event'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
-import { useMemo } from 'react'
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
+import SearchIcon from '@mui/icons-material/Search'
+import { useMemo, useState } from 'react'
 import { useNotifications } from '../hooks/useNotifications'
+import { clearAuthData } from '../utils/auth'
 import { Area, AreaChart, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line } from 'recharts'
 
 // Helper function to generate random values within a range
@@ -25,9 +28,12 @@ const randomBetween = (min: number, max: number) => {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
   const userName = useMemo(() => {
     return (localStorage.getItem('userName') || 'Patient')
   }, [])
+  const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null)
 
   const { unreadCount } = useNotifications()
 
@@ -42,11 +48,42 @@ export default function Dashboard() {
     { label: 'AI Health Assistant', description: 'Chat with an AI to understand your health data.', icon: <SmartToyIcon sx={{ color: '#90E0EF' }} />, href: '/tools/ai-chatbot' },
     { label: 'Record Summarization', description: 'Turn complex reports into clear summaries.', icon: <SummarizeIcon sx={{ color: '#00B4D8' }} />, href: '/tools/health-summary' },
     { label: 'Doctor Appointments', description: 'Manage and review upcoming visits.', icon: <EventIcon sx={{ color: '#06D6A0' }} />, href: '/tools/appointments' },
-    { label: 'Order History', description: 'View and track your past medicine purchases.', icon: <TrendingUpIcon sx={{ color: '#0096C7' }} />, href: '/shop/orders' },
-    { label: 'Notifications', description: 'View important alerts and updates.', icon: <NotificationsIcon sx={{ color: '#EF476F' }} />, href: '/tools/notifications' },
-    { label: 'Profile', description: 'Review and update your personal details.', icon: <PersonIcon sx={{ color: '#0096C7' }} />, href: '/tools/profile' },
-    { label: 'Logout', description: 'Securely sign out of your Healix account.', icon: <LogoutIcon sx={{ color: '#64748B' }} />, href: '/login' },
   ]
+
+  const filteredFeatureItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return featureItems
+
+    return featureItems.filter((item) => {
+      const haystack = `${item.label} ${item.description}`.toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [featureItems, searchQuery])
+
+  const profileMenuItems = [
+    { label: 'Order History', icon: <TrendingUpIcon fontSize="small" />, href: '/shop/orders' },
+    { label: 'Notifications', icon: <NotificationsIcon fontSize="small" />, href: '/tools/notifications' },
+    { label: 'Profile', icon: <PersonIcon fontSize="small" />, href: '/tools/profile' },
+  ]
+
+  const handleOpenProfileMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setProfileMenuAnchor(event.currentTarget)
+  }
+
+  const handleCloseProfileMenu = () => {
+    setProfileMenuAnchor(null)
+  }
+
+  const handleProfileMenuNavigate = (path: string) => {
+    handleCloseProfileMenu()
+    navigate(path)
+  }
+
+  const handleLogout = () => {
+    clearAuthData()
+    handleCloseProfileMenu()
+    navigate('/login')
+  }
 
   const summaryCards = [
     { title: 'Active Medications', value: '5', change: '2 this week', changeType: 'positive', icon: <AccessAlarmIcon />, bgColor: '#ffffff' },
@@ -183,12 +220,9 @@ export default function Dashboard() {
               <Box sx={{
                 display: { xs: 'none', sm: 'flex' },
                 alignItems: 'center',
-                gap: 1,
-                px: 2.5,
-                py: 1.25,
+                minWidth: { sm: 220, md: 280 },
                 bgcolor: '#F5F5F7',
                 borderRadius: 2,
-                minWidth: 220,
                 border: '1px solid',
                 borderColor: '#E2E8F0',
                 transition: 'all 0.2s ease',
@@ -197,7 +231,29 @@ export default function Dashboard() {
                   bgcolor: '#FFFFFF'
                 }
               }}>
-                <Typography sx={{ color: '#64748B', fontSize: '0.875rem' }}>Search here...</Typography>
+                <TextField
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search tools..."
+                  variant="standard"
+                  fullWidth
+                  InputProps={{
+                    disableUnderline: true,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ color: '#64748B', fontSize: 20 }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    px: 2,
+                    py: 0.25,
+                    '& .MuiInputBase-input': {
+                      fontSize: '0.9375rem',
+                      color: '#1A1A2E'
+                    }
+                  }}
+                />
               </Box>
               <Badge
                 badgeContent={unreadCount}
@@ -226,7 +282,27 @@ export default function Dashboard() {
                   <NotificationsIcon />
                 </IconButton>
               </Badge>
-              <Stack direction="row" alignItems="center" spacing={1.5}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1.5}
+                onClick={handleOpenProfileMenu}
+                sx={{
+                  cursor: 'pointer',
+                  px: 1.25,
+                  py: 0.75,
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'transparent',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    borderColor: '#E2E8F0',
+                    bgcolor: '#F8FAFC'
+                  }
+                }}
+                role="button"
+                aria-label="Open patient profile menu"
+              >
                 <Avatar sx={{
                   bgcolor: '#00B4D8',
                   width: 44,
@@ -242,7 +318,48 @@ export default function Dashboard() {
                   </Typography>
                   <Typography sx={{ fontSize: '0.8125rem', color: '#64748B' }}>Patient</Typography>
                 </Box>
+                <ArrowDropDownIcon sx={{ color: '#64748B', display: { xs: 'none', sm: 'block' } }} />
               </Stack>
+
+              <Menu
+                anchorEl={profileMenuAnchor}
+                open={Boolean(profileMenuAnchor)}
+                onClose={handleCloseProfileMenu}
+                PaperProps={{
+                  sx: {
+                    mt: 1,
+                    minWidth: 220,
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: '#E2E8F0',
+                    boxShadow: '0 12px 28px rgba(15, 23, 42, 0.12)'
+                  }
+                }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                {profileMenuItems.map((item) => (
+                  <MenuItem key={item.label} onClick={() => handleProfileMenuNavigate(item.href)}>
+                    <ListItemIcon sx={{ color: '#64748B' }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.label}
+                      primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }}
+                    />
+                  </MenuItem>
+                ))}
+                <Divider />
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon sx={{ color: '#64748B' }}>
+                    <LogoutIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Logout"
+                    primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }}
+                  />
+                </MenuItem>
+              </Menu>
             </Stack>
           </Stack>
         </Box>
@@ -261,7 +378,7 @@ export default function Dashboard() {
                 gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' },
                 gap: { xs: 2, md: 3 }
               }}>
-                {featureItems.map((item) => (
+                {filteredFeatureItems.map((item) => (
                   <motion.div key={item.label} variants={cardVariants} whileHover="hover">
                     <Card
                       component={Link}
@@ -341,7 +458,21 @@ export default function Dashboard() {
                       </Box>
                     </Card>
                   </motion.div>
-                ))}\n              </Box>
+                ))}
+              </Box>
+
+              {filteredFeatureItems.length === 0 && (
+                <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: '#E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <CardContent>
+                    <Typography sx={{ color: '#1A1A2E', fontWeight: 700, mb: 0.5 }}>
+                      No tools found
+                    </Typography>
+                    <Typography sx={{ color: '#64748B', fontSize: '0.9rem' }}>
+                      Try a different search term.
+                    </Typography>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Summary Cards - Larger */}
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: { xs: 2, md: 3 } }}>

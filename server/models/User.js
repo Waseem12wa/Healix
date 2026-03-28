@@ -25,6 +25,54 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  patientProfile: {
+    profileImage: {
+      type: String,
+      default: ''
+    },
+    age: {
+      type: Number,
+      min: 0,
+      max: 130,
+      default: null
+    },
+    gender: {
+      type: String,
+      enum: ['Male', 'Female', 'Other', 'Prefer not to say', ''],
+      default: ''
+    },
+    mobileNumber: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    bio: {
+      type: String,
+      trim: true,
+      default: ''
+    }
+  },
+  patientCart: {
+    type: [
+      {
+        medicineId: {
+          type: String,
+          required: true
+        },
+        medicine: {
+          type: mongoose.Schema.Types.Mixed,
+          required: true
+        },
+        quantity: {
+          type: Number,
+          required: true,
+          min: 1,
+          default: 1
+        }
+      }
+    ],
+    default: []
+  },
   // Doctor Profile Fields
   doctorProfile: {
     // Personal Information
@@ -72,6 +120,34 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  savedPaymentMethods: [{
+    paymentToken: {
+      type: String,
+      required: true
+    },
+    type: {
+      type: String,
+      enum: ['card', 'paypal', 'nayapay'],
+      required: true
+    },
+    provider: {
+      type: String,
+      required: true
+    },
+    holderName: String,
+    last4: String,
+    expiryMonth: Number,
+    expiryYear: Number,
+    walletIdMasked: String,
+    isDefault: {
+      type: Boolean,
+      default: false
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

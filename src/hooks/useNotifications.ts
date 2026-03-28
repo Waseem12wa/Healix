@@ -18,10 +18,14 @@ export function useNotifications() {
   const loadNotifications = async () => {
     setLoading(true)
     try {
-      const userEmail = localStorage.getItem('userEmail')
-      if (!userEmail) return
+      const token = localStorage.getItem('token')
+      if (!token) return
 
-      const response = await fetch(`http://localhost:5000/api/notifications?email=${encodeURIComponent(userEmail)}`)
+      const response = await fetch('/api/notifications', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
       const data = await response.json()
 
       if (data.success) {
@@ -37,15 +41,16 @@ export function useNotifications() {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const userEmail = localStorage.getItem('userEmail')
-      if (!userEmail) return
+      const token = localStorage.getItem('token')
+      if (!token) return
 
-      const response = await fetch(`http://localhost:5000/api/notifications/${notificationId}/read`, {
+      const response = await fetch(`/api/notifications/${notificationId}/read`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ email: userEmail })
+        body: JSON.stringify({})
       })
 
       const data = await response.json()
@@ -63,15 +68,16 @@ export function useNotifications() {
 
   const markAllAsRead = async () => {
     try {
-      const userEmail = localStorage.getItem('userEmail')
-      if (!userEmail) return
+      const token = localStorage.getItem('token')
+      if (!token) return
 
-      const response = await fetch('http://localhost:5000/api/notifications/read-all', {
+      const response = await fetch('/api/notifications/read-all', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ email: userEmail })
+        body: JSON.stringify({})
       })
 
       const data = await response.json()

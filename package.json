@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npx concurrently -n UI,API -c cyan,green \"npm:dev:ui\" \"npm:start:backend\"",
+    "dev:ui": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "start:backend": "cd server && npm start",
@@ -12,6 +13,7 @@
     "seed:medicines": "node scripts/seed-medicines.js",
     "seed:medicines:million": "node scripts/seed-medicines.js --clear --generate 1000000",
     "seed:medicines:csv": "node scripts/seed-medicines.js --csv server/data/medicines.csv",
+    "seed:medicines:pk:strict": "node scripts/seed-medicines.js --clear --csv server/data/medicines-pk-verified.csv --strict-pk-pricing",
     "seed:drug-food:million": "cd server && py scripts/generate-drug-food-data.py --drugs 1000000 --foods 1000000",
     "db:indexes": "node scripts/create-medicine-indexes.js"
   },

@@ -28,6 +28,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { motion, AnimatePresence } from 'framer-motion'
 import BackButton from '../ui/BackButton'
 import { correctDrugTerm, correctFoodTerm } from '../utils/medicalAutoCorrect'
+import { logPatientActivity } from '../services/patientService'
 
 type FoodInteraction = {
   medicine: string
@@ -107,7 +108,10 @@ export default function DrugFoodInteractionChecker() {
           try {
             const response = await fetch('http://localhost:5000/api/dfi/predict', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                ...(localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {}),
+              },
               body: JSON.stringify({ medicine, food }),
             })
 
@@ -135,6 +139,21 @@ export default function DrugFoodInteractionChecker() {
       }
 
       setResults(interactions)
+
+      await logPatientActivity({
+        category: 'food-interaction',
+        title: 'Drug-food interaction check',
+        details: `Checked ${medicines.length} medicines with ${foods.length} foods`,
+        metadata: {
+          medicines,
+          foods,
+          totalCombinations: medicines.length * foods.length,
+          successfulPredictions: interactions.length,
+          failedPredictions: errors.length,
+        }
+      }).catch(() => {
+        // non-blocking
+      })
 
       if (errors.length > 0) {
         setError(`Some predictions failed: ${errors.join('; ')}`)

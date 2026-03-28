@@ -1,577 +1,306 @@
-import { useState, useEffect } from 'react'
-import { Box, Button, Card, CardContent, Checkbox, FormControlLabel, Stack, TextField, Typography } from '@mui/material'
-import PersonIcon from '@mui/icons-material/Person'
-import EditIcon from '@mui/icons-material/Edit'
-import LockIcon from '@mui/icons-material/Lock'
-import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety'
-import AccessAlarmIcon from '@mui/icons-material/AccessAlarm'
-import SaveIcon from '@mui/icons-material/Save'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Divider,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
 import BackButton from '../ui/BackButton'
+import PersonIcon from '@mui/icons-material/Person'
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
+import SaveIcon from '@mui/icons-material/Save'
+import HistoryIcon from '@mui/icons-material/History'
 import { useNavigate } from 'react-router-dom'
+import { getMyProfile, getPatientActivities, updateMyProfile, uploadMyProfileImage } from '../services/patientService'
 
-type UserProfile = {
-  name: string
-  age: number
-  gender: string
+type FormState = {
+  userName: string
   email: string
-  phone: string
-  medicalHistory: string[]
-  lastCheck: string
-  remindersActive: number
+  age: string
+  gender: string
+  mobileNumber: string
+  profileImage: string
+  bio: string
+}
+
+const defaultForm: FormState = {
+  userName: '',
+  email: '',
+  age: '',
+  gender: '',
+  mobileNumber: '',
+  profileImage: '',
+  bio: '',
 }
 
 export default function Profile() {
   const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [form, setForm] = useState<FormState>(defaultForm)
+  const [activities, setActivities] = useState<any[]>([])
 
-  // Redirect doctors to doctor profile page
   useEffect(() => {
     const role = localStorage.getItem('authRole')
     if (role === 'doctor') {
       navigate('/doctor-profile', { replace: true })
+      return
     }
+
+    const loadProfile = async () => {
+      try {
+        setLoading(true)
+        const [profile, activityData] = await Promise.all([
+          getMyProfile(),
+          getPatientActivities(undefined, 20),
+        ])
+        setForm({
+          userName: profile?.userName || '',
+          email: profile?.email || '',
+          age: profile?.patientProfile?.age ? String(profile.patientProfile.age) : '',
+          gender: profile?.patientProfile?.gender || '',
+          mobileNumber: profile?.patientProfile?.mobileNumber || '',
+          profileImage: profile?.patientProfile?.profileImage || '',
+          bio: profile?.patientProfile?.bio || '',
+        })
+        setActivities(Array.isArray(activityData) ? activityData : [])
+      } catch (err: any) {
+        setError(err?.response?.data?.message || 'Failed to load profile')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProfile()
   }, [navigate])
 
-  const [profile, setProfile] = useState<UserProfile>({
-    name: 'John Doe',
-    age: 35,
-    gender: 'Male',
-    email: 'john.doe@email.com',
-    phone: '+1 (555) 123-4567',
-    medicalHistory: ['Diabetes Type 2', 'Hypertension', 'Allergic to Penicillin'],
-    lastCheck: '3 days ago',
-    remindersActive: 4,
-  })
+  const avatarLabel = useMemo(() => {
+    if (form.userName?.trim()) {
+      return form.userName.trim().charAt(0).toUpperCase()
+    }
+    if (form.email?.trim()) {
+      return form.email.trim().charAt(0).toUpperCase()
+    }
+    return 'P'
+  }, [form.userName, form.email])
 
-  const [editMode, setEditMode] = useState(false)
-  const [passwordMode, setPasswordMode] = useState(false)
-  const [consents, setConsents] = useState({
-    shareWithDoctors: true,
-    shareForResearch: false,
-    shareWithProviders: true,
-  })
-
-  const handleEdit = () => setEditMode(!editMode)
-  const handlePassword = () => setPasswordMode(!passwordMode)
-
-  const updateProfile = (field: keyof UserProfile, value: string | number) => {
-    setProfile(prev => ({ ...prev, [field]: value }))
+  const updateField = (key: keyof FormState, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  const updateConsent = (field: keyof typeof consents, value: boolean) => {
-    setConsents(prev => ({ ...prev, [field]: value }))
+  const handleImageUpload = async (file?: File) => {
+    if (!file) return
+
+    // Keep client-side limit aligned with backend upload limit.
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Profile image must be 5MB or smaller')
+      return
+    }
+
+    try {
+      setUploadingImage(true)
+      const imageUrl = await uploadMyProfileImage(file)
+      if (!imageUrl) {
+        throw new Error('Image upload failed')
+      }
+      updateField('profileImage', imageUrl)
+      setSuccess('Profile image uploaded successfully')
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Failed to upload image')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  const handleSave = async () => {
+    try {
+      setSaving(true)
+      setError(null)
+      setSuccess(null)
+
+      const payload = {
+        userName: form.userName,
+        email: form.email,
+        patientProfile: {
+          age: form.age ? Number(form.age) : undefined,
+          gender: form.gender,
+          mobileNumber: form.mobileNumber,
+          profileImage: form.profileImage,
+          bio: form.bio,
+        },
+      }
+
+      const updated = await updateMyProfile(payload)
+      localStorage.setItem('userName', updated?.userName || form.userName)
+      localStorage.setItem('userEmail', updated?.email || form.email)
+
+      setSuccess('Profile saved successfully')
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Failed to save profile')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
-    <Box sx={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5F5F7 0%, #E8F4F8 100%)',
-      py: { xs: 4, md: 6 },
-      px: { xs: 2, md: 4 }
-    }}>
-      {/* Main Content */}
-      <Box sx={{ maxWidth: 1400, mx: 'auto', pt: { xs: 4, md: 6 } }}>
-        <Stack spacing={4}>
-          {/* Back Button */}
-          <Box>
-            <BackButton />
-          </Box>
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #F5F5F7 0%, #E8F4F8 100%)', py: 4, px: 2 }}>
+      <Box sx={{ maxWidth: 980, mx: 'auto' }}>
+        <BackButton />
 
-          {/* Page Header */}
-          <Box>
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-              <Box sx={{
-                width: 56,
-                height: 56,
-                borderRadius: 2.5,
-                bgcolor: '#06D6A0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(6, 214, 160, 0.3)'
-              }}>
-                <PersonIcon sx={{ fontSize: 32, color: '#FFFFFF' }} />
-              </Box>
-              <Box>
-                <Typography
-                  variant="h4"
-                  fontWeight={800}
-                  sx={{
-                    color: '#1A1A2E',
-                    fontSize: { xs: '1.75rem', md: '2.25rem' },
-                    lineHeight: 1.2,
-                    mb: 0.5
-                  }}
-                >
-                  Profile
-                </Typography>
-                <Typography variant="body1" sx={{ color: '#64748B', fontSize: '14px' }}>
-                  Manage your personal information and preferences
-                </Typography>
-              </Box>
-            </Stack>
-          </Box>
+        <Stack spacing={3} sx={{ mt: 2 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: '#06D6A0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <PersonIcon sx={{ color: '#fff', fontSize: 32 }} />
+            </Box>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: '#1A1A2E' }}>Patient Profile</Typography>
+              <Typography variant="body2" sx={{ color: '#64748B' }}>Your information is securely stored and linked to your unique patient ID.</Typography>
+            </Box>
+          </Stack>
 
-          {/* Personal Information Card */}
-          <Card elevation={0} sx={{
-            borderRadius: 3,
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-            border: '1px solid rgba(0, 0, 0, 0.06)',
-            bgcolor: '#FFFFFF'
-          }}>
+          {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+          {success && <Alert severity="success" onClose={() => setSuccess(null)}>{success}</Alert>}
+
+          <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0, 0, 0, 0.06)' }}>
             <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-              <Stack spacing={3}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="h6" fontWeight={700} sx={{ color: '#1A1A2E', fontSize: '18px' }}>
-                    Personal Information
-                  </Typography>
-                  <Button
-                    startIcon={<EditIcon />}
-                    variant={editMode ? "outlined" : "contained"}
-                    onClick={handleEdit}
-                    sx={{
-                      textTransform: 'none',
-                      borderRadius: 2,
-                      fontWeight: 600,
-                      fontSize: '14px',
-                      ...(editMode ? {
-                        borderColor: '#E2E8F0',
-                        color: '#64748B',
-                        '&:hover': {
-                          borderColor: '#CBD5E1',
-                          bgcolor: '#F5F5F7'
-                        }
-                      } : {
-                        bgcolor: '#06D6A0',
-                        color: '#FFFFFF',
-                        boxShadow: '0 2px 8px rgba(6, 214, 160, 0.3)',
-                        '&:hover': {
-                          bgcolor: '#04A777',
-                          boxShadow: '0 4px 12px rgba(6, 214, 160, 0.4)'
-                        }
-                      })
-                    }}
-                  >
-                    {editMode ? 'Cancel' : 'Edit Profile'}
-                  </Button>
+              {loading ? (
+                <Stack alignItems="center" justifyContent="center" sx={{ py: 6 }}>
+                  <CircularProgress />
+                  <Typography sx={{ mt: 2, color: '#64748B' }}>Loading profile...</Typography>
                 </Stack>
+              ) : (
+                <Stack spacing={3}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                    <Avatar src={form.profileImage || undefined} sx={{ width: 90, height: 90, bgcolor: '#00B4D8', fontSize: '2rem', fontWeight: 700 }}>
+                      {avatarLabel}
+                    </Avatar>
+                    <Button component="label" variant="outlined" startIcon={uploadingImage ? <CircularProgress size={16} /> : <PhotoCameraIcon />} sx={{ textTransform: 'none' }} disabled={uploadingImage}>
+                      Upload Profile Image
+                      <input
+                        hidden
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(e) => handleImageUpload(e.target.files?.[0])}
+                      />
+                    </Button>
+                    <Typography variant="caption" color="text.secondary">PNG, JPG, WEBP up to 5MB</Typography>
+                  </Stack>
 
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="Full Name"
-                    value={profile.name}
-                    onChange={(e) => updateProfile('name', e.target.value)}
-                    disabled={!editMode}
-                    fullWidth
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: editMode ? '#F5F5F7' : '#FAFAFA',
-                        borderRadius: 2,
-                        '& fieldset': {
-                          borderColor: '#E2E8F0'
-                        },
-                        '&:hover fieldset': {
-                          borderColor: editMode ? '#00B4D8' : '#E2E8F0'
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#00B4D8',
-                          borderWidth: '2px'
-                        }
-                      }
-                    }}
-                  />
-                  <TextField
-                    label="Age"
-                    type="number"
-                    value={profile.age}
-                    onChange={(e) => updateProfile('age', parseInt(e.target.value))}
-                    disabled={!editMode}
-                    fullWidth
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: editMode ? '#F5F5F7' : '#FAFAFA',
-                        borderRadius: 2,
-                        '& fieldset': {
-                          borderColor: '#E2E8F0'
-                        },
-                        '&:hover fieldset': {
-                          borderColor: editMode ? '#00B4D8' : '#E2E8F0'
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#00B4D8',
-                          borderWidth: '2px'
-                        }
-                      }
-                    }}
-                  />
-                </Stack>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                    <TextField
+                      label="Full Name"
+                      fullWidth
+                      value={form.userName}
+                      onChange={(e) => updateField('userName', e.target.value)}
+                    />
+                    <TextField
+                      label="Email"
+                      type="email"
+                      fullWidth
+                      value={form.email}
+                      onChange={(e) => updateField('email', e.target.value)}
+                    />
+                  </Stack>
 
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="Gender"
-                    value={profile.gender}
-                    onChange={(e) => updateProfile('gender', e.target.value)}
-                    disabled={!editMode}
-                    fullWidth
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: editMode ? '#F5F5F7' : '#FAFAFA',
-                        borderRadius: 2,
-                        '& fieldset': {
-                          borderColor: '#E2E8F0'
-                        },
-                        '&:hover fieldset': {
-                          borderColor: editMode ? '#00B4D8' : '#E2E8F0'
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#00B4D8',
-                          borderWidth: '2px'
-                        }
-                      }
-                    }}
-                  />
-                  <TextField
-                    label="Email"
-                    type="email"
-                    value={profile.email}
-                    onChange={(e) => updateProfile('email', e.target.value)}
-                    disabled={!editMode}
-                    fullWidth
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        bgcolor: editMode ? '#F5F5F7' : '#FAFAFA',
-                        borderRadius: 2,
-                        '& fieldset': {
-                          borderColor: '#E2E8F0'
-                        },
-                        '&:hover fieldset': {
-                          borderColor: editMode ? '#00B4D8' : '#E2E8F0'
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#00B4D8',
-                          borderWidth: '2px'
-                        }
-                      }
-                    }}
-                  />
-                </Stack>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                    <TextField
+                      label="Age"
+                      type="number"
+                      fullWidth
+                      value={form.age}
+                      onChange={(e) => updateField('age', e.target.value)}
+                    />
+                    <TextField
+                      label="Gender"
+                      select
+                      fullWidth
+                      value={form.gender}
+                      onChange={(e) => updateField('gender', e.target.value)}
+                    >
+                      <MenuItem value="">Prefer not to say</MenuItem>
+                      <MenuItem value="Male">Male</MenuItem>
+                      <MenuItem value="Female">Female</MenuItem>
+                      <MenuItem value="Other">Other</MenuItem>
+                    </TextField>
+                  </Stack>
 
-                <TextField
-                  label="Phone"
-                  value={profile.phone}
-                  onChange={(e) => updateProfile('phone', e.target.value)}
-                  disabled={!editMode}
-                  fullWidth
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: editMode ? '#F5F5F7' : '#FAFAFA',
-                      borderRadius: 2,
-                      '& fieldset': {
-                        borderColor: '#E2E8F0'
-                      },
-                      '&:hover fieldset': {
-                        borderColor: editMode ? '#00B4D8' : '#E2E8F0'
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#00B4D8',
-                        borderWidth: '2px'
-                      }
-                    }
-                  }}
-                />
+                  <TextField
+                    label="Mobile Number"
+                    fullWidth
+                    value={form.mobileNumber}
+                    onChange={(e) => updateField('mobileNumber', e.target.value)}
+                  />
 
-                {editMode && (
+                  <TextField
+                    label="Bio (optional)"
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    value={form.bio}
+                    onChange={(e) => updateField('bio', e.target.value)}
+                  />
+
                   <Button
                     variant="contained"
-                    startIcon={<SaveIcon />}
-                    onClick={() => setEditMode(false)}
-                    sx={{
-                      alignSelf: 'flex-start',
-                      bgcolor: '#06D6A0',
-                      color: '#FFFFFF',
-                      textTransform: 'none',
-                      borderRadius: 2,
-                      px: 3,
-                      py: 1.25,
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      boxShadow: '0 2px 8px rgba(6, 214, 160, 0.3)',
-                      '&:hover': {
-                        bgcolor: '#04A777',
-                        boxShadow: '0 4px 12px rgba(6, 214, 160, 0.4)'
-                      }
-                    }}
+                    startIcon={saving ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
+                    onClick={handleSave}
+                    disabled={saving}
+                    sx={{ alignSelf: 'flex-start', textTransform: 'none', bgcolor: '#06D6A0', '&:hover': { bgcolor: '#04A777' } }}
                   >
-                    Save Changes
-                  </Button>
-                )}
-              </Stack>
-            </CardContent>
-          </Card>
-
-          {/* Security Card */}
-          <Card elevation={0} sx={{
-            borderRadius: 3,
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-            border: '1px solid rgba(0, 0, 0, 0.06)',
-            bgcolor: '#FFFFFF'
-          }}>
-            <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-              <Stack spacing={3}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="h6" fontWeight={700} sx={{ color: '#1A1A2E', fontSize: '18px' }}>
-                    Security
-                  </Typography>
-                  <Button
-                    startIcon={<LockIcon />}
-                    variant={passwordMode ? "outlined" : "contained"}
-                    onClick={handlePassword}
-                    sx={{
-                      textTransform: 'none',
-                      borderRadius: 2,
-                      fontWeight: 600,
-                      fontSize: '14px',
-                      ...(passwordMode ? {
-                        borderColor: '#E2E8F0',
-                        color: '#64748B',
-                        '&:hover': {
-                          borderColor: '#CBD5E1',
-                          bgcolor: '#F5F5F7'
-                        }
-                      } : {
-                        bgcolor: '#06D6A0',
-                        color: '#FFFFFF',
-                        boxShadow: '0 2px 8px rgba(6, 214, 160, 0.3)',
-                        '&:hover': {
-                          bgcolor: '#04A777',
-                          boxShadow: '0 4px 12px rgba(6, 214, 160, 0.4)'
-                        }
-                      })
-                    }}
-                  >
-                    {passwordMode ? 'Cancel' : 'Update Password'}
+                    {saving ? 'Saving...' : 'Save Profile'}
                   </Button>
                 </Stack>
-
-                {passwordMode && (
-                  <Stack spacing={2}>
-                    <TextField
-                      label="Current Password"
-                      type="password"
-                      fullWidth
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          bgcolor: '#F5F5F7',
-                          borderRadius: 2,
-                          '& fieldset': {
-                            borderColor: '#E2E8F0'
-                          },
-                          '&:hover fieldset': {
-                            borderColor: '#00B4D8'
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: '#00B4D8',
-                            borderWidth: '2px'
-                          }
-                        }
-                      }}
-                    />
-                    <TextField
-                      label="New Password"
-                      type="password"
-                      fullWidth
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          bgcolor: '#F5F5F7',
-                          borderRadius: 2,
-                          '& fieldset': {
-                            borderColor: '#E2E8F0'
-                          },
-                          '&:hover fieldset': {
-                            borderColor: '#00B4D8'
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: '#00B4D8',
-                            borderWidth: '2px'
-                          }
-                        }
-                      }}
-                    />
-                    <TextField
-                      label="Confirm New Password"
-                      type="password"
-                      fullWidth
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          bgcolor: '#F5F5F7',
-                          borderRadius: 2,
-                          '& fieldset': {
-                            borderColor: '#E2E8F0'
-                          },
-                          '&:hover fieldset': {
-                            borderColor: '#00B4D8'
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: '#00B4D8',
-                            borderWidth: '2px'
-                          }
-                        }
-                      }}
-                    />
-                    <Button
-                      variant="contained"
-                      startIcon={<SaveIcon />}
-                      onClick={() => setPasswordMode(false)}
-                      sx={{
-                        alignSelf: 'flex-start',
-                        bgcolor: '#06D6A0',
-                        color: '#FFFFFF',
-                        textTransform: 'none',
-                        borderRadius: 2,
-                        px: 3,
-                        py: 1.25,
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        boxShadow: '0 2px 8px rgba(6, 214, 160, 0.3)',
-                        '&:hover': {
-                          bgcolor: '#04A777',
-                          boxShadow: '0 4px 12px rgba(6, 214, 160, 0.4)'
-                        }
-                      }}
-                    >
-                      Update Password
-                    </Button>
-                  </Stack>
-                )}
-              </Stack>
+              )}
             </CardContent>
           </Card>
 
-          {/* Medical History Card */}
-          <Card elevation={0} sx={{
-            borderRadius: 3,
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-            border: '1px solid rgba(0, 0, 0, 0.06)',
-            bgcolor: '#FFFFFF'
-          }}>
+          <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0, 0, 0, 0.06)' }}>
             <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-              <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#1A1A2E', fontSize: '18px' }}>
-                Medical History
-              </Typography>
-              <Stack spacing={2}>
-                {profile.medicalHistory.map((condition, index) => (
-                  <Box
-                    key={index}
-                    sx={{
-                      p: 2,
-                      bgcolor: '#F5F5F7',
-                      borderRadius: 2,
-                      border: '1px solid #E2E8F0'
-                    }}
-                  >
-                    <Typography sx={{ color: '#1A1A2E', fontSize: '14px' }}>{condition}</Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </CardContent>
-          </Card>
-
-          {/* Data Sharing Consent Card */}
-          <Card elevation={0} sx={{
-            borderRadius: 3,
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-            border: '1px solid rgba(0, 0, 0, 0.06)',
-            bgcolor: '#FFFFFF'
-          }}>
-            <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-              <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#1A1A2E', fontSize: '18px' }}>
-                Data Sharing Consent
-              </Typography>
-              <Stack spacing={2}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={consents.shareWithDoctors}
-                      onChange={(e) => updateConsent('shareWithDoctors', e.target.checked)}
-                      sx={{
-                        color: '#CBD5E1',
-                        '&.Mui-checked': {
-                          color: '#06D6A0'
-                        }
-                      }}
-                    />
-                  }
-                  label={<Typography sx={{ color: '#1A1A2E', fontSize: '14px' }}>Share data with my doctors</Typography>}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={consents.shareForResearch}
-                      onChange={(e) => updateConsent('shareForResearch', e.target.checked)}
-                      sx={{
-                        color: '#CBD5E1',
-                        '&.Mui-checked': {
-                          color: '#06D6A0'
-                        }
-                      }}
-                    />
-                  }
-                  label={<Typography sx={{ color: '#1A1A2E', fontSize: '14px' }}>Share anonymized data for medical research</Typography>}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={consents.shareWithProviders}
-                      onChange={(e) => updateConsent('shareWithProviders', e.target.checked)}
-                      sx={{
-                        color: '#CBD5E1',
-                        '&.Mui-checked': {
-                          color: '#06D6A0'
-                        }
-                      }}
-                    />
-                  }
-                  label={<Typography sx={{ color: '#1A1A2E', fontSize: '14px' }}>Share data with healthcare providers</Typography>}
-                />
-              </Stack>
-            </CardContent>
-          </Card>
-
-          {/* Health Summary Card */}
-          <Card elevation={0} sx={{
-            borderRadius: 3,
-            boxShadow: '0 4px 12px rgba(6, 214, 160, 0.2)',
-            border: 'none',
-            background: 'linear-gradient(135deg, #06D6A0 0%, #04A777 100%)',
-            color: '#FFFFFF'
-          }}>
-            <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
-                <HealthAndSafetyIcon sx={{ fontSize: 28 }} />
-                <Typography variant="h6" fontWeight={700} sx={{ color: '#FFFFFF', fontSize: '18px' }}>
-                  Health Summary
+              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+                <HistoryIcon sx={{ color: '#00B4D8' }} />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1A1A2E' }}>
+                  Profile Activity Timeline
                 </Typography>
               </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={4}>
-                <Box>
-                  <Typography variant="body2" sx={{ opacity: 0.9, mb: 0.5, fontSize: '13px' }}>
-                    Last Check
-                  </Typography>
-                  <Typography variant="h6" fontWeight={700} sx={{ color: '#FFFFFF', fontSize: '20px' }}>
-                    {profile.lastCheck}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" sx={{ opacity: 0.9, mb: 0.5, fontSize: '13px' }}>
-                    Reminders Active
-                  </Typography>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <AccessAlarmIcon sx={{ fontSize: 24 }} />
-                    <Typography variant="h6" fontWeight={700} sx={{ color: '#FFFFFF', fontSize: '20px' }}>
-                      {profile.remindersActive}
-                    </Typography>
-                  </Stack>
-                </Box>
-              </Stack>
+              {activities.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">No activity yet. Your recent assistant usage, interaction checks, and purchases will appear here.</Typography>
+              ) : (
+                <Stack spacing={1.5}>
+                  {activities.map((activity, idx) => (
+                    <Box key={activity._id || idx}>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A1A2E' }}>
+                            {activity.title}
+                          </Typography>
+                          <Chip size="small" label={activity.category || 'other'} sx={{ textTransform: 'capitalize' }} />
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          {activity.createdAt ? new Date(activity.createdAt).toLocaleString() : ''}
+                        </Typography>
+                      </Stack>
+                      {activity.details && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                          {activity.details}
+                        </Typography>
+                      )}
+                      {idx < activities.length - 1 && <Divider sx={{ mt: 1.25 }} />}
+                    </Box>
+                  ))}
+                </Stack>
+              )}
             </CardContent>
           </Card>
         </Stack>

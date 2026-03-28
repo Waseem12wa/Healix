@@ -10,6 +10,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import './HealthAssistant.css';
+import { clearAuthData } from '../utils/auth';
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || '/api/assistant';
 
 interface Message {
     id: string;
@@ -36,6 +39,19 @@ const HealthAssistant: React.FC = () => {
     const [showQuickQueries, setShowQuickQueries] = useState(true);
     const [error, setError] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const parseJsonSafely = async (response: Response) => {
+        const raw = await response.text();
+        if (!raw) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return null;
+        }
+    };
 
     // ============================================
     // INITIALIZATION
@@ -66,10 +82,12 @@ const HealthAssistant: React.FC = () => {
 
     const fetchQuickQueries = async () => {
         try {
-            const response = await fetch('/api/assistant/quick-queries');
-            const data = await response.json();
-            if (data.success) {
+            const response = await fetch(`${API_BASE_URL}/quick-queries`);
+            const data = await parseJsonSafely(response);
+            if (response.ok && data?.success) {
                 setQuickQueries(data.queries);
+            } else {
+                console.warn('Quick query response was not successful:', response.status);
             }
         } catch (err) {
             console.error('Error fetching quick queries:', err);
@@ -78,6 +96,14 @@ const HealthAssistant: React.FC = () => {
 
     const sendMessage = async (query: string) => {
         if (!query.trim()) return;
+
+        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('userId');
+
+        if (!token) {
+            setError('Please log in to use the AI assistant.');
+            return;
+        }
 
         // Add user message
         const userMessage: Message = {
@@ -94,15 +120,29 @@ const HealthAssistant: React.FC = () => {
         setShowQuickQueries(false);
 
         try {
-            const response = await fetch('/api/assistant/chat', {
+            const response = await fetch(`${API_BASE_URL}/chat`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 },
-                body: JSON.stringify({ query })
+                body: JSON.stringify({ query, user_id: userId })
             });
 
-            const data = await response.json();
+            const data = await parseJsonSafely(response);
+
+            if (response.status === 401) {
+                clearAuthData();
+                throw new Error('Your session has expired. Please log in again.');
+            }
+
+            if (!response.ok) {
+                throw new Error(data?.error || `Request failed with status ${response.status}`);
+            }
+
+            if (!data) {
+                throw new Error('Assistant returned an empty or invalid response');
+            }
 
             if (data.success && data.data) {
                 const assistantMessage: Message = {
