@@ -17,9 +17,10 @@ import traceback
 import io
 import re
 
-# Transformers & NLP
-from transformers import PegasusForConditionalGeneration, AutoTokenizer
-import torch
+# Transformers runtime is imported lazily to reduce startup memory pressure.
+PegasusForConditionalGeneration = None
+AutoTokenizer = None
+torch = None
 
 from PyPDF2 import PdfReader
 from docx import Document
@@ -43,11 +44,34 @@ logging.basicConfig(
 
 SERVICE_PORT = 5005
 DEVICE = "cpu"
-if torch.cuda.is_available():
-    DEVICE = "cuda"
-    logger.info("🚀 Using GPU for inference")
-else:
-    logger.info("📱 Using CPU for inference")
+
+
+def _ensure_nlp_runtime() -> bool:
+    """Import heavy NLP runtime only when needed by summarization endpoints."""
+    global PegasusForConditionalGeneration, AutoTokenizer, torch, DEVICE
+
+    if PegasusForConditionalGeneration is not None and AutoTokenizer is not None and torch is not None:
+        return True
+
+    try:
+        from transformers import PegasusForConditionalGeneration as _PegasusForConditionalGeneration, AutoTokenizer as _AutoTokenizer
+        import torch as _torch
+
+        PegasusForConditionalGeneration = _PegasusForConditionalGeneration
+        AutoTokenizer = _AutoTokenizer
+        torch = _torch
+
+        if torch.cuda.is_available():
+            DEVICE = "cuda"
+            logger.info("🚀 Using GPU for inference")
+        else:
+            DEVICE = "cpu"
+            logger.info("📱 Using CPU for inference")
+
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to import NLP runtime dependencies: {e}")
+        return False
 
 # ============================================
 # MODEL LOADING
@@ -63,6 +87,9 @@ clinical_ner = None
 def ensure_pegasus_model() -> bool:
     """Lazy-load PEGASUS only when summarization endpoints need it."""
     global pegasus_model, pegasus_tokenizer
+
+    if not _ensure_nlp_runtime():
+        return False
 
     if pegasus_model is not None and pegasus_tokenizer is not None:
         return True

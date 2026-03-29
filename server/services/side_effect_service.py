@@ -16,13 +16,16 @@ Models used:
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import logging
-from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
 from typing import Dict, List, Tuple, Optional
 import json
 import time
 from datetime import datetime
 import numpy as np
 import hashlib
+
+# Transformers runtime is imported lazily to reduce startup memory pressure.
+pipeline = None
+AutoTokenizer = None
 
 # ============================================
 # LOGGING CONFIGURATION
@@ -134,9 +137,14 @@ def load_models():
     Load transformer models for side effect prediction.
     Uses BART for zero-shot classification and optional biomedical models.
     """
-    global zero_shot_clf, nli_model, nli_tokenizer
+    global zero_shot_clf, nli_model, nli_tokenizer, pipeline, AutoTokenizer
     
     try:
+        if pipeline is None or AutoTokenizer is None:
+            from transformers import pipeline as _pipeline, AutoTokenizer as _AutoTokenizer
+            pipeline = _pipeline
+            AutoTokenizer = _AutoTokenizer
+
         logger.info("=" * 60)
         logger.info("🚀 INITIALIZING SIDE EFFECT PREDICTOR")
         logger.info("=" * 60)
