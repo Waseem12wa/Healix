@@ -479,6 +479,13 @@ def predict():
     }
     """
     try:
+        if model is None and not load_model():
+            logger.error("DDI model lazy initialization failed")
+            return jsonify({
+                "success": False,
+                "error": "DDI model is unavailable. Please try again in a moment."
+            }), 503
+
         data = request.get_json()
         
         if not data or 'drug1' not in data or 'drug2' not in data:
@@ -562,11 +569,6 @@ def predict():
 
 
 if __name__ == '__main__':
-    # Load model at startup
-    if not load_model():
-        logger.error("Failed to load model. Exiting.")
-        exit(1)
-    
     # Start Flask server
     port = int(os.environ.get('DDI_SERVICE_PORT', 5001))
     logger.info(f"Starting DDI service on port {port}")

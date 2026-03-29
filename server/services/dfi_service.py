@@ -340,6 +340,13 @@ def predict_food_interaction():
     }
     """
     try:
+        if dfi_model is None and not load_model():
+            logger.error("DFI model lazy initialization failed")
+            return jsonify({
+                "success": False,
+                "error": "DFI model is unavailable. Please try again in a moment."
+            }), 503
+
         data = request.get_json()
         
         if not data or 'medicine' not in data or 'food' not in data:
@@ -444,11 +451,6 @@ def predict_food_interaction():
 
 
 if __name__ == '__main__':
-    # Load model at startup
-    if not load_model():
-        logger.error("Failed to load DFI model. Exiting.")
-        exit(1)
-    
     # Start Flask server
     port = int(os.environ.get('DFI_SERVICE_PORT', 5002))
     logger.info(f"Starting DFI service on port {port}")

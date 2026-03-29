@@ -30,6 +30,8 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL 
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+const allowVercelPreviewOrigins = String(process.env.ALLOW_VERCEL_PREVIEW_ORIGINS || 'true').toLowerCase() === 'true';
+const vercelPreviewOriginRegex = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
 
 // Middleware
 app.use(cors({
@@ -37,6 +39,7 @@ app.use(cors({
     // Allow server-to-server, health checks, and non-browser tools without Origin header.
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (allowVercelPreviewOrigins && vercelPreviewOriginRegex.test(origin)) return callback(null, true);
     return callback(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true
