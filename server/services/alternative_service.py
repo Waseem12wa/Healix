@@ -546,4 +546,4 @@ if __name__ == '__main__':
     logger.info(f"🔗 Therapeutic equivalences: {len(THERAPEUTIC_EQUIVALENTS)}")
     logger.info(f"📦 Using Hugging Face NLP models (no Ollama required)")
     
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='127.0.0.1', port=port, debug=False)

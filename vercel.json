@@ -3,11 +3,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-backend.onrender.com/api/:path*"
+      "destination": "https://healix-5vvu.onrender.com/api/:path*"
     },
     {
       "source": "/uploads/:path*",
-      "destination": "https://your-backend.onrender.com/uploads/:path*"
+      "destination": "https://healix-5vvu.onrender.com/uploads/:path*"
     },
     {
       "source": "/(.*)",

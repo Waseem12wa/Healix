@@ -665,7 +665,7 @@ if __name__ == '__main__':
     logger.info("=" * 60)
     
     app.run(
-        host='0.0.0.0',
+        host='127.0.0.1',
         port=SERVICE_PORT,
         debug=False,
         use_reloader=False,

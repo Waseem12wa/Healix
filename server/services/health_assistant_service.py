@@ -792,5 +792,5 @@ def get_conversation_history():
 
 if __name__ == '__main__':
     logger.info(f"Starting AI Health Assistant Service on port {SERVICE_PORT}")
-    app.run(host='0.0.0.0', port=SERVICE_PORT, debug=False, use_reloader=False)
+    app.run(host='127.0.0.1', port=SERVICE_PORT, debug=False, use_reloader=False)
 
