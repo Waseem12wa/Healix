@@ -15,7 +15,11 @@
     "seed:medicines:million": "node scripts/seed-medicines.js --clear --generate 1000000",
     "seed:medicines:pk:strict": "node scripts/seed-medicines.js --clear --csv data/medicines-pk-verified.csv --strict-pk-pricing",
     "seed:drug-food:million": "py scripts/generate-drug-food-data.py --drugs 1000000 --foods 1000000",
-    "db:indexes": "node scripts/create-medicine-indexes.js"
+    "db:indexes": "node scripts/create-medicine-indexes.js",
+    "db:migrate:local-to-atlas": "node scripts/migrate-local-to-atlas.js",
+    "db:cleanup:synthetic-medicines": "node scripts/cleanup-synthetic-medicines.js",
+    "db:migrate:non-medicines": "node scripts/migrate-non-medicines-to-atlas.js",
+    "db:trim:medicines": "node scripts/trim-atlas-medicines.js"
   },
   "keywords": [
     "healthcare",

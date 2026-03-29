@@ -3,7 +3,11 @@
 import mongoose from 'mongoose';
 import MedicineInventory from '../models/MedicineInventory.js';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/healix';
+const MONGODB_URI = process.env.MONGODB_URI || '';
+
+if (!MONGODB_URI) {
+  throw new Error('MONGODB_URI is required. Set it to your Atlas cluster URI in server/.env.');
+}
 
 async function main() {
   await mongoose.connect(MONGODB_URI);

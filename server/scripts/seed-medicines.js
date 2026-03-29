@@ -26,7 +26,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/healix';
+const MONGODB_URI = process.env.MONGODB_URI || '';
 
 // ============================================
 // COMPREHENSIVE MEDICINE DATABASE
@@ -143,6 +143,9 @@ const PKR_CATEGORY_RANGE = {
 
 async function connectDB() {
     try {
+        if (!MONGODB_URI) {
+            throw new Error('MONGODB_URI is required. Set it to your Atlas cluster URI in server/.env.');
+        }
         console.log('🔗 Connecting to MongoDB...');
         await mongoose.connect(MONGODB_URI);
         console.log('✅ MongoDB connected');
