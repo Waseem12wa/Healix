@@ -9,18 +9,15 @@ Enhanced with local LLM for detailed clinical explanations.
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from catboost import CatBoostClassifier
+import pubchempy as pcp
+from rdkit import Chem
+from rdkit.Chem import Descriptors, rdMolDescriptors
 import requests
 import os
 import csv
 import json
 import logging
-
-# Heavy runtime dependencies are imported lazily to reduce startup memory usage.
-CatBoostClassifier = None
-pcp = None
-Chem = None
-Descriptors = None
-rdMolDescriptors = None
 
 # Configure logging FIRST
 logging.basicConfig(level=logging.INFO)
@@ -80,38 +77,9 @@ atc_cache = {}
 descriptor_cache = {}
 
 
-def _ensure_ddi_runtime() -> bool:
-    """Load heavy ML/chemistry modules only when DDI prediction is requested."""
-    global CatBoostClassifier, pcp, Chem, Descriptors, rdMolDescriptors
-
-    if all(v is not None for v in [CatBoostClassifier, pcp, Chem, Descriptors, rdMolDescriptors]):
-        return True
-
-    try:
-        from catboost import CatBoostClassifier as _CatBoostClassifier
-        import pubchempy as _pcp
-        from rdkit import Chem as _Chem
-        from rdkit.Chem import Descriptors as _Descriptors, rdMolDescriptors as _rdMolDescriptors
-
-        CatBoostClassifier = _CatBoostClassifier
-        pcp = _pcp
-        Chem = _Chem
-        Descriptors = _Descriptors
-        rdMolDescriptors = _rdMolDescriptors
-        logger.info("✅ DDI runtime dependencies loaded lazily")
-        return True
-    except Exception as e:
-        logger.error(f"❌ Failed to load DDI runtime dependencies: {e}")
-        return False
-
-
 def load_model():
     """Load the CatBoost model at startup"""
     global model
-
-    if not _ensure_ddi_runtime():
-        return False
-
     try:
         logger.info(f"Loading CatBoost model from {MODEL_PATH}")
         model = CatBoostClassifier()
@@ -144,9 +112,6 @@ def fetch_smiles(medicine_name):
 
     if name_key in smiles_cache:
         return smiles_cache[name_key]
-
-    if not _ensure_ddi_runtime():
-        return None, None
 
     try:
         logger.info(f"Fetching SMILES for: {medicine_name}")
@@ -282,9 +247,6 @@ def calculate_descriptors(smiles, atc_classification=None, drug_suffix='_x'):
 
     if cache_key in descriptor_cache:
         return descriptor_cache[cache_key]
-
-    if not _ensure_ddi_runtime():
-        return None
 
     try:
         mol = Chem.MolFromSmiles(smiles)

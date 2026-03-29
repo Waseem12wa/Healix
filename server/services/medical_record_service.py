@@ -17,11 +17,8 @@ import traceback
 import io
 import re
 
-# Transformers runtime is imported lazily to reduce startup memory pressure.
-PegasusForConditionalGeneration = None
-AutoTokenizer = None
-torch = None
-
+from transformers import PegasusForConditionalGeneration, AutoTokenizer
+import torch
 from PyPDF2 import PdfReader
 from docx import Document
 from PIL import Image
@@ -43,35 +40,12 @@ logging.basicConfig(
 )
 
 SERVICE_PORT = 5005
-DEVICE = "cpu"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-
-def _ensure_nlp_runtime() -> bool:
-    """Import heavy NLP runtime only when needed by summarization endpoints."""
-    global PegasusForConditionalGeneration, AutoTokenizer, torch, DEVICE
-
-    if PegasusForConditionalGeneration is not None and AutoTokenizer is not None and torch is not None:
-        return True
-
-    try:
-        from transformers import PegasusForConditionalGeneration as _PegasusForConditionalGeneration, AutoTokenizer as _AutoTokenizer
-        import torch as _torch
-
-        PegasusForConditionalGeneration = _PegasusForConditionalGeneration
-        AutoTokenizer = _AutoTokenizer
-        torch = _torch
-
-        if torch.cuda.is_available():
-            DEVICE = "cuda"
-            logger.info("🚀 Using GPU for inference")
-        else:
-            DEVICE = "cpu"
-            logger.info("📱 Using CPU for inference")
-
-        return True
-    except Exception as e:
-        logger.error(f"❌ Failed to import NLP runtime dependencies: {e}")
-        return False
+if torch.cuda.is_available():
+    logger.info("🚀 Using GPU for inference")
+else:
+    logger.info("📱 Using CPU for inference")
 
 # ============================================
 # MODEL LOADING
@@ -85,16 +59,13 @@ clinical_ner = None
 
 
 def ensure_pegasus_model() -> bool:
-    """Lazy-load PEGASUS only when summarization endpoints need it."""
+    """Load PEGASUS summarization model."""
     global pegasus_model, pegasus_tokenizer
-
-    if not _ensure_nlp_runtime():
-        return False
 
     if pegasus_model is not None and pegasus_tokenizer is not None:
         return True
 
-    logger.info("📦 Loading PEGASUS summarization model (lazy init)...")
+    logger.info("📦 Loading PEGASUS summarization model...")
     try:
         pegasus_tokenizer = AutoTokenizer.from_pretrained(PEGASUS_MODEL_NAME)
         pegasus_model = PegasusForConditionalGeneration.from_pretrained(PEGASUS_MODEL_NAME)

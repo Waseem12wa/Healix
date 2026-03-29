@@ -23,9 +23,7 @@ from datetime import datetime
 import numpy as np
 import hashlib
 
-# Transformers runtime is imported lazily to reduce startup memory pressure.
-pipeline = None
-AutoTokenizer = None
+from transformers import pipeline, AutoTokenizer
 
 # ============================================
 # LOGGING CONFIGURATION
@@ -137,14 +135,9 @@ def load_models():
     Load transformer models for side effect prediction.
     Uses BART for zero-shot classification and optional biomedical models.
     """
-    global zero_shot_clf, nli_model, nli_tokenizer, pipeline, AutoTokenizer
-    
-    try:
-        if pipeline is None or AutoTokenizer is None:
-            from transformers import pipeline as _pipeline, AutoTokenizer as _AutoTokenizer
-            pipeline = _pipeline
-            AutoTokenizer = _AutoTokenizer
+    global zero_shot_clf, nli_model, nli_tokenizer
 
+    try:
         logger.info("=" * 60)
         logger.info("🚀 INITIALIZING SIDE EFFECT PREDICTOR")
         logger.info("=" * 60)
