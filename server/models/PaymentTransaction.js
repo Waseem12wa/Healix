@@ -25,7 +25,7 @@ const paymentTransactionSchema = new mongoose.Schema({
   // Payment Gateway Information
   gateway: {
     type: String,
-    enum: ['stripe', 'paypal', 'nayapay', 'easypaisa', 'jazzcash'],
+    enum: ['stripe', 'paypal', 'nayapay'],
     required: true,
     index: true
   },
@@ -69,7 +69,7 @@ const paymentTransactionSchema = new mongoose.Schema({
   // Payment Method
   paymentMethod: {
     type: String,
-    enum: ['card', 'mobile_wallet', 'bank_transfer', 'paypal', 'nayapay', 'easypaisa', 'jazzcash'],
+    enum: ['card', 'mobile_wallet', 'bank_transfer', 'paypal', 'nayapay'],
     required: true
   },
   
@@ -83,7 +83,7 @@ const paymentTransactionSchema = new mongoose.Schema({
   },
   walletDetails: {
     phoneNumber: String,
-    walletName: String // Easypaisa/JazzCash account info
+    walletName: String // Wallet/account label for non-card methods
   },
   
   // Request & Response Data

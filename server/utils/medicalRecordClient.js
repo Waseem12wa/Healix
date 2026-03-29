@@ -14,7 +14,7 @@ import axios from 'axios';
 import fs from 'fs';
 import FormData from 'form-data';
 
-const MEDICAL_RECORD_SERVICE_URL = process.env.MEDICAL_RECORD_SERVICE_URL || 'http://localhost:5005';
+const MEDICAL_RECORD_SERVICE_URL = process.env.MEDICAL_RECORD_SERVICE_URL || 'http://127.0.0.1:5005';
 
 // ============================================
 // CONFIGURATION

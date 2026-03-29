@@ -12,7 +12,7 @@ import PatientActivity from '../models/PatientActivity.js';
 
 const router = express.Router();
 
-const HEALTH_ASSISTANT_SERVICE_URL = process.env.HEALTH_ASSISTANT_SERVICE_URL || 'http://localhost:5006';
+const HEALTH_ASSISTANT_SERVICE_URL = process.env.HEALTH_ASSISTANT_SERVICE_URL || 'http://127.0.0.1:5006';
 
 // ============================================
 // MIDDLEWARE

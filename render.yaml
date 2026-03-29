@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: healix-backend
+    env: node
+    rootDir: server
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /
+    buildCommand: npm install && pip install -r requirements.txt
+    startCommand: npm run start:render

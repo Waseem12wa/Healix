@@ -77,7 +77,7 @@ export default function SideEffectPredictor() {
 
       for (const medication of medicineList) {
         try {
-          const response = await fetch('http://localhost:5000/api/side-effects/predict', {
+          const response = await fetch('/api/side-effects/predict', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

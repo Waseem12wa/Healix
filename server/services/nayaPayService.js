@@ -2,8 +2,9 @@ import PaymentTransaction from '../models/PaymentTransaction.js';
 
 class NayaPayService {
   constructor() {
-    this.successUrl = process.env.NAYAPAY_SUCCESS_URL || 'http://localhost:5173/shop/orders';
-    this.failureUrl = process.env.NAYAPAY_FAILURE_URL || 'http://localhost:5173/shop/checkout?status=failed';
+    const frontendUrl = (process.env.FRONTEND_URL || 'https://healix.vercel.app').replace(/\/$/, '');
+    this.successUrl = process.env.NAYAPAY_SUCCESS_URL || `${frontendUrl}/shop/orders`;
+    this.failureUrl = process.env.NAYAPAY_FAILURE_URL || `${frontendUrl}/shop/checkout?status=failed`;
   }
 
   async createPaymentSession(orderData) {

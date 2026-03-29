@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const ALTERNATIVE_SERVICE_URL = process.env.ALTERNATIVE_SERVICE_URL || 'http://localhost:5003';
+const ALTERNATIVE_SERVICE_URL = process.env.ALTERNATIVE_SERVICE_URL || 'http://127.0.0.1:5003';
 
 /**
  * Client for Medicine Alternative Recommendation Service

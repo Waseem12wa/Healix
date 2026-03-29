@@ -33,11 +33,11 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 SERVICE_PORT = 5006
-INTERNAL_API_URL = os.environ.get('INTERNAL_API_URL', 'http://localhost:5000')  # Express.js server
+INTERNAL_API_URL = os.environ.get('INTERNAL_API_URL', 'http://127.0.0.1:5000')  # Express.js server
 
 # Backend service URLs
-SIDE_EFFECT_SERVICE_URL = 'http://localhost:5004'
-MEDICAL_RECORD_SERVICE_URL = 'http://localhost:5005'
+SIDE_EFFECT_SERVICE_URL = os.environ.get('SIDE_EFFECT_SERVICE_URL', 'http://127.0.0.1:5004')
+MEDICAL_RECORD_SERVICE_URL = os.environ.get('MEDICAL_RECORD_SERVICE_URL', 'http://127.0.0.1:5005')
 
 DRUG_MISSPELLINGS = {
     'metaformin': 'metformin',

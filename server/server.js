@@ -18,6 +18,7 @@ import reminderRoutes from './routes/reminders.js';
 import healthAssistantRoutes from './routes/healthAssistant.js';
 import paymentRoutes from './routes/payments.js';
 import reviewRoutes from './routes/reviews.js';
+import medicalRecordRoutes from './routes/medicalRecord.js';
 import { reminderEmailJob } from './jobs/reminderEmailJob.js';
 
 dotenv.config();
@@ -25,9 +26,19 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', // Vite dev server
+  origin: (origin, callback) => {
+    // Allow server-to-server, health checks, and non-browser tools without Origin header.
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -46,6 +57,7 @@ app.use('/api/alternative', alternativeRoutes);
 app.use('/api/side-effects', sideEffectsRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/assistant', healthAssistantRoutes);
+app.use('/api/medical-record', medicalRecordRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
 
@@ -103,7 +115,7 @@ const REQUIRED_MICROSERVICES = new Set(
  */
 async function checkServiceHealth(name, port, endpoint) {
   try {
-    const response = await axios.get(`http://localhost:${port}${endpoint}`, {
+    const response = await axios.get(`http://127.0.0.1:${port}${endpoint}`, {
       timeout: 3000
     });
     return response.status === 200;
@@ -222,9 +234,10 @@ const startServer = async () => {
 
   // Start Server immediately; microservice readiness checks run in background.
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📊 API Endpoint: http://localhost:${PORT}/api`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 API Endpoint: /api`);
     console.log(dbConnected ? `✅ MongoDB authentication enabled` : `⚠️ MongoDB unavailable (degraded mode)`);
+    console.log(`🌐 Allowed CORS origins: ${allowedOrigins.join(', ')}`);
     console.log(`\n💡 Use /api/auth/signup to create new users`);
     console.log(`💡 Use /api/auth/login to authenticate users\n`);
 

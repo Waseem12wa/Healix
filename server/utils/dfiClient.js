@@ -4,7 +4,7 @@
 
 import axios from 'axios';
 
-const DFI_SERVICE_URL = process.env.DFI_SERVICE_URL || 'http://localhost:5002';
+const DFI_SERVICE_URL = process.env.DFI_SERVICE_URL || 'http://127.0.0.1:5002';
 const TIMEOUT = 120000; // 120 seconds (LLM generation can take time)
 
 /**

@@ -10,7 +10,7 @@
 
 import axios from 'axios';
 
-const HEALTH_ASSISTANT_URL = process.env.HEALTH_ASSISTANT_URL || 'http://localhost:3000/api/assistant';
+const HEALTH_ASSISTANT_URL = process.env.HEALTH_ASSISTANT_URL || 'http://127.0.0.1:5006';
 
 // ============================================
 // CONFIGURATION

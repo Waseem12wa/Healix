@@ -146,7 +146,7 @@ export default function Appointments() {
       if (resolvedSpecialization) params.append('specialization', resolvedSpecialization)
       if (resolvedCity) params.append('city', resolvedCity)
 
-      const response = await fetch(`http://localhost:5000/api/doctors/search?${params.toString()}`)
+      const response = await fetch(`/api/doctors/search?${params.toString()}`)
       const data = await response.json()
 
       if (data.success) {

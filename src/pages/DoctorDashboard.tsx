@@ -906,7 +906,7 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
   const loadApprovedPatients = async () => {
     try {
       const doctorEmail = localStorage.getItem('userEmail')
-      const response = await fetch(`http://localhost:5000/api/reminders/approved-patients?doctorEmail=${encodeURIComponent(doctorEmail || '')}`)
+      const response = await fetch(`/api/reminders/approved-patients?doctorEmail=${encodeURIComponent(doctorEmail || '')}`)
       const data = await response.json()
       if (data.success) setPatients(data.data)
     } catch (error) {
@@ -929,7 +929,7 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
 
       const formattedStartDate = startDate.toISOString().split('T')[0]
 
-      const response = await fetch('http://localhost:5000/api/reminders/create', {
+      const response = await fetch('/api/reminders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

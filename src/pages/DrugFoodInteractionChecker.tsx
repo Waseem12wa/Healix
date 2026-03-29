@@ -73,7 +73,7 @@ export default function DrugFoodInteractionChecker() {
       for (const medicine of medicinesToCheck) {
         for (const food of foodsToCheck) {
           try {
-            const response = await fetch('http://localhost:5000/api/dfi/predict', {
+            const response = await fetch('/api/dfi/predict', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

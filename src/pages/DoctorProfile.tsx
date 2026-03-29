@@ -102,7 +102,7 @@ export default function DoctorProfile() {
         }
 
         const [doctorProfileResponse, authProfile] = await Promise.all([
-          fetch(`http://localhost:5000/api/doctors/profile?email=${encodeURIComponent(userEmail)}`),
+          fetch(`/api/doctors/profile?email=${encodeURIComponent(userEmail)}`),
           getMyProfile().catch(() => null),
         ])
         const data = await doctorProfileResponse.json()
@@ -223,7 +223,7 @@ export default function DoctorProfile() {
         return
       }
 
-      const response = await fetch('http://localhost:5000/api/doctors/profile', {
+      const response = await fetch('/api/doctors/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

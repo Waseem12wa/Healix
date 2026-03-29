@@ -13,7 +13,7 @@
 
 import axios from 'axios';
 
-const SIDE_EFFECT_SERVICE_URL = process.env.SIDE_EFFECT_SERVICE_URL || 'http://localhost:5004';
+const SIDE_EFFECT_SERVICE_URL = process.env.SIDE_EFFECT_SERVICE_URL || 'http://127.0.0.1:5004';
 
 // ============================================
 // CONFIGURATION

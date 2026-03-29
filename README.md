@@ -237,20 +237,8 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 BACKEND_URL=http://localhost:5000
-
-EASYPAISA_API_URL=https://sandbox.easypaisa.com.pk/api/v2
-EASYPAISA_STORE_ID=
-EASYPAISA_MERCHANT_ID=
-EASYPAISA_PASSWORD=
-EASYPAISA_SUCCESS_URL=http://localhost:5173/payment/success
-EASYPAISA_FAILURE_URL=http://localhost:5173/payment/failure
-
-JAZZCASH_API_URL=https://sandbox.jazzcash.com.pk/applicationapi/api
-JAZZCASH_MERCHANT_ID=
-JAZZCASH_MERCHANT_PASSWORD=
-JAZZCASH_INTEGRATION_TYPE=MERCHANT_DIRECT
-JAZZCASH_SUCCESS_URL=http://localhost:5173/payment/success
-JAZZCASH_FAILURE_URL=http://localhost:5173/payment/failure
+NAYAPAY_SUCCESS_URL=https://healix.vercel.app/shop/orders
+NAYAPAY_FAILURE_URL=https://healix.vercel.app/shop/checkout?status=failed
 ```
 
 ### Optional Object Storage
@@ -308,7 +296,61 @@ Backend route prefixes:
 - /api/side-effects
 - /api/reminders
 - /api/assistant
+- /api/medical-record
 - /api/payments
+
+## Deployment (Render Backend + Vercel Frontend)
+
+This repository is prepared for split deployment:
+- Backend on Render
+- Frontend on Vercel
+
+### Added deployment files
+
+- `render.yaml` (Render Blueprint for backend service in `server`)
+- `vercel.json` (SPA fallback + API/uploads rewrites)
+- `server/.env.example` (backend environment template)
+- `.env.example` (frontend environment template)
+
+### 1) Prepare secrets and environment variables
+
+- Copy `server/.env.example` into Render environment variables (do not commit real secrets).
+- Set `ALLOWED_ORIGINS` to your Vercel domain(s), comma-separated.
+- Set `MONGODB_URI`, `JWT_SECRET`, `RESEND_API_KEY`, payment keys, and storage credentials.
+
+Frontend (Vercel):
+- Add `VITE_STRIPE_PUBLISHABLE_KEY` in Vercel project settings.
+- Keep `VITE_MEDICAL_RECORD_API_BASE_URL=/api/medical-record`.
+
+### 2) Configure Vercel rewrite target
+
+Update `vercel.json` and replace:
+- `https://your-backend.onrender.com`
+
+with your real Render backend URL.
+
+### 3) Deploy backend on Render
+
+Use Blueprint from repository root:
+- Render reads `render.yaml`
+- Build command installs Node dependencies and Python requirements
+- Start command runs API + Python microservices (`npm run start:render`)
+
+### 4) Deploy frontend on Vercel
+
+- Import the same GitHub repository in Vercel
+- Framework preset: Vite
+- Build command: `npm run build`
+- Output directory: `dist`
+
+### 5) Post-deploy verification checklist
+
+- Backend root health: `https://<render-url>/`
+- Frontend loads and routes refresh correctly
+- Login/signup works
+- `/api/*` calls succeed from Vercel frontend
+- `/uploads/*` image links resolve through Vercel rewrite
+- Medical record summarization works through `/api/medical-record/*`
 
 ## Troubleshooting
 

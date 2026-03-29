@@ -23,6 +23,14 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment files
+.env
+.env.*
+server/.env
+server/.env.*
+!.env.example
+!server/.env.example
+
 # MongoDB runtime artifacts
 .mongo-data/
 .mongo-data-legacy/

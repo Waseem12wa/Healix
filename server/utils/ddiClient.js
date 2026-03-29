@@ -4,7 +4,7 @@
 
 import axios from 'axios';
 
-const DDI_SERVICE_URL = process.env.DDI_SERVICE_URL || 'http://localhost:5001';
+const DDI_SERVICE_URL = process.env.DDI_SERVICE_URL || 'http://127.0.0.1:5001';
 const TIMEOUT = 120000; // 120 seconds (model can take time)
 
 // Create axios instance with default config

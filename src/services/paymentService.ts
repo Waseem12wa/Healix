@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios'
 
-const API_BASE = 'http://localhost:5000/api/payments'
+const API_BASE = '/api/payments'
 
 // Create axios instance with auth
 const apiClient = axios.create({

@@ -92,7 +92,7 @@ export default function DrugAlternatives() {
 
                 setQuery(correctedQuery)
 
-            const response = await fetch('http://localhost:5000/api/alternative/recommend', {
+            const response = await fetch('/api/alternative/recommend', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
