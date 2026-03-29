@@ -100,7 +100,7 @@ const MICROSERVICES = [
 ];
 
 const REQUIRED_MICROSERVICES = new Set(
-  (process.env.REQUIRED_MICROSERVICES || 'DDI,DFI,ALT,SIDE,HEALTH')
+  (process.env.REQUIRED_MICROSERVICES || 'DDI,DFI,ALT,SIDE,HEALTH,MEDREC')
     .split(',')
     .map(s => s.trim().toUpperCase())
     .filter(Boolean)

@@ -530,9 +530,10 @@ def get_performance_metrics() -> Dict:
 def health_check():
     """Health check endpoint."""
     return jsonify({
-        "status": "healthy" if zero_shot_clf is not None else "unhealthy",
+        "status": "healthy",
         "service": "side-effect-predictor",
-        "models_loaded": zero_shot_clf is not None
+        "models_loaded": zero_shot_clf is not None,
+        "mode": "ready" if zero_shot_clf is not None else "lazy-load"
     })
 
 
@@ -668,11 +669,12 @@ def reset_metrics():
 @app.before_request
 def before_request():
     """Initialize models before first request."""
+    if request.path in ['/health', '/metrics', '/reset-metrics']:
+        return
     if zero_shot_clf is None:
         initialize_models()
 
 
 if __name__ == '__main__':
     logger.info("🚀 Starting Side Effect Predictor Service...")
-    initialize_models()
     app.run(host='0.0.0.0', port=5004, debug=False, use_reloader=False)

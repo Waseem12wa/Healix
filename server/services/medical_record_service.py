@@ -3,8 +3,6 @@ Medical Record Summarization Microservice
 
 Summarizes patient medical records and clinical notes using:
 - PEGASUS: Advanced abstractive summarization
-- Clinical BERT: Entity extraction and clinical NLP
-- Spacy: Medical named entity recognition
 
 Runs on port 5005
 """
@@ -20,7 +18,7 @@ import io
 import re
 
 # Transformers & NLP
-from transformers import PegasusForConditionalGeneration, AutoTokenizer, pipeline
+from transformers import PegasusForConditionalGeneration, AutoTokenizer
 import torch
 
 from PyPDF2 import PdfReader
@@ -56,40 +54,32 @@ else:
 # ============================================
 
 PEGASUS_MODEL_NAME = "google/pegasus-xsum"
-CLINICAL_BERT_MODEL = "emilyalsentzer/clinicalBERT"
 
-logger.info("=" * 60)
-logger.info("🚀 INITIALIZING MEDICAL RECORD SUMMARIZATION SERVICE")
-logger.info("=" * 60)
+pegasus_model = None
+pegasus_tokenizer = None
+clinical_ner = None
 
-# Load PEGASUS for abstractive summarization
-logger.info("📦 Loading PEGASUS summarization model...")
-try:
-    pegasus_tokenizer = AutoTokenizer.from_pretrained(PEGASUS_MODEL_NAME)
-    pegasus_model = PegasusForConditionalGeneration.from_pretrained(PEGASUS_MODEL_NAME)
-    pegasus_model.to(DEVICE)
-    pegasus_model.eval()
-    logger.info("✅ PEGASUS model loaded successfully")
-except Exception as e:
-    logger.error(f"❌ Failed to load PEGASUS model: {e}")
-    pegasus_model = None
-    pegasus_tokenizer = None
 
-# Load Clinical BERT for entity extraction
-logger.info("📦 Loading Clinical BERT tokenizer...")
-try:
-    clinical_ner = pipeline(
-        "token-classification",
-        model=CLINICAL_BERT_MODEL,
-        device=0 if DEVICE == "cuda" else -1,
-        aggregation_strategy="simple"
-    )
-    logger.info("✅ Clinical BERT model loaded")
-except Exception as e:
-    logger.error(f"❌ Failed to load Clinical BERT: {e}")
-    clinical_ner = None
+def ensure_pegasus_model() -> bool:
+    """Lazy-load PEGASUS only when summarization endpoints need it."""
+    global pegasus_model, pegasus_tokenizer
 
-logger.info("=" * 60)
+    if pegasus_model is not None and pegasus_tokenizer is not None:
+        return True
+
+    logger.info("📦 Loading PEGASUS summarization model (lazy init)...")
+    try:
+        pegasus_tokenizer = AutoTokenizer.from_pretrained(PEGASUS_MODEL_NAME)
+        pegasus_model = PegasusForConditionalGeneration.from_pretrained(PEGASUS_MODEL_NAME)
+        pegasus_model.to(DEVICE)
+        pegasus_model.eval()
+        logger.info("✅ PEGASUS model loaded successfully")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to load PEGASUS model: {e}")
+        pegasus_model = None
+        pegasus_tokenizer = None
+        return False
 
 # ============================================
 # MODELS & UTILITIES
@@ -223,6 +213,10 @@ def summarize_text(text: str, max_length: int = 100, min_length: int = 30) -> Op
     """
     Summarize medical text using PEGASUS
     """
+    if not ensure_pegasus_model():
+        logger.error("PEGASUS lazy initialization failed")
+        return None
+
     if not pegasus_model or not pegasus_tokenizer:
         logger.error("PEGASUS model not available")
         return None

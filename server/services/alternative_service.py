@@ -16,9 +16,6 @@ from typing import List, Dict, Tuple
 from datetime import datetime
 import numpy as np
 
-# Hugging Face models
-from sentence_transformers import SentenceTransformer, util
-
 # Use local helper utilities
 try:
     from drug_utils import correct_drug_name
