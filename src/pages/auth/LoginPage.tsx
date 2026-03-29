@@ -79,13 +79,29 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password, role: selectedRole }),
       })
 
-      const data = await response.json()
+      const rawBody = await response.text()
+      const data = rawBody ? (() => {
+        try {
+          return JSON.parse(rawBody)
+        } catch {
+          return null
+        }
+      })() : null
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed')
+        const backendMessage = data && typeof data === 'object' ? (data as any).message : ''
+        if (backendMessage) {
+          throw new Error(backendMessage)
+        }
+
+        if (response.status >= 500) {
+          throw new Error('Server is temporarily unavailable. Please try again in a moment.')
+        }
+
+        throw new Error('Login failed')
       }
 
-      if (data.success) {
+      if (data?.success) {
         localStorage.setItem('userName', data.data.userName)
         localStorage.setItem('authRole', data.data.role)
         localStorage.setItem('userRole', data.data.role)
@@ -107,7 +123,7 @@ export default function LoginPage() {
           navigate('/provider-dashboard') 
         }
       } else {
-        setError(data.message || 'Login failed')
+        setError((data && typeof data === 'object' && (data as any).message) || 'Login failed')
       }
     } catch (err: any) {
       console.error('Login error:', err)
