@@ -25,13 +25,35 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const isDevelopment = NODE_ENV === 'development';
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-const allowVercelPreviewOrigins = String(process.env.ALLOW_VERCEL_PREVIEW_ORIGINS || 'true').toLowerCase() === 'true';
+// Build allowed origins dynamically for dev and production
+let allowedOrigins = [];
+
+if (isDevelopment) {
+  // Development: Allow all localhost/127.0.0.1 variants
+  allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'http://localhost:8000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:8000',
+  ];
+  console.log('🔧 DEVELOPMENT MODE: Allowing all localhost origins');
+} else {
+  // Production: Use configured origins
+  const configuredOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '').split(',').map(o => o.trim()).filter(Boolean);
+  allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : ['https://healix-rg6p.vercel.app'];
+}
+
+const allowVercelPreviewOrigins = String(process.env.ALLOW_VERCEL_PREVIEW_ORIGINS !== 'false').toLowerCase() === 'true';
 const vercelPreviewOriginRegex = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+
+console.log(`📍 Allowed Origins (${NODE_ENV}):`, allowedOrigins);
 
 // Middleware
 app.use(cors({
@@ -42,11 +64,34 @@ app.use(cors({
     if (allowVercelPreviewOrigins && vercelPreviewOriginRegex.test(origin)) return callback(null, true);
     return callback(new Error(`CORS blocked for origin: ${origin}`));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
+
+// Request logging middleware for debugging
+app.use((req, res, next) => {
+  const start = Date.now();
+  const originalSend = res.send;
+  
+  res.send = function(data) {
+    const duration = Date.now() - start;
+    const statusEmoji = res.statusCode >= 400 ? '❌' : res.statusCode >= 200 && res.statusCode < 300 ? '✅' : '⚠️';
+    console.log(`${statusEmoji} [${res.statusCode}] ${req.method} ${req.originalUrl} (+${duration}ms)`);
+    
+    if (res.statusCode >= 400 && isDevelopment) {
+      console.log('📦 Response:', typeof data === 'string' ? data.substring(0, 200) : JSON.stringify(data).substring(0, 200));
+    }
+    
+    res.send = originalSend;
+    return originalSend.call(this, data);
+  };
+  
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
