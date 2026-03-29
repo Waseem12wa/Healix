@@ -5,6 +5,19 @@ dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
+function validateMongoUri(uri) {
+  if (!uri) {
+    throw new Error('MONGODB_URI is not defined in .env file');
+  }
+
+  const placeholders = ['<username>', '<password>', '<cluster-host>', '<database>'];
+  if (placeholders.some((token) => uri.includes(token))) {
+    throw new Error(
+      'MONGODB_URI contains template placeholders. Set a real Atlas URI in Render environment variables.'
+    );
+  }
+}
+
 let isConnected = false;
 
 // Fail fast when DB is unavailable instead of buffering queries for 10s+
@@ -18,9 +31,7 @@ export const connectDB = async () => {
       return mongoose.connection;
     }
     
-    if (!MONGODB_URI) {
-      throw new Error('MONGODB_URI is not defined in .env file');
-    }
+    validateMongoUri(MONGODB_URI);
 
     // Close existing connection if any
     if (mongoose.connection.readyState !== 0) {
