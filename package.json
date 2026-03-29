@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "npx concurrently -n UI,API -c cyan,green \"npm:dev:ui\" \"npm:start:backend\"",
     "dev:ui": "vite",
@@ -31,8 +34,8 @@
     "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.4",
     "@mui/x-date-pickers": "^8.21.0",
-    "@stripe/react-stripe-js": "^2.1.1",
-    "@stripe/stripe-js": "^4.1.0",
+    "@stripe/react-stripe-js": "^6.0.0",
+    "@stripe/stripe-js": "^9.0.0",
     "axios": "^1.6.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.22",
