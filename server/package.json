@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "concurrently -n API,ALT,DDI,DFI,SIDE,HEALTH,MEDREC \"node server.js\" \"py services/alternative_service.py\" \"py services/ddi_service.py\" \"py services/dfi_service.py\" \"py services/side_effect_service.py\" \"py services/health_assistant_service.py\" \"py services/medical_record_service.py\"",
-    "start:render": "concurrently -n API,ALT,DDI,DFI,SIDE,HEALTH,MEDREC \"node server.js\" \"python3 services/alternative_service.py\" \"python3 services/ddi_service.py\" \"python3 services/dfi_service.py\" \"python3 services/side_effect_service.py\" \"python3 services/health_assistant_service.py\" \"python3 services/medical_record_service.py\"",
+    "start:render": "concurrently -n API,PY \"node server.js\" \"python3 services/run_all_services.py\"",
     "start:core": "concurrently -n API,ALT,DDI,DFI,SIDE,HEALTH \"node server.js\" \"py services/alternative_service.py\" \"py services/ddi_service.py\" \"py services/dfi_service.py\" \"py services/side_effect_service.py\" \"py services/health_assistant_service.py\"",
-    "start:core:render": "concurrently -n API,ALT,DDI,DFI,SIDE,HEALTH \"node server.js\" \"python3 services/alternative_service.py\" \"python3 services/ddi_service.py\" \"python3 services/dfi_service.py\" \"python3 services/side_effect_service.py\" \"python3 services/health_assistant_service.py\"",
+    "start:core:render": "concurrently -n API,PY \"node server.js\" \"python3 services/run_all_services.py\"",
     "dev": "nodemon server.js",
     "seed:doctors": "node scripts/seed-doctors.js",
     "seed:medicines": "node scripts/seed-medicines.js",
