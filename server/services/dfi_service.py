@@ -7,14 +7,17 @@ Enhanced with LLM for detailed explanations.
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import joblib
-import pubchempy as pcp
-from rdkit import Chem
-from rdkit.Chem import Descriptors, rdMolDescriptors
-import pandas as pd
 import numpy as np
 import os
 import logging
+
+# Heavy runtime dependencies are imported lazily to reduce startup memory usage.
+joblib = None
+pcp = None
+Chem = None
+Descriptors = None
+rdMolDescriptors = None
+pd = None
 
 # Use local helper utilities (no HF fallback)
 try:
@@ -36,6 +39,33 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'Models', 'XGB-
 # In-memory caches for speed.
 smiles_cache = {}
 descriptor_cache = {}
+
+
+def _ensure_dfi_runtime() -> bool:
+    """Load heavy ML/chemistry modules only when DFI prediction is requested."""
+    global joblib, pcp, Chem, Descriptors, rdMolDescriptors, pd
+
+    if all(v is not None for v in [joblib, pcp, Chem, Descriptors, rdMolDescriptors, pd]):
+        return True
+
+    try:
+        import joblib as _joblib
+        import pubchempy as _pcp
+        from rdkit import Chem as _Chem
+        from rdkit.Chem import Descriptors as _Descriptors, rdMolDescriptors as _rdMolDescriptors
+        import pandas as _pd
+
+        joblib = _joblib
+        pcp = _pcp
+        Chem = _Chem
+        Descriptors = _Descriptors
+        rdMolDescriptors = _rdMolDescriptors
+        pd = _pd
+        logger.info("✅ DFI runtime dependencies loaded lazily")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to load DFI runtime dependencies: {e}")
+        return False
 
 # Clinical safety overrides for known high-risk interactions.
 # These rules ensure dangerous pairs are never reported as "Low Risk"
@@ -121,6 +151,10 @@ def align_features_to_model(features_df):
 def load_model():
     """Load XGBoost DFI model with compatibility handling"""
     global dfi_model
+
+    if not _ensure_dfi_runtime():
+        return False
+
     try:
         logger.info(f"Loading XGBoost DFI model from {os.path.abspath(MODEL_PATH)}")
         
@@ -174,6 +208,9 @@ def fetch_smiles(medicine_name):
     if key in smiles_cache:
         return smiles_cache[key]
 
+    if not _ensure_dfi_runtime():
+        return None, None
+
     try:
         logger.info(f"Fetching SMILES for: {medicine_name}")
         compounds = pcp.get_compounds(medicine_name, 'name')
@@ -212,6 +249,9 @@ def calculate_dfi_descriptors(smiles):
     key = smiles
     if key in descriptor_cache:
         return descriptor_cache[key]
+
+    if not _ensure_dfi_runtime():
+        return None
 
     try:
         mol = Chem.MolFromSmiles(smiles)
