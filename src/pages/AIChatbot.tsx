@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -11,7 +12,6 @@ import {
   ListItemButton,
   ListItemText,
   Stack,
-  Switch,
   TextField,
   Typography,
   useTheme,
@@ -52,6 +52,17 @@ const getSpecializationFromQuery = (query: string) => {
 
 const toCsvParam = (items: string[]) => encodeURIComponent(items.join(','))
 
+const toPlainParagraph = (text: string) => {
+  if (!text) return ''
+
+  return text
+    .replace(/\*\*/g, '')
+    .replace(/[#`*_>-]/g, ' ')
+    .replace(/\s*\d+\.\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export default function AIChatbot() {
   const theme = useTheme()
   const navigate = useNavigate()
@@ -59,7 +70,6 @@ export default function AIChatbot() {
     { id: 'm1', role: 'bot', text: 'Hello! I am your AI Health Assistant. How can I help you today?' },
   ])
   const [input, setInput] = useState('')
-  const [urdu, setUrdu] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const endRef = useRef<HTMLDivElement | null>(null)
 
@@ -157,10 +167,11 @@ export default function AIChatbot() {
       const result = await sendChatMessage(content)
       if (result.success) {
         const actions = buildActions(content, result)
+        const cleanResponse = toPlainParagraph(result.response || 'I received your message but could not generate a response.')
         const botMsg: Msg = {
           id: Math.random().toString(36).slice(2),
           role: 'bot',
-          text: result.response || 'I received your message but couldn\'t generate a response.',
+          text: cleanResponse,
           actions,
         }
         setMessages((prev) => [...prev, botMsg])
@@ -195,6 +206,8 @@ export default function AIChatbot() {
     const userMessages = messages.filter((message) => message.role === 'user')
     return userMessages.length > 0 ? userMessages[userMessages.length - 1] : null
   }, [messages])
+  const latestBotActions = latestBotMessage?.actions || []
+  const shouldShowReviewPrompt = latestBotActions.length > 0 && Boolean(latestUserMessage)
 
   return (
     <Box sx={{
@@ -282,22 +295,6 @@ export default function AIChatbot() {
                   Ask health-related questions
                 </Typography>
               </Box>
-            </Stack>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" fontWeight={600}>EN</Typography>
-              <Switch
-                checked={urdu}
-                onChange={(e) => setUrdu(e.target.checked)}
-                sx={{
-                  '& .MuiSwitch-switchBase.Mui-checked': {
-                    color: '#00B4D8',
-                  },
-                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                    backgroundColor: '#00B4D8',
-                  },
-                }}
-              />
-              <Typography variant="body2" fontWeight={600}>UR</Typography>
             </Stack>
           </Stack>
 
@@ -484,7 +481,7 @@ export default function AIChatbot() {
               <Box sx={{ p: 2 }}>
                 <TextField
                   fullWidth
-                  placeholder={urdu ? 'اپنا پیغام لکھیں…' : 'Type your message…'}
+                  placeholder="Type your message..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); send() } }}
@@ -513,14 +510,12 @@ export default function AIChatbot() {
             </Card>
           </Box>
 
-          {latestBotMessage && (
-            <DoctorReviewPrompt
-              feature="ai-assistant"
-              patientQuery={latestUserMessage?.text || 'AI consultation'}
-              aiResultText={latestBotMessage.text}
-              aiResultData={latestBotMessage}
-            />
-          )}
+          <DoctorReviewPrompt
+            feature="ai-assistant"
+            patientQuery={latestUserMessage?.text || 'AI consultation'}
+            aiResultText={shouldShowReviewPrompt ? latestBotMessage?.text || '' : ''}
+            aiResultData={shouldShowReviewPrompt ? latestBotMessage || undefined : undefined}
+          />
         </Stack>
       </Box>
     </Box>

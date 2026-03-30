@@ -119,6 +119,18 @@ router.get('/mine', requireAuth, async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(limit);
 
+    // Diagnostic logging for doctors fetching their review requests
+    if (req.user.role === 'doctor' && !status && !feature) {
+      const statusBreakdown = {
+        total: items.length,
+        pending: items.filter(i => i.status === 'pending').length,
+        approved: items.filter(i => i.status === 'approved').length,
+        rejected: items.filter(i => i.status === 'rejected').length,
+        modified: items.filter(i => i.status === 'modified').length,
+      };
+      console.log(`[Reviews] Doctor ${req.user.id} fetched review requests with limit ${limit}. Status breakdown:`, statusBreakdown);
+    }
+
     return res.json({ success: true, count: items.length, data: items.map(toClient) });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -178,6 +190,12 @@ router.put('/:id/action', requireAuth, async (req, res) => {
     item.reviewedAt = new Date();
     await item.save();
 
+    // Diagnostic logging for rejected requests
+    if (action === 'rejected') {
+      const updatedItem = await DoctorReviewRequest.findById(item._id);
+      console.log(`[Reviews] Doctor rejected request ${item._id} for feature ${item.feature}. Status in DB: ${updatedItem?.status}`);
+    }
+
     const patient = await User.findById(item.patientId).select('email');
     if (patient) {
       const title = action === 'approved'
@@ -201,6 +219,26 @@ router.put('/:id/action', requireAuth, async (req, res) => {
     }
 
     return res.json({ success: true, data: toClient(item) });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    const item = await DoctorReviewRequest.findById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Review request not found' });
+    }
+
+    const isDoctorOwner = item.doctorId.toString() === req.user.id;
+    const isPatientOwner = item.patientId.toString() === req.user.id;
+    if (!isDoctorOwner && !isPatientOwner) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    await item.deleteOne();
+    return res.json({ success: true, message: 'Review request deleted successfully' });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

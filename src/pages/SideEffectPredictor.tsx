@@ -294,15 +294,6 @@ export default function SideEffectPredictor() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
-              <DoctorReviewPrompt
-                feature="side-effects"
-                patientQuery={medicines.join(', ')}
-                aiResultText={predictions
-                  .map((item) => `${item.medicine}: ${item.success ? `${item.sideEffects.length} side effects detected` : item.error || 'failed'}`)
-                  .join('\n')}
-                aiResultData={predictions}
-              />
-
               <Stack spacing={2}>
                 {predictions.map((prediction, idx) => (
                   <motion.div
@@ -433,6 +424,7 @@ export default function SideEffectPredictor() {
                                       </motion.div>
                                     ))}
                                   </AnimatePresence>
+
                                 </Stack>
                               ) : (
                                 <Alert severity="success">
@@ -454,6 +446,15 @@ export default function SideEffectPredictor() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <DoctorReviewPrompt
+          feature="side-effects"
+          patientQuery={medicines.join(', ') || 'Side effects query'}
+          aiResultText={predictions.length > 0 ? predictions
+            .map((item) => `${item.medicine}: ${item.success ? `${item.sideEffects.length} side effects detected` : item.error || 'failed'}`)
+            .join('\n') : ''}
+          aiResultData={predictions.length > 0 ? predictions : undefined}
+        />
 
         {/* Information Card */}
         <Card sx={{ backgroundColor: alpha(theme.palette.info.main, 0.05) }}>

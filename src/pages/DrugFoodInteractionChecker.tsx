@@ -345,18 +345,33 @@ export default function DrugFoodInteractionChecker() {
             )}
 
             {/* Action Buttons */}
-            <Stack direction="row" spacing={2} mt={3}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mt={3}>
               <Button
                 variant="contained"
-                size="large"
                 onClick={handleCheck}
                 disabled={medicines.length === 0 || foods.length === 0 || loading}
-                startIcon={loading ? <CircularProgress size={20} /> : <RestaurantIcon />}
-                fullWidth
+                startIcon={loading ? <CircularProgress size={20} sx={{ color: 'inherit' }} /> : <RestaurantIcon />}
+                sx={{
+                  borderRadius: 3,
+                  px: 4,
+                  py: 1.5,
+                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)',
+                  alignSelf: 'flex-start',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #0096C7 0%, #05B586 100%)',
+                    boxShadow: '0 6px 16px rgba(0, 180, 216, 0.4)'
+                  },
+                  '&:disabled': {
+                    background: alpha(theme.palette.action.disabled, 0.12),
+                    color: theme.palette.action.disabled
+                  }
+                }}
               >
                 {loading ? 'Checking Interactions...' : 'Check Interactions'}
               </Button>
               <Button
+                size="small"
                 variant="outlined"
                 startIcon={<ClearAllIcon />}
                 onClick={() => {
@@ -364,6 +379,20 @@ export default function DrugFoodInteractionChecker() {
                   setFoods([])
                   setResults([])
                   setError(null)
+                }}
+                sx={{
+                  borderRadius: 3,
+                  px: 2.25,
+                  borderColor: '#00B4D8',
+                  color: '#00B4D8',
+                  '&:hover': {
+                    borderColor: '#0096C7',
+                    bgcolor: alpha('#00B4D8', 0.05)
+                  },
+                  '&:disabled': {
+                    borderColor: theme.palette.action.disabled,
+                    color: theme.palette.action.disabled
+                  }
                 }}
               >
                 Clear All
@@ -382,12 +411,6 @@ export default function DrugFoodInteractionChecker() {
         {/* Results */}
         {results.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <DoctorReviewPrompt
-              feature="dfi"
-              patientQuery={`${medicines.join(', ')} with ${foods.join(', ')}`}
-              aiResultText={reviewResultText}
-              aiResultData={results}
-            />
 
             <Card sx={{ mb: 4 }}>
               <CardContent>
@@ -517,12 +540,21 @@ export default function DrugFoodInteractionChecker() {
                         </Card>
                       </motion.div>
                     ))}
+
                   </AnimatePresence>
                 </Stack>
               </CardContent>
             </Card>
           </motion.div>
         )}
+
+        {/* Feature Review Panel */}
+        <DoctorReviewPrompt
+          feature="dfi"
+          patientQuery={medicines.length || foods.length ? `${medicines.join(', ')} with ${foods.join(', ')}` : 'Drug-food interaction query'}
+          aiResultText={results.length > 0 ? reviewResultText : ''}
+          aiResultData={results.length > 0 ? results : undefined}
+        />
       </Box>
     </Box>
   )

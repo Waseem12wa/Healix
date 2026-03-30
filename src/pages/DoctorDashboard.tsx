@@ -13,7 +13,6 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  FormHelperText,
   FormControl,
   IconButton,
   InputAdornment,
@@ -53,13 +52,13 @@ import CancelIcon from '@mui/icons-material/Cancel'
 import RecommendIcon from '@mui/icons-material/Recommend'
 import GroupIcon from '@mui/icons-material/Group'
 import TrackChangesIcon from '@mui/icons-material/TrackChanges'
-import EditNoteIcon from '@mui/icons-material/EditNote'
+import RefreshIcon from '@mui/icons-material/Refresh'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNotifications } from '../hooks/useNotifications'
 import { clearAuthData } from '../utils/auth'
 import { getMyProfile, logPatientActivity } from '../services/patientService'
 import { getDoctorDashboardLive, type DoctorDashboardLiveData } from '../services/doctorService'
-import { getMyReviewRequests, takeReviewAction, type DoctorReviewRequest } from '../services/reviewService'
+import { getMyReviewRequests, type DoctorReviewRequest } from '../services/reviewService'
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { LocalizationProvider, TimePicker, DatePicker } from '@mui/x-date-pickers'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
@@ -136,9 +135,10 @@ export default function DoctorDashboard() {
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
   const [reminderModalOpen, setReminderModalOpen] = useState(false)
   const [reviewRequests, setReviewRequests] = useState<DoctorReviewRequest[]>([])
-  const [reviewActionLoadingId, setReviewActionLoadingId] = useState<string | null>(null)
-  const [modifyTextById, setModifyTextById] = useState<Record<string, string>>({})
+  const [manualRefreshLoading, setManualRefreshLoading] = useState(false)
   const dashboardLoggedRef = useRef(false)
+  const liveRefreshInFlightRef = useRef(false)
+  const lastRefreshAtRef = useRef(0)
 
   const { unreadCount } = useNotifications()
 
@@ -239,11 +239,27 @@ export default function DoctorDashboard() {
       const [authProfile, liveData, reviews] = await Promise.all([
         getMyProfile().catch(() => null),
         getDoctorDashboardLive().catch(() => EMPTY_DASHBOARD),
-        getMyReviewRequests({ status: 'pending', limit: 100 }).catch(() => []),
+        getMyReviewRequests({ limit: 100 }).catch(() => []),
       ])
 
       setDashboardData(liveData || EMPTY_DASHBOARD)
-      setReviewRequests(Array.isArray(reviews) ? reviews : [])
+      const reviewsArray = Array.isArray(reviews) ? reviews : []
+      setReviewRequests(reviewsArray)
+      
+      // Diagnostic logging for rejected requests debugging
+      const rejectedCount = reviewsArray.filter((r) => r.status === 'rejected').length
+      const statusBreakdown = {
+        total: reviewsArray.length,
+        pending: reviewsArray.filter((r) => r.status === 'pending').length,
+        approved: reviewsArray.filter((r) => r.status === 'approved').length,
+        rejected: rejectedCount,
+        modified: reviewsArray.filter((r) => r.status === 'modified').length,
+      }
+      console.log('[DoctorDashboard] Review requests status breakdown:', statusBreakdown)
+      if (rejectedCount === 0 && reviewsArray.length > 0) {
+        console.warn('[DoctorDashboard] No rejected requests found. All reviews:', reviewsArray.map((r) => ({ id: r.id, status: r.status, feature: r.feature })))
+      }
+      
       const resolvedName = liveData?.doctor?.name || localStorage.getItem('userName') || 'Doctor'
       setDoctorName(resolvedName)
       localStorage.setItem('userName', resolvedName)
@@ -257,6 +273,8 @@ export default function DoctorDashboard() {
       }
 
       setLastSyncedAt(new Date())
+    } catch (error) {
+      console.error('[DoctorDashboard] Error loading live dashboard:', error)
     } finally {
       setLoadingDashboard(false)
     }
@@ -264,25 +282,38 @@ export default function DoctorDashboard() {
 
   useEffect(() => {
     let mounted = true
+    const LIVE_REFRESH_MS = 15000
 
-    const safeReload = async () => {
+    const guardedRefresh = async (force = false) => {
       if (!mounted) return
-      await loadLiveDashboard()
-    }
+      if (liveRefreshInFlightRef.current) return
 
-    safeReload()
+      const now = Date.now()
+      if (!force && now - lastRefreshAtRef.current < LIVE_REFRESH_MS - 500) {
+        return
+      }
 
-    const intervalId = window.setInterval(() => {
-      safeReload()
-    }, 8000)
-
-    const onVisibility = () => {
-      if (!document.hidden) {
-        safeReload()
+      liveRefreshInFlightRef.current = true
+      try {
+        await loadLiveDashboard()
+        lastRefreshAtRef.current = Date.now()
+      } finally {
+        liveRefreshInFlightRef.current = false
       }
     }
 
-    window.addEventListener('focus', safeReload)
+    guardedRefresh(true)
+
+    const intervalId = window.setInterval(() => {
+      guardedRefresh(false)
+    }, LIVE_REFRESH_MS)
+
+    const onVisibility = () => {
+      if (!document.hidden) {
+        guardedRefresh(true)
+      }
+    }
+
     document.addEventListener('visibilitychange', onVisibility)
 
     if (!dashboardLoggedRef.current) {
@@ -293,7 +324,6 @@ export default function DoctorDashboard() {
     return () => {
       mounted = false
       window.clearInterval(intervalId)
-      window.removeEventListener('focus', safeReload)
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
@@ -324,64 +354,65 @@ export default function DoctorDashboard() {
     navigate('/login')
   }
 
+  const handleManualRefresh = async () => {
+    try {
+      setManualRefreshLoading(true)
+      await loadLiveDashboard()
+      recordActivity('Manually refreshed dashboard', 'Doctor manually refreshed live dashboard metrics', { source: 'doctor-header-refresh' })
+    } catch (error) {
+      console.error('[DoctorDashboard] Manual refresh error:', error)
+    } finally {
+      setManualRefreshLoading(false)
+    }
+  }
+
+  const reviewMetrics = useMemo(() => {
+    const approved = reviewRequests.filter((item) => item.status === 'approved').length
+    const rejected = reviewRequests.filter((item) => item.status === 'rejected').length
+    const modified = reviewRequests.filter((item) => item.status === 'modified').length
+    const pending = reviewRequests.filter((item) => item.status === 'pending').length
+    const actionsTaken = approved + rejected + modified
+
+    return {
+      approved,
+      rejected,
+      modified,
+      pending,
+      actionsTaken,
+      total: reviewRequests.length,
+    }
+  }, [reviewRequests])
+
   const summaryCards = [
     {
       title: 'Approved Requests',
-      value: dashboardData.outcomes.approvals,
-      hint: `${dashboardData.appointments.approved} approved appointments`,
+      value: reviewMetrics.approved,
+      hint: `${reviewMetrics.pending} pending feature requests`,
       icon: <CheckCircleIcon />,
       color: '#10b981',
     },
     {
       title: 'Rejected Requests',
-      value: dashboardData.outcomes.rejections,
-      hint: `${dashboardData.appointments.rejected} rejected appointments`,
+      value: reviewMetrics.rejected,
+      hint: `${reviewMetrics.total} total feature requests`,
       icon: <CancelIcon />,
       color: '#ef4444',
     },
     {
       title: 'Recommendations Given',
-      value: dashboardData.outcomes.recommendationsGiven,
-      hint: `${dashboardData.reminders.upcomingNext7Days} reminders due in 7 days`,
+      value: reviewMetrics.modified,
+      hint: `${dashboardData.reminders.created} reminders created`,
       icon: <RecommendIcon />,
       color: '#0ea5e9',
     },
     {
       title: 'Actions Taken',
-      value: dashboardData.outcomes.actionsTaken,
+      value: reviewMetrics.actionsTaken,
       hint: `${dashboardData.monitoring.assignedPatients} assigned patients monitored`,
       icon: <TrackChangesIcon />,
       color: '#8b5cf6',
     },
   ]
-
-  const featureLabelByCode: Record<string, string> = {
-    ddi: 'Drug-Drug Interaction',
-    dfi: 'Drug-Food Interaction',
-    alternatives: 'Drug Alternatives',
-    'side-effects': 'Side Effects',
-    'ai-assistant': 'AI Health Assistant',
-    'medication-pharmacy': 'Medication / Pharmacy',
-    'health-summary': 'Record Summarization',
-  }
-
-  const handleReviewAction = async (item: DoctorReviewRequest, action: 'approved' | 'rejected' | 'modified') => {
-    try {
-      setReviewActionLoadingId(item.id)
-      const modifiedText = modifyTextById[item.id] || ''
-      const next = await takeReviewAction(item.id, {
-        action,
-        doctorActionMessage: action === 'modified' ? 'Result modified by doctor' : `Result ${action} by doctor`,
-        modifiedResultText: action === 'modified' ? modifiedText : undefined,
-      })
-
-      setReviewRequests((prev) => prev.filter((request) => request.id !== next.id))
-    } catch (error) {
-      console.error('Failed to process review action:', error)
-    } finally {
-      setReviewActionLoadingId(null)
-    }
-  }
 
   const moduleChartData = [
     { module: 'DDI', value: dashboardData.monitoring.moduleUsage.ddi },
@@ -397,6 +428,7 @@ export default function DoctorDashboard() {
   const pendingByFeature = useMemo(() => {
     const bucket: Record<string, number> = {}
     for (const item of reviewRequests) {
+      if (item.status !== 'pending') continue
       const key = item.feature
       bucket[key] = (bucket[key] || 0) + 1
     }
@@ -474,6 +506,15 @@ export default function DoctorDashboard() {
                   <NotificationsIcon />
                 </IconButton>
               </Badge>
+
+              <IconButton
+                onClick={handleManualRefresh}
+                disabled={manualRefreshLoading}
+                title="Refresh dashboard metrics"
+                sx={{ color: '#06D6A0', '&:hover': { bgcolor: '#E8F5F0' } }}
+              >
+                <RefreshIcon sx={{ animation: manualRefreshLoading ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } } }} />
+              </IconButton>
 
               <Stack
                 direction="row"
@@ -643,99 +684,6 @@ export default function DoctorDashboard() {
                   </motion.div>
                 ))}
               </Box>
-
-              <motion.div variants={cardVariants}>
-                <Card sx={{ boxShadow: 2, borderRadius: 2, bgcolor: '#ffffff' }}>
-                  <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
-                    <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 2 }}>
-                      <EditNoteIcon sx={{ color: '#F59E0B' }} />
-                      <Typography sx={{ fontSize: { xs: '1.2rem', md: '1.45rem' }, fontWeight: 800, color: '#1A1A2E' }}>
-                        Patient Review Requests ({reviewRequests.length})
-                      </Typography>
-                    </Stack>
-
-                    {reviewRequests.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">No pending review requests right now.</Typography>
-                    ) : (
-                      <Stack spacing={1.5}>
-                        {reviewRequests.map((item) => {
-                          const modifyText = modifyTextById[item.id] || ''
-                          const isBusy = reviewActionLoadingId === item.id
-
-                          return (
-                            <Card key={item.id} variant="outlined" sx={{ borderRadius: 2 }}>
-                              <CardContent>
-                                <Stack spacing={1.2}>
-                                  <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={0.75}>
-                                    <Typography sx={{ fontWeight: 700, color: '#1A1A2E' }}>
-                                      {item.patientName}
-                                    </Typography>
-                                    <Chip
-                                      label={featureLabelByCode[item.feature] || item.featureLabel || item.feature}
-                                      size="small"
-                                      sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }}
-                                    />
-                                  </Stack>
-
-                                  <Typography variant="body2" color="text.secondary">
-                                    Query: {item.patientQuery || 'N/A'}
-                                  </Typography>
-                                  <Typography variant="body2" sx={{ color: '#111827', whiteSpace: 'pre-wrap' }}>
-                                    AI Result: {item.aiResultText}
-                                  </Typography>
-
-                                  <TextField
-                                    label="Modify result (optional)"
-                                    value={modifyText}
-                                    onChange={(event) => {
-                                      const value = event.target.value
-                                      setModifyTextById((prev) => ({ ...prev, [item.id]: value }))
-                                    }}
-                                    multiline
-                                    minRows={2}
-                                    size="small"
-                                  />
-                                  <FormHelperText>Required only for Modify action.</FormHelperText>
-
-                                  <Stack direction="row" spacing={1} flexWrap="wrap">
-                                    <Button
-                                      size="small"
-                                      color="success"
-                                      variant="contained"
-                                      onClick={() => handleReviewAction(item, 'approved')}
-                                      disabled={isBusy}
-                                    >
-                                      Approve
-                                    </Button>
-                                    <Button
-                                      size="small"
-                                      color="error"
-                                      variant="contained"
-                                      onClick={() => handleReviewAction(item, 'rejected')}
-                                      disabled={isBusy}
-                                    >
-                                      Reject
-                                    </Button>
-                                    <Button
-                                      size="small"
-                                      color="info"
-                                      variant="contained"
-                                      onClick={() => handleReviewAction(item, 'modified')}
-                                      disabled={isBusy || !modifyText.trim()}
-                                    >
-                                      Modify
-                                    </Button>
-                                  </Stack>
-                                </Stack>
-                              </CardContent>
-                            </Card>
-                          )
-                        })}
-                      </Stack>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
 
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.2fr 1fr' }, gap: { xs: 2, md: 3 } }}>
                 <motion.div variants={cardVariants}>

@@ -64,3 +64,7 @@ export const takeReviewAction = async (
   const response = await api.put(`/${id}/action`, payload)
   return response.data?.data
 }
+
+export const deleteReviewRequest = async (id: string): Promise<void> => {
+  await api.delete(`/${id}`)
+}

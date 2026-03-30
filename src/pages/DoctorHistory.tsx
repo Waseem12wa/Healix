@@ -24,6 +24,17 @@ type ActivityItem = {
   createdAt?: string
 }
 
+const isFeatureReviewActivity = (activity: ActivityItem) => {
+  const category = String(activity.category || '').toLowerCase()
+  const text = `${activity.title || ''} ${activity.details || ''}`.toLowerCase()
+
+  if (category === 'doctor-review' || category === 'review-request') {
+    return true
+  }
+
+  return /doctor review|review request|approved your request|rejected your request|modified your result/.test(text)
+}
+
 export default function DoctorHistory() {
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,6 +57,8 @@ export default function DoctorHistory() {
   useEffect(() => {
     loadActivities()
   }, [])
+
+  const visibleActivities = activities.filter((activity) => !isFeatureReviewActivity(activity))
 
   return (
     <Box sx={{ minHeight: '100vh', p: { xs: 2.5, md: 3.5 }, px: { xs: 3, md: 4 } }}>
@@ -80,13 +93,13 @@ export default function DoctorHistory() {
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
                 <CircularProgress size={28} />
               </Box>
-            ) : activities.length === 0 ? (
+            ) : visibleActivities.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                No activities yet. Doctor actions will appear here.
+                No history items to show here.
               </Typography>
             ) : (
               <Stack spacing={1.25}>
-                {activities.map((activity, index) => (
+                {visibleActivities.map((activity, index) => (
                   <Box key={activity._id || index}>
                     <Stack direction="row" justifyContent="space-between" alignItems="start" gap={1.5}>
                       <Box>
@@ -108,7 +121,7 @@ export default function DoctorHistory() {
                         {activity.details}
                       </Typography>
                     )}
-                    {index < activities.length - 1 && <Divider sx={{ mt: 1.25 }} />}
+                    {index < visibleActivities.length - 1 && <Divider sx={{ mt: 1.25 }} />}
                   </Box>
                 ))}
               </Stack>

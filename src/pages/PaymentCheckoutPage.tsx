@@ -23,6 +23,7 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import BackButton from '../ui/BackButton'
+import DoctorReviewPrompt from '../components/DoctorReviewPrompt'
 import { clearCart, getCart, syncCartFromServer } from '../services/cartService'
 import {
   createPaymentIntent,
@@ -86,6 +87,7 @@ export default function PaymentCheckoutPage() {
   const [nayaPayId, setNayaPayId] = useState('')
   const [phone, setPhone] = useState('')
   const [cartLoaded, setCartLoaded] = useState(false)
+  const [doctorApprovalStatus, setDoctorApprovalStatus] = useState<'not-requested' | 'pending' | 'approved' | 'rejected' | 'modified'>('not-requested')
 
   const cartData = getCart()
 
@@ -118,6 +120,11 @@ export default function PaymentCheckoutPage() {
   const validateForm = () => {
     if (items.length === 0) {
       setError('Your cart is empty. Add medicines before proceeding to payment.')
+      return false
+    }
+
+    if (doctorApprovalStatus !== 'approved') {
+      setError('Please confirm with your assigned doctor and get approval before proceeding to payment.')
       return false
     }
 
@@ -368,10 +375,10 @@ export default function PaymentCheckoutPage() {
                       variant="contained"
                       size="large"
                       onClick={handleProceedPayment}
-                      disabled={loading}
+                      disabled={loading || doctorApprovalStatus !== 'approved'}
                       startIcon={loading ? <CircularProgress size={18} /> : <PaymentsIcon />}
                     >
-                      {loading ? 'Processing Payment...' : `Proceed to Pay ${formatPkr(total)}`}
+                      {doctorApprovalStatus !== 'approved' ? 'Awaiting Doctor Approval' : `Proceed to Pay ${formatPkr(total)}`}
                     </Button>
                   </Stack>
                 </CardContent>
@@ -422,6 +429,29 @@ export default function PaymentCheckoutPage() {
               </Card>
             </Grid>
           </Grid>
+
+          {/* Doctor Review Section */}
+          <Box sx={{ mt: 2 }}>
+            <DoctorReviewPrompt
+              feature="medication-pharmacy"
+              patientQuery={`Checkout Purchase - ${items.length} item(s)`}
+              aiResultText={items.length > 0 ? items
+                .map((item) => `${item.medicine.medicineName} - Qty ${item.quantity} - ${formatPkr(item.medicine.sellingPrice)} each - Subtotal ${formatPkr(item.subtotal)}`)
+                .join('\n') : ''}
+              aiResultData={items.length > 0 ? {
+                medicines: items.map((item) => ({
+                  medicineId: item.medicine._id,
+                  medicineName: item.medicine.medicineName,
+                  quantity: item.quantity,
+                  price: item.medicine.sellingPrice,
+                  subtotal: item.subtotal,
+                })),
+                totalAmount: total,
+                cartSize: items.length,
+              } : undefined}
+              onStatusChange={(status) => setDoctorApprovalStatus(status)}
+            />
+          </Box>
         </Stack>
       </Box>
     </Box>

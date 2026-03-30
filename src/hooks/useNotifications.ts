@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 
 interface Notification {
   _id: string
-  type: 'appointment_request' | 'appointment_approved' | 'appointment_rejected' | 'appointment_cancelled'
+  type: 'appointment_request' | 'appointment_approved' | 'appointment_rejected' | 'appointment_cancelled' | 'doctor_review_request' | 'doctor_review_result'
   title: string
   message: string
   read: boolean
   createdAt: string
   appointmentId?: string
+  reviewRequestId?: string
 }
 
 export function useNotifications() {

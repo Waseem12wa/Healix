@@ -10,17 +10,48 @@ import {
     Typography,
     useTheme,
     alpha,
-    Alert
+    Alert,
+    Divider,
+    Paper
 } from '@mui/material'
 import SummarizeIcon from '@mui/icons-material/Summarize'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import DownloadIcon from '@mui/icons-material/Download'
 import DescriptionIcon from '@mui/icons-material/Description'
+import WarningIcon from '@mui/icons-material/Warning'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import MedicationIcon from '@mui/icons-material/Medication'
+import AssignmentIcon from '@mui/icons-material/Assignment'
 import { motion, AnimatePresence } from 'framer-motion'
 import BackButton from '../ui/BackButton'
 import { summarizeMedicalRecord } from '../utils/medicalRecordClient'
 import { logPatientActivity } from '../services/patientService'
 import DoctorReviewPrompt from '../components/DoctorReviewPrompt'
+
+// Health-related keywords for document validation
+const HEALTH_KEYWORDS = [
+    // Medical conditions
+    'disease', 'disorder', 'syndrome', 'condition', 'illness', 'infection',
+    'diagnosis', 'symptom', 'patient', 'medical', 'health', 'clinical', 'treatment',
+    'therapy', 'medication', 'medicine', 'drug', 'vaccine', 'surgery', 'operation',
+    'procedure', 'examination', 'test', 'lab', 'laboratory', 'blood', 'urine',
+    'vital', 'pressure', 'temperature', 'heart', 'cardiac', 'pneumonia', 'cancer',
+    'diabetes', 'hypertension', 'asthma', 'arthritis', 'allergy', 'fever', 'cough',
+    'pain', 'headache', 'injury', 'fracture', 'wound', 'burn', 'cut', 'bruise',
+    'hospital', 'clinic', 'doctor', 'physician', 'nurse', 'surgeon', 'therapist',
+    'prescription', 'dosage', 'dose', 'side effect', 'adverse', 'contraindication',
+    'prognosis', 'recovery', 'rehabilitation', 'therapy', 'rehabilitation',
+    'radiology', 'xray', 'ultrasound', 'mri', 'ct', 'scan', 'echo', 'ekg', 'ecg',
+    'enzyme', 'glucose', 'cholesterol', 'triglyceride', 'hemoglobin', 'albumin',
+    'creatinine', 'bilirubin', 'organ', 'kidney', 'liver', 'pancreas', 'brain',
+    // Common health abbreviations
+    'hiv', 'hbp', 'bmi', 'cpr', 'er', 'icd', 'pd', 'pt', 'ot', 'bp',
+    'bpm', 'mmhg', 'icu', 'icu', 'oz', 'mg', 'mcg', 'ml', 'cc',
+    // Wellness terms
+    'wellness', 'healthcare', 'telemedicine', 'vaccination', 'immunization',
+    'symptom', 'complaint', 'consultation', 'visit', 'appointment', 'discharge',
+    'report', 'chart', 'record', 'history'
+]
 
 export default function HealthRecordSummarization() {
     const theme = useTheme()
@@ -36,6 +67,52 @@ export default function HealthRecordSummarization() {
     } | null>(null)
     const inputRef = useRef<HTMLInputElement | null>(null)
 
+    // Function to check if text contains health-related keywords
+    const isHealthRelatedContent = (text: string): boolean => {
+        if (!text || text.trim().length === 0) return false
+        
+        const lowerText = text.toLowerCase()
+        // Count health keywords found
+        const healthKeywordCount = HEALTH_KEYWORDS.filter(keyword => 
+            lowerText.includes(keyword.toLowerCase())
+        ).length
+        
+        // Consider it health-related if at least 3 distinct health keywords are found
+        // OR if the text is sufficient length and contains at least 1 health keyword
+        return healthKeywordCount >= 3 || (text.length > 500 && healthKeywordCount >= 1)
+    }
+
+    // Extract text from file for validation
+    const extractTextFromFile = async (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            
+            reader.onload = (event) => {
+                try {
+                    const content = event.target?.result as string
+                    // For text-based files, return the content directly
+                    if (file.type.includes('text') || file.name.endsWith('.txt')) {
+                        resolve(content)
+                    } else if (file.type.includes('pdf') || file.name.endsWith('.pdf')) {
+                        // For PDFs and other formats, we'll rely on backend extraction
+                        // Return a placeholder since we can't extract from PDFs in frontend
+                        resolve(file.name)
+                    } else {
+                        resolve(content)
+                    }
+                } catch (error) {
+                    resolve(file.name)
+                }
+            }
+            
+            reader.onerror = () => {
+                resolve(file.name)
+            }
+            
+            reader.readAsText(file)
+        })
+    }
+
     const handleFiles = async (files: FileList | null) => {
         if (!files || files.length === 0) return
         const f = files[0]
@@ -45,6 +122,20 @@ export default function HealthRecordSummarization() {
         setError('')
 
         try {
+            // Extract text for validation (for text files)
+            const extractedText = await extractTextFromFile(f)
+            
+            // Check if document is health-related
+            if (extractedText && extractedText.length > 50) {
+                // For text files, validate keywords
+                if (!isHealthRelatedContent(extractedText)) {
+                    setError('This is not a health-related document. Please provide a valid health-related document containing medical information such as diagnosis, medications, symptoms, or clinical findings.')
+                    setMedicalSummary(null)
+                    setLoading(false)
+                    return
+                }
+            }
+
             const result = await summarizeMedicalRecord(f)
             if (result.success) {
                 setSummary(result.summary || 'Summary generated successfully')
@@ -309,18 +400,6 @@ export default function HealthRecordSummarization() {
                                 exit={{ opacity: 0, y: -20 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <DoctorReviewPrompt
-                                    feature="health-summary"
-                                    patientQuery={fileName || 'Uploaded health record summary'}
-                                    aiResultText={summary}
-                                    aiResultData={{
-                                        fileName,
-                                        summary,
-                                        entities,
-                                        medicalSummary,
-                                    }}
-                                />
-
                                 <Card sx={{
                                     borderRadius: '24px',
                                     boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.05)}`,
@@ -351,45 +430,45 @@ export default function HealthRecordSummarization() {
                                             {/* Extracted Entities */}
                                             {entities && (
                                                 <Box>
-                                                    <Typography variant="h6" fontWeight={600} sx={{ mb: 2, color: theme.palette.primary.main }}>
-                                                        Key Medical Entities
+                                                    <Typography variant="h6" fontWeight={700} sx={{ mb: 2.5, color: '#00B4D8' }}>
+                                                        📋 Key Medical Entities
                                                     </Typography>
                                                     <Stack spacing={2}>
                                                         {entities.medications && entities.medications.length > 0 && (
-                                                            <Box>
-                                                                <Typography variant="subtitle2" fontWeight={600} color="primary">
-                                                                    Medications:
+                                                            <Paper elevation={0} sx={{ p: 1.5, bgcolor: alpha('#4ECDC4', 0.05), borderRadius: 2, border: `1px solid ${alpha('#4ECDC4', 0.2)}` }}>
+                                                                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: '#4ECDC4' }}>
+                                                                    💊 Medications
                                                                 </Typography>
-                                                                <Stack direction="row" spacing={1} flexWrap="wrap">
+                                                                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                                                                     {entities.medications.map((med: string, idx: number) => (
-                                                                        <Chip key={idx} label={med} size="small" variant="outlined" />
+                                                                        <Chip key={idx} label={med} size="small" sx={{ bgcolor: alpha('#4ECDC4', 0.1), color: '#4ECDC4' }} />
                                                                     ))}
                                                                 </Stack>
-                                                            </Box>
+                                                            </Paper>
                                                         )}
                                                         {entities.conditions && entities.conditions.length > 0 && (
-                                                            <Box>
-                                                                <Typography variant="subtitle2" fontWeight={600} color="primary">
-                                                                    Conditions:
+                                                            <Paper elevation={0} sx={{ p: 1.5, bgcolor: alpha('#FF6B6B', 0.05), borderRadius: 2, border: `1px solid ${alpha('#FF6B6B', 0.2)}` }}>
+                                                                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: '#FF6B6B' }}>
+                                                                    🏥 Conditions
                                                                 </Typography>
-                                                                <Stack direction="row" spacing={1} flexWrap="wrap">
+                                                                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                                                                     {entities.conditions.map((cond: string, idx: number) => (
-                                                                        <Chip key={idx} label={cond} size="small" variant="outlined" color="secondary" />
+                                                                        <Chip key={idx} label={cond} size="small" color="secondary" sx={{ bgcolor: alpha('#FF6B6B', 0.1), color: '#FF6B6B' }} />
                                                                     ))}
                                                                 </Stack>
-                                                            </Box>
+                                                            </Paper>
                                                         )}
                                                         {entities.procedures && entities.procedures.length > 0 && (
-                                                            <Box>
-                                                                <Typography variant="subtitle2" fontWeight={600} color="primary">
-                                                                    Procedures:
+                                                            <Paper elevation={0} sx={{ p: 1.5, bgcolor: alpha('#A78BFA', 0.05), borderRadius: 2, border: `1px solid ${alpha('#A78BFA', 0.2)}` }}>
+                                                                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: '#A78BFA' }}>
+                                                                    🔬 Procedures
                                                                 </Typography>
-                                                                <Stack direction="row" spacing={1} flexWrap="wrap">
+                                                                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                                                                     {entities.procedures.map((proc: string, idx: number) => (
-                                                                        <Chip key={idx} label={proc} size="small" variant="outlined" color="info" />
+                                                                        <Chip key={idx} label={proc} size="small" sx={{ bgcolor: alpha('#A78BFA', 0.1), color: '#A78BFA' }} />
                                                                     ))}
                                                                 </Stack>
-                                                            </Box>
+                                                            </Paper>
                                                         )}
                                                     </Stack>
                                                 </Box>
@@ -397,49 +476,87 @@ export default function HealthRecordSummarization() {
 
                                             {medicalSummary && (
                                                 <Box>
-                                                    <Typography variant="h6" fontWeight={600} sx={{ mb: 2, color: theme.palette.primary.main }}>
+                                                    <Typography variant="h6" fontWeight={700} sx={{ mb: 2.5, color: '#00B4D8', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <CheckCircleIcon sx={{ fontSize: 24, color: '#06D6A0' }} />
                                                         Clinical Decision Highlights
                                                     </Typography>
 
                                                     {medicalSummary.identified_conditions?.length > 0 && (
-                                                        <Box sx={{ mb: 2 }}>
-                                                            <Typography variant="subtitle2" fontWeight={600} color="primary">
-                                                                Identified Diseases / Conditions:
+                                                        <Paper elevation={0} sx={{ mb: 2.5, p: 2.5, borderLeft: '4px solid #FF6B6B', bgcolor: alpha('#FF6B6B', 0.05), borderRadius: 2 }}>
+                                                            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5, color: '#FF6B6B', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                🏥 Identified Conditions/Diseases
                                                             </Typography>
-                                                            <Stack direction="row" spacing={1} flexWrap="wrap">
+                                                            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                                                                 {medicalSummary.identified_conditions.map((cond, idx) => (
-                                                                    <Chip key={`cond-${idx}`} label={cond} size="small" color="secondary" variant="outlined" />
+                                                                    <Chip 
+                                                                        key={`cond-${idx}`} 
+                                                                        label={cond} 
+                                                                        size="small" 
+                                                                        sx={{ 
+                                                                            fontWeight: 600,
+                                                                            bgcolor: alpha('#FF6B6B', 0.1),
+                                                                            color: '#FF6B6B',
+                                                                            border: '1px solid #FF6B6B'
+                                                                        }}
+                                                                    />
                                                                 ))}
                                                             </Stack>
-                                                        </Box>
+                                                        </Paper>
                                                     )}
 
                                                     {medicalSummary.suggested_medications?.length > 0 && (
-                                                        <Box sx={{ mb: 2 }}>
-                                                            <Typography variant="subtitle2" fontWeight={600} color="primary">
-                                                                Suggested Medications:
+                                                        <Paper elevation={0} sx={{ mb: 2.5, p: 2.5, borderLeft: '4px solid #4ECDC4', bgcolor: alpha('#4ECDC4', 0.05), borderRadius: 2 }}>
+                                                            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5, color: '#4ECDC4', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <MedicationIcon sx={{ fontSize: 18 }} /> Suggested Medications
                                                             </Typography>
-                                                            <Stack direction="row" spacing={1} flexWrap="wrap">
+                                                            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                                                                 {medicalSummary.suggested_medications.map((med, idx) => (
-                                                                    <Chip key={`med-${idx}`} label={med} size="small" variant="outlined" />
+                                                                    <Chip 
+                                                                        key={`med-${idx}`} 
+                                                                        label={med} 
+                                                                        size="small"
+                                                                        sx={{ 
+                                                                            fontWeight: 600,
+                                                                            bgcolor: alpha('#4ECDC4', 0.1),
+                                                                            color: '#4ECDC4',
+                                                                            border: '1px solid #4ECDC4'
+                                                                        }}
+                                                                    />
                                                                 ))}
                                                             </Stack>
-                                                        </Box>
+                                                        </Paper>
                                                     )}
 
                                                     {medicalSummary.recommended_actions?.length > 0 && (
-                                                        <Box>
-                                                            <Typography variant="subtitle2" fontWeight={600} color="primary" sx={{ mb: 1 }}>
-                                                                Recommended Actions / Precautions:
+                                                        <Paper elevation={0} sx={{ mb: 2, p: 2.5, borderLeft: '4px solid #FFD93D', bgcolor: alpha('#FFD93D', 0.05), borderRadius: 2 }}>
+                                                            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5, color: '#FFD93D', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <AssignmentIcon sx={{ fontSize: 18 }} /> Recommended Actions & Precautions
                                                             </Typography>
-                                                            <Stack spacing={0.75}>
+                                                            <Stack spacing={1}>
                                                                 {medicalSummary.recommended_actions.map((action, idx) => (
-                                                                    <Typography key={`action-${idx}`} variant="body2" color="text.secondary">
-                                                                        • {action}
-                                                                    </Typography>
+                                                                    <Box key={`action-${idx}`} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                                                                        <Box sx={{ 
+                                                                            minWidth: 24, 
+                                                                            height: 24, 
+                                                                            borderRadius: '50%',
+                                                                            bgcolor: '#FFD93D',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            flexShrink: 0,
+                                                                            color: 'white',
+                                                                            fontWeight: 700,
+                                                                            fontSize: '0.75rem'
+                                                                        }}>
+                                                                            {idx + 1}
+                                                                        </Box>
+                                                                        <Typography variant="body2" color="text.primary" sx={{ pt: 0.25 }}>
+                                                                            {action}
+                                                                        </Typography>
+                                                                    </Box>
                                                                 ))}
                                                             </Stack>
-                                                        </Box>
+                                                        </Paper>
                                                     )}
                                                 </Box>
                                             )}
@@ -486,6 +603,18 @@ export default function HealthRecordSummarization() {
                             </motion.div>
                         )}
                     </AnimatePresence>
+
+                    <DoctorReviewPrompt
+                        feature="health-summary"
+                        patientQuery={fileName || 'Uploaded health record summary'}
+                        aiResultText={summary || ''}
+                        aiResultData={summary ? {
+                            fileName,
+                            summary,
+                            entities,
+                            medicalSummary,
+                        } : undefined}
+                    />
                 </Stack>
             </Box>
         </Box>

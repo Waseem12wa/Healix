@@ -307,16 +307,6 @@ export default function DrugAlternatives() {
                         </Alert>
                     )}
 
-                    {/* Results */}
-                    {result && result.alternatives.length > 0 && (
-                        <DoctorReviewPrompt
-                            feature="alternatives"
-                            patientQuery={result.matched_name || result.medicine || query}
-                            aiResultText={result.alternatives.map((alt) => `${alt.name} (${alt.similarity}% similar)`).join('\n')}
-                            aiResultData={result}
-                        />
-                    )}
-
                     {result && result.alternatives.length > 0 && (
                         <Card sx={{
                             borderRadius: '24px',
@@ -562,6 +552,14 @@ export default function DrugAlternatives() {
                             No alternatives found for "{result.medicine}". Try a different medicine name.
                         </Alert>
                     )}
+
+                    {/* Feature Review Panel */}
+                    <DoctorReviewPrompt
+                        feature="alternatives"
+                        patientQuery={result?.matched_name || result?.medicine || query || 'Drug alternatives query'}
+                        aiResultText={result && result.alternatives.length > 0 ? result.alternatives.map((alt) => `${alt.name} (${alt.similarity}% similar)`).join('\n') : ''}
+                        aiResultData={result || undefined}
+                    />
                 </Stack>
             </Box>
 

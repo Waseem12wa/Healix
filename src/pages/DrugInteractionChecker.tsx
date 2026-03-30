@@ -511,16 +511,6 @@ export default function DrugInteractionChecker() {
             </Card>
           )}
 
-          {/* Results Card */}
-          {results.length > 0 && (
-            <DoctorReviewPrompt
-              feature="ddi"
-              patientQuery={drugs.join(', ')}
-              aiResultText={reviewResultText}
-              aiResultData={results}
-            />
-          )}
-
           {results.length > 0 && (
             <Card sx={{
               borderRadius: '24px',
@@ -778,6 +768,14 @@ export default function DrugInteractionChecker() {
               </CardContent>
             </Card>
           )}
+
+          {/* Feature Review Panel */}
+          <DoctorReviewPrompt
+            feature="ddi"
+            patientQuery={drugs.join(', ') || 'Drug interaction query'}
+            aiResultText={results.length > 0 ? reviewResultText : ''}
+            aiResultData={results.length > 0 ? results : undefined}
+          />
         </Stack>
       </Box>
     </Box>

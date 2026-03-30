@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Box,
@@ -7,13 +7,14 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Divider,
   FormHelperText,
   Stack,
   TextField,
   Typography,
 } from '@mui/material'
 import BackButton from '../ui/BackButton'
-import { getMyReviewRequests, takeReviewAction, type DoctorReviewRequest, type ReviewFeature } from '../services/reviewService'
+import { deleteReviewRequest, getMyReviewRequests, takeReviewAction, type DoctorReviewRequest, type ReviewFeature } from '../services/reviewService'
 
 type Props = {
   feature: ReviewFeature
@@ -233,18 +234,34 @@ export default function DoctorFeatureReviews({ feature }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [items, setItems] = useState<DoctorReviewRequest[]>([])
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null)
   const [modifyTextById, setModifyTextById] = useState<Record<string, string>>({})
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'modified'>('all')
+  const lastItemsSignatureRef = useRef('')
 
-  const load = async () => {
+  const load = async (options?: { silent?: boolean }) => {
+    const silent = Boolean(options?.silent)
     try {
-      setLoading(true)
-      setError(null)
-      const data = await getMyReviewRequests({ status: 'pending', limit: 200, feature })
-      setItems(Array.isArray(data) ? data : [])
+      if (!silent) {
+        setLoading(true)
+        setError(null)
+      }
+      const data = await getMyReviewRequests({ limit: 200, feature })
+      const nextItems = Array.isArray(data) ? data : []
+      const nextSignature = nextItems.map((item) => `${item.id}:${item.status}:${item.updatedAt}`).join('|')
+
+      if (nextSignature !== lastItemsSignatureRef.current) {
+        lastItemsSignatureRef.current = nextSignature
+        setItems(nextItems)
+      }
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to load feature review requests')
+      if (!silent) {
+        setError(err?.response?.data?.message || 'Failed to load feature review requests')
+      }
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }
 
@@ -252,13 +269,19 @@ export default function DoctorFeatureReviews({ feature }: Props) {
     load()
 
     const intervalId = window.setInterval(() => {
-      load()
-    }, 8000)
+      if (!document.hidden) {
+        load({ silent: true })
+      }
+    }, 15000)
 
     return () => window.clearInterval(intervalId)
   }, [feature])
 
   const title = useMemo(() => FEATURE_LABELS[feature], [feature])
+  const filteredItems = useMemo(() => {
+    if (statusFilter === 'all') return items
+    return items.filter((item) => item.status === statusFilter)
+  }, [items, statusFilter])
 
   const handleAction = async (item: DoctorReviewRequest, action: 'approved' | 'rejected' | 'modified') => {
     try {
@@ -269,11 +292,35 @@ export default function DoctorFeatureReviews({ feature }: Props) {
         doctorActionMessage: action === 'modified' ? 'Modified and approved by doctor' : `Marked as ${action} by doctor`,
         modifiedResultText: action === 'modified' ? modifiedResultText : undefined,
       })
-      setItems((prev) => prev.filter((request) => request.id !== item.id))
+      setItems((prev) => prev.map((request) => (
+        request.id === item.id
+          ? {
+              ...request,
+              status: action,
+              doctorActionMessage: action === 'modified' ? 'Modified and approved by doctor' : `Marked as ${action} by doctor`,
+              modifiedResultText: action === 'modified' ? modifiedResultText : '',
+              reviewedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          : request
+      )))
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Failed to process doctor action')
     } finally {
       setActionLoadingId(null)
+    }
+  }
+
+  const handleDelete = async (item: DoctorReviewRequest) => {
+    try {
+      setDeleteLoadingId(item.id)
+      setError(null)
+      await deleteReviewRequest(item.id)
+      setItems((prev) => prev.filter((request) => request.id !== item.id))
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Failed to delete request')
+    } finally {
+      setDeleteLoadingId(null)
     }
   }
 
@@ -289,12 +336,20 @@ export default function DoctorFeatureReviews({ feature }: Props) {
                 {title} Reviews
               </Typography>
               <Typography variant="body2" sx={{ color: '#64748B' }}>
-                Review patient requests and decide whether to approve, reject, or modify.
+                Review patient requests and decide whether to approve, reject, modify, or manually delete.
               </Typography>
             </Box>
-            <Button variant="outlined" onClick={load} sx={{ textTransform: 'none' }}>
+            <Button variant="outlined" onClick={() => { load() }} sx={{ textTransform: 'none' }}>
               Refresh
             </Button>
+          </Stack>
+
+          <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+            <Chip label="All" color={statusFilter === 'all' ? 'primary' : 'default'} onClick={() => setStatusFilter('all')} clickable />
+            <Chip label="Pending" color={statusFilter === 'pending' ? 'warning' : 'default'} onClick={() => setStatusFilter('pending')} clickable />
+            <Chip label="Approved" color={statusFilter === 'approved' ? 'success' : 'default'} onClick={() => setStatusFilter('approved')} clickable />
+            <Chip label="Rejected" color={statusFilter === 'rejected' ? 'error' : 'default'} onClick={() => setStatusFilter('rejected')} clickable />
+            <Chip label="Modified" color={statusFilter === 'modified' ? 'info' : 'default'} onClick={() => setStatusFilter('modified')} clickable />
           </Stack>
 
           {error && <Alert severity="error">{error}</Alert>}
@@ -302,24 +357,25 @@ export default function DoctorFeatureReviews({ feature }: Props) {
           {loading ? (
             <Stack alignItems="center" justifyContent="center" sx={{ py: 8 }}>
               <CircularProgress />
-              <Typography sx={{ mt: 2, color: '#64748B' }}>Loading pending requests...</Typography>
+              <Typography sx={{ mt: 2, color: '#64748B' }}>Loading saved requests...</Typography>
             </Stack>
-          ) : items.length === 0 ? (
+          ) : filteredItems.length === 0 ? (
             <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #E2E8F0' }}>
               <CardContent>
                 <Typography sx={{ fontSize: '1rem', color: '#1A1A2E', fontWeight: 700 }}>
-                  No pending requests for {title}
+                  No requests found for selected filter
                 </Typography>
                 <Typography sx={{ fontSize: '0.9rem', color: '#64748B', mt: 0.5 }}>
-                  New patient confirmations in this feature will appear here.
+                  Patient confirmations in this feature remain here until deleted manually.
                 </Typography>
               </CardContent>
             </Card>
           ) : (
             <Stack spacing={2}>
-              {items.map((item) => {
+              {filteredItems.map((item) => {
                 const modifyText = modifyTextById[item.id] || ''
-                const busy = actionLoadingId === item.id
+                const busy = actionLoadingId === item.id || deleteLoadingId === item.id
+                const isPending = item.status === 'pending'
 
                 return (
                   <Card key={item.id} elevation={0} sx={{ borderRadius: 3, border: '1px solid #E2E8F0', boxShadow: '0 2px 10px rgba(15,23,42,0.05)' }}>
@@ -333,6 +389,17 @@ export default function DoctorFeatureReviews({ feature }: Props) {
                             <Typography sx={{ fontSize: '0.85rem', color: '#64748B' }}>{item.patientEmail}</Typography>
                           </Box>
                           <Chip label={item.featureLabel || title} sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }} />
+                        </Stack>
+
+                        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                          <Chip
+                            label={item.status.toUpperCase()}
+                            color={item.status === 'approved' ? 'success' : item.status === 'rejected' ? 'error' : item.status === 'modified' ? 'info' : 'warning'}
+                            size="small"
+                          />
+                          <Typography sx={{ fontSize: '0.78rem', color: '#64748B' }}>
+                            Requested: {new Date(item.createdAt).toLocaleString()}
+                          </Typography>
                         </Stack>
 
                         <Box>
@@ -349,46 +416,80 @@ export default function DoctorFeatureReviews({ feature }: Props) {
                           </Typography>
                         </Box>
 
+                        {item.modifiedResultText && (
+                          <Alert severity="warning">Modified result: {item.modifiedResultText}</Alert>
+                        )}
+
+                        {item.doctorActionMessage && (
+                          <Alert severity="info">Doctor comment: {item.doctorActionMessage}</Alert>
+                        )}
+
                         {renderProfessionalDetails(item.feature, item.aiResultData)}
 
-                        <TextField
-                          label="Modify result (optional)"
-                          multiline
-                          minRows={2}
-                          value={modifyText}
-                          onChange={(event) => {
-                            const value = event.target.value
-                            setModifyTextById((prev) => ({ ...prev, [item.id]: value }))
-                          }}
-                        />
-                        <FormHelperText>Required only when using Modify.</FormHelperText>
+                        {isPending ? (
+                          <>
+                            <TextField
+                              label="Modify result (optional)"
+                              multiline
+                              minRows={2}
+                              value={modifyText}
+                              onChange={(event) => {
+                                const value = event.target.value
+                                setModifyTextById((prev) => ({ ...prev, [item.id]: value }))
+                              }}
+                            />
+                            <FormHelperText>Required only when using Modify.</FormHelperText>
 
-                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={() => handleAction(item, 'approved')}
-                            disabled={busy}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            variant="contained"
-                            color="error"
-                            onClick={() => handleAction(item, 'rejected')}
-                            disabled={busy}
-                          >
-                            Reject
-                          </Button>
-                          <Button
-                            variant="contained"
-                            color="info"
-                            onClick={() => handleAction(item, 'modified')}
-                            disabled={busy || !modifyText.trim()}
-                          >
-                            Modify
-                          </Button>
-                        </Stack>
+                            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+                              <Button
+                                variant="contained"
+                                color="success"
+                                onClick={() => handleAction(item, 'approved')}
+                                disabled={busy}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                variant="contained"
+                                color="error"
+                                onClick={() => handleAction(item, 'rejected')}
+                                disabled={busy}
+                              >
+                                Reject
+                              </Button>
+                              <Button
+                                variant="contained"
+                                color="info"
+                                onClick={() => handleAction(item, 'modified')}
+                                disabled={busy || !modifyText.trim()}
+                              >
+                                Modify
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                color="error"
+                                onClick={() => handleDelete(item)}
+                                disabled={busy}
+                              >
+                                Delete
+                              </Button>
+                            </Stack>
+                          </>
+                        ) : (
+                          <>
+                            <Divider />
+                            <Stack direction="row" spacing={1}>
+                              <Button
+                                variant="outlined"
+                                color="error"
+                                onClick={() => handleDelete(item)}
+                                disabled={busy}
+                              >
+                                Delete
+                              </Button>
+                            </Stack>
+                          </>
+                        )}
                       </Stack>
                     </CardContent>
                   </Card>

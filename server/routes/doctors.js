@@ -270,7 +270,7 @@ router.get('/dashboard-live', requireAuth, async (req, res) => {
     const sevenDaysLater = new Date(now);
     sevenDaysLater.setDate(now.getDate() + 7);
 
-    const [appointments, doctorActivities, remindersCreated, pendingReminders] = await Promise.all([
+    const [appointments, doctorActivities, remindersCreated, pendingReminders, assignedPatients] = await Promise.all([
       Appointment.find({ doctorEmail: req.user.email })
         .select('patientId patientName status createdAt updatedAt')
         .sort({ createdAt: -1 })
@@ -284,15 +284,13 @@ router.get('/dashboard-live', requireAuth, async (req, res) => {
         sent: false,
         reminderDateTime: { $gte: now, $lte: sevenDaysLater },
       }),
+      User.find({
+        role: 'patient',
+        'patientProfile.assignedDoctorId': doctor._id,
+      }).select('_id'),
     ]);
 
-    const patientIdSet = new Set(
-      appointments
-        .map((a) => (a.patientId ? String(a.patientId) : ''))
-        .filter(Boolean)
-    );
-
-    const patientIds = Array.from(patientIdSet);
+    const patientIds = assignedPatients.map((patient) => String(patient._id));
 
     const patientActivities = patientIds.length > 0
       ? await PatientActivity.find({ userId: { $in: patientIds } })
@@ -433,7 +431,7 @@ router.get('/dashboard-live', requireAuth, async (req, res) => {
           rejected: rejectedCount,
         },
         monitoring: {
-          assignedPatients: patientIds.length,
+          assignedPatients: assignedPatients.length,
           trackedPatientActivities: patientActivities.length,
           moduleUsage,
         },
