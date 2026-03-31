@@ -47,6 +47,7 @@ export const roleRoutes: RouteConfig[] = [
   { path: '/doctor-profile', allowedRoles: ['doctor'] },
   { path: '/doctor-history', allowedRoles: ['doctor'] },
   { path: '/doctor-assigned-patients', allowedRoles: ['doctor'] },
+  { path: '/doctor-appointments', allowedRoles: ['doctor'] },
   { path: '/doctor-reviews/ddi', allowedRoles: ['doctor'] },
   { path: '/doctor-reviews/dfi', allowedRoles: ['doctor'] },
   { path: '/doctor-reviews/alternatives', allowedRoles: ['doctor'] },

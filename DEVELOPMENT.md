@@ -47,19 +47,29 @@ JWT_SECRET=dev-secret-key-min-32-chars-here
 
 ### 4️⃣ Start Local Development
 ```bash
-# From root directory (Healix/)
+# Frontend only (from root)
 npm run dev
 
-# What starts:
-# ✅ Vite dev server (http://localhost:5173)
-# ✅ Node.js backend (http://localhost:5000)
-# ✅ DDI service (port 5001)
-# ✅ DFI service (port 5002)
-# ✅ ALT service (port 5003)
-# ✅ SIDE service (port 5004)
-# ✅ MEDREC service (port 5005)
-# ✅ HEALTH service (port 5006)
+# Backend + all microservices (from root, separate terminal)
+npm run start:backend
+
+# Or run both frontend and backend together
+npm run dev:fullstack
+
+# Backend-only alternative
+# cd server && npm start
 ```
+
+`npm run dev` starts only Vite on `http://localhost:5173`.
+
+`npm run start:backend` (or `cd server && npm start`) starts:
+- ✅ Node.js backend (http://localhost:5000)
+- ✅ DDI service (port 5001)
+- ✅ DFI service (port 5002)
+- ✅ ALT service (port 5003)
+- ✅ SIDE service (port 5004)
+- ✅ MEDREC service (port 5005)
+- ✅ HEALTH service (port 5006)
 
 ### 5️⃣ View API Logs
 Watch the backend logs for all API calls:
@@ -205,7 +215,9 @@ kill -9 <PID>
 ### Common Commands
 ```bash
 # Local development
-npm run dev              # Start everything locally
+npm run dev              # Frontend only (Vite)
+npm run start:backend    # Backend + all Python microservices
+npm run dev:fullstack    # Frontend + backend together
 
 # Backend only
 cd server

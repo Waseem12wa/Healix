@@ -218,15 +218,18 @@ export default function DoctorDashboard() {
       href: '/doctor-reviews/health-summary',
     },
     {
-      label: 'Doctor Appointments',
+      label: 'My Appointment',
       description: 'Manage and review upcoming visits.',
       icon: <EventIcon sx={{ color: '#06D6A0' }} />,
+      href: '/doctor-appointments',
     },
   ]
 
   const filteredFeatureItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
-    if (!query) return featureItems
+    if (!query) {
+      return featureItems
+    }
 
     return featureItems.filter((item) => {
       const haystack = `${item.label} ${item.description}`.toLowerCase()
@@ -589,8 +592,15 @@ export default function DoctorDashboard() {
                 {filteredFeatureItems.map((item) => (
                   <motion.div key={item.label} variants={cardVariants} whileHover="hover">
                     {(() => {
-                      const pendingCount = item.reviewFeature ? (pendingByFeature[item.reviewFeature] || 0) : 0
+                      const pendingCount = item.reviewFeature
+                        ? (pendingByFeature[item.reviewFeature] || 0)
+                        : item.label === 'My Appointment'
+                          ? dashboardData.appointments.pending
+                          : 0
                       const hasPending = pendingCount > 0
+                      const pendingLabel = item.label === 'My Appointment'
+                        ? `${pendingCount} new appointment${pendingCount > 1 ? 's' : ''}`
+                        : `${pendingCount} new patient request${pendingCount > 1 ? 's' : ''}`
 
                       return (
                     <Card
@@ -637,7 +647,7 @@ export default function DoctorDashboard() {
 
                         {hasPending && (
                           <Chip
-                            label={`${pendingCount} new patient request${pendingCount > 1 ? 's' : ''}`}
+                            label={pendingLabel}
                             size="small"
                             sx={{ mt: 1.5, fontWeight: 700, bgcolor: '#FEF3C7', color: '#92400E' }}
                           />
@@ -645,7 +655,7 @@ export default function DoctorDashboard() {
                       </CardContent>
                       <Box sx={{ px: { xs: 3, md: 3.5 }, pb: 3, display: 'flex', justifyContent: 'flex-start' }}>
                         <Chip
-                          label={item.reviewFeature ? 'Open requests' : 'Open tool'}
+                          label={item.label === 'My Appointment' ? 'Open appointments' : item.reviewFeature ? 'Open requests' : 'Open tool'}
                           size="small"
                           sx={{ fontWeight: 600, bgcolor: 'rgba(0, 180, 216, 0.1)', color: '#00B4D8', height: 28, fontSize: '0.8125rem' }}
                         />
@@ -854,9 +864,29 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
   const loadApprovedPatients = async () => {
     try {
       const doctorEmail = localStorage.getItem('userEmail')
-      const response = await fetch(`/api/reminders/approved-patients?doctorEmail=${encodeURIComponent(doctorEmail || '')}`)
+      const token = localStorage.getItem('token')
+      console.log('[SetReminderModal] Loading patients for doctor:', doctorEmail)
+      
+      const response = await fetch(`/api/reminders/approved-patients?doctorEmail=${encodeURIComponent(doctorEmail || '')}`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      })
       const data = await response.json()
-      if (data.success) setPatients(data.data)
+      
+      console.log('[SetReminderModal] API Response:', data)
+      
+      if (data.success && Array.isArray(data.data)) {
+        console.log(`[SetReminderModal] Loaded ${data.data.length} patients`)
+        setPatients(data.data)
+      } else {
+        console.warn('[SetReminderModal] No patients found or invalid response:', data)
+        setSnackbar({ 
+          open: true, 
+          message: data.message || 'No patients found with approved appointments', 
+          severity: 'error' 
+        })
+      }
     } catch (error) {
       console.error('Error loading approved patients:', error)
       setSnackbar({ open: true, message: 'Failed to load patients', severity: 'error' })
@@ -868,6 +898,7 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
     try {
       const doctorEmail = localStorage.getItem('userEmail')
       const doctorName = localStorage.getItem('userName')
+      const token = localStorage.getItem('token')
 
       const formattedTimes = times.map((t) => {
         const hours = t.getHours().toString().padStart(2, '0')
@@ -879,14 +910,16 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
 
       const response = await fetch('/api/reminders/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : '',
+        },
         body: JSON.stringify({
           doctorEmail,
           doctorName,
           patientId: selectedPatient?.patientId,
           patientEmail: selectedPatient?.patientEmail,
           patientName: selectedPatient?.patientName,
-          appointmentId: selectedPatient?.appointmentId,
           medicineName,
           dose,
           frequency,

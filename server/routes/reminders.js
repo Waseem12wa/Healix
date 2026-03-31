@@ -1,20 +1,28 @@
 import express from 'express';
 import MedicineReminder from '../models/MedicineReminder.js';
-import Appointment from '../models/Appointment.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
 /**
  * @route   GET /api/reminders/approved-patients
- * @desc    Get list of patients with approved appointments for the logged-in doctor
+ * @desc    Get list of patients assigned to the logged-in doctor
  * @access  Private (Doctor only)
  * 
- * Access Control: Only returns patients who have approved appointments with this doctor
+ * Access Control: Only returns patients assigned to this doctor
  */
-router.get('/approved-patients', async (req, res) => {
+router.get('/approved-patients', requireAuth, async (req, res) => {
     try {
-        const doctorEmail = req.query.doctorEmail || req.headers['x-doctor-email'];
+        const doctorEmail = req.user?.email || req.query.doctorEmail || req.headers['x-doctor-email'];
+
+        if (req.user?.role !== 'doctor') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only doctors can access assigned patients'
+            });
+        }
 
         if (!doctorEmail) {
             return res.status(400).json({
@@ -23,43 +31,48 @@ router.get('/approved-patients', async (req, res) => {
             });
         }
 
-        console.log('\n📋 Fetching approved patients for doctor:', doctorEmail);
+        console.log('\n👨‍⚕️ Fetching assigned patients for doctor:', doctorEmail);
 
-        // Find all approved appointments for this doctor
-        const approvedAppointments = await Appointment.find({
-            doctorEmail: doctorEmail,
-            status: 'approved'
-        }).select('patientId patientEmail patientName _id');
+        // Get the doctor's ID from email
+        const doctor = await User.findOne({ 
+            email: { $regex: `^${doctorEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } 
+        }).select('_id');
 
-        // Remove duplicate patients (same patient may have multiple appointments)
-        const uniquePatients = [];
-        const seenPatientIds = new Set();
-
-        for (const apt of approvedAppointments) {
-            const patientIdStr = apt.patientId.toString();
-            if (!seenPatientIds.has(patientIdStr)) {
-                seenPatientIds.add(patientIdStr);
-                uniquePatients.push({
-                    patientId: apt.patientId,
-                    patientEmail: apt.patientEmail,
-                    patientName: apt.patientName,
-                    appointmentId: apt._id // Include for reference
-                });
-            }
+        if (!doctor) {
+            console.log('   ❌ Doctor not found');
+            return res.status(404).json({
+                success: false,
+                message: 'Doctor not found'
+            });
         }
 
-        console.log(`   ✅ Found ${uniquePatients.length} unique approved patients`);
+        console.log(`   ℹ️  Doctor ID: ${doctor._id}`);
+
+        // Find all patients assigned to this doctor
+        const assignedPatients = await User.find({
+            role: 'patient',
+            'patientProfile.assignedDoctorId': doctor._id
+        }).select('email userName reminderEmail patientProfile._id');
+
+        console.log(`   ✅ Found ${assignedPatients.length} patient(s) assigned to this doctor`);
+
+        const patientList = assignedPatients.map(patient => ({
+            patientId: patient._id,
+            patientEmail: patient.email,
+            patientName: patient.userName || 'Patient',
+            reminderEmail: patient.reminderEmail || null
+        }));
 
         res.json({
             success: true,
-            data: uniquePatients
+            data: patientList
         });
 
     } catch (error) {
-        console.error('❌ Error fetching approved patients:', error);
+        console.error('❌ Error fetching assigned patients:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to fetch approved patients',
+            message: 'Failed to fetch assigned patients',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
@@ -72,15 +85,12 @@ router.get('/approved-patients', async (req, res) => {
  * 
  * Creates individual reminder documents for each scheduled time
  */
-router.post('/create', async (req, res) => {
+router.post('/create', requireAuth, async (req, res) => {
     try {
         const {
-            doctorEmail,
             doctorName,
             patientId,
-            patientEmail,
             patientName,
-            appointmentId,
             medicineName,
             dose,
             frequency,
@@ -89,16 +99,25 @@ router.post('/create', async (req, res) => {
             duration // Number of days
         } = req.body;
 
+        if (req.user?.role !== 'doctor') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only doctors can create reminders'
+            });
+        }
+
+        const doctorEmail = req.user?.email;
+
         console.log('\n💊 Creating medicine reminders:');
         console.log('   Doctor:', doctorName, '(' + doctorEmail + ')');
-        console.log('   Patient:', patientName, '(' + patientEmail + ')');
+        console.log('   Patient ID:', patientId);
         console.log('   Medicine:', medicineName, '-', dose);
         console.log('   Frequency:', frequency, 'times/day');
         console.log('   Duration:', duration, 'days');
         console.log('   Times:', times);
 
-        // Validation
-        if (!doctorEmail || !patientId || !appointmentId || !medicineName || !dose || !frequency || !times || !startDate || !duration) {
+        // Validation - appointmentId is now optional
+        if (!doctorEmail || !patientId || !medicineName || !dose || !frequency || !times || !startDate || !duration) {
             return res.status(400).json({
                 success: false,
                 message: 'Missing required fields'
@@ -112,30 +131,44 @@ router.post('/create', async (req, res) => {
             });
         }
 
-        // Verify appointment exists and is approved for this doctor
-        const appointment = await Appointment.findOne({
-            _id: appointmentId,
-            doctorEmail: doctorEmail,
-            patientId: patientId,
-            status: 'approved'
-        });
+        // Get doctor's ID
+        const doctor = await User.findOne({ 
+            email: { $regex: `^${doctorEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } 
+        }).select('_id userName');
 
-        if (!appointment) {
-            console.log('   ❌ Access denied: No approved appointment found');
-            return res.status(403).json({
+        if (!doctor) {
+            console.log('   ❌ Doctor not found');
+            return res.status(404).json({
                 success: false,
-                message: 'Access denied: No approved appointment found for this patient'
+                message: 'Doctor not found'
             });
         }
 
-        console.log('   ✅ Appointment verified');
+        // Verify patient is assigned to this doctor
+        const patient = await User.findOne({
+            _id: patientId,
+            role: 'patient',
+            'patientProfile.assignedDoctorId': doctor._id
+        }).select('email userName reminderEmail');
+
+        if (!patient) {
+            console.log('   ❌ Access denied: Patient is not assigned to this doctor');
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied: Patient is not assigned to this doctor'
+            });
+        }
+
+        console.log('   ✅ Patient verified as assigned to this doctor');
 
         // Get doctor details if not provided
         let finalDoctorName = doctorName;
         if (!finalDoctorName) {
-            const doctor = await User.findOne({ email: doctorEmail });
-            finalDoctorName = doctor?.userName || 'Doctor';
+            finalDoctorName = doctor.userName || 'Doctor';
         }
+
+        const finalPatientName = patientName || patient.userName || 'Patient';
+        const reminderRecipientEmail = patient.reminderEmail || patient.email;
 
         // Generate reminder documents
         const reminders = [];
@@ -153,13 +186,13 @@ router.post('/create', async (req, res) => {
                 // Only create reminders for future times
                 if (reminderDateTime > new Date()) {
                     reminders.push({
-                        doctorId: appointment.doctorId,
+                        doctorId: doctor._id,
                         doctorEmail: doctorEmail,
                         doctorName: finalDoctorName,
                         patientId: patientId,
-                        patientEmail: patientEmail,
-                        patientName: patientName,
-                        appointmentId: appointmentId,
+                        patientEmail: patient.email,
+                        reminderRecipientEmail: reminderRecipientEmail,
+                        patientName: finalPatientName,
                         medicineName: medicineName,
                         dose: dose,
                         frequency: frequency,
@@ -184,6 +217,24 @@ router.post('/create', async (req, res) => {
         const result = await MedicineReminder.insertMany(reminders);
 
         console.log(`   ✅ Created ${result.length} reminder documents`);
+
+        // Create notification for patient
+        try {
+            if (patient) {
+                await Notification.create({
+                    userId: patientId,
+                    userEmail: patient.email,
+                    type: 'medication_reminder_set',
+                    title: 'New Medication Reminder',
+                    message: `Dr. ${finalDoctorName} has set up reminders for ${medicineName} (${dose}). You will receive ${result.length} reminders starting from ${startDate}.`,
+                    read: false
+                });
+                console.log(`   📧 Notification sent to patient: ${patient.email}`);
+            }
+        } catch (notificationError) {
+            console.warn('   ⚠️  Failed to create notification:', notificationError.message);
+            // Don't fail the reminder creation if notification fails
+        }
 
         res.json({
             success: true,
@@ -312,6 +363,269 @@ router.get('/all', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to fetch reminders',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @route   POST /api/reminders/patient-email-preference
+ * @desc    Save patient's reminder email preference
+ * @access  Private (Patient only)
+ */
+router.post('/patient-email-preference', requireAuth, async (req, res) => {
+    try {
+        const { reminderEmail } = req.body;
+        const patientEmail = req.user?.email || req.body.patientEmail;
+
+        if (req.user?.role !== 'patient') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only patients can set reminder email preference'
+            });
+        }
+
+        if (!patientEmail || !reminderEmail) {
+            return res.status(400).json({
+                success: false,
+                message: 'Patient email and reminder email are required'
+            });
+        }
+
+        // Update or create user's reminder email preference
+        const user = await User.findOneAndUpdate(
+            { email: patientEmail },
+            { reminderEmail: reminderEmail },
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Patient not found'
+            });
+        }
+
+        console.log(`\n✅ Patient ${patientEmail} set reminder email to: ${reminderEmail}`);
+
+        // Keep pending reminders aligned with latest patient preference.
+        await MedicineReminder.updateMany(
+            {
+                patientEmail: patientEmail,
+                sent: false,
+                $or: [
+                    { reminderRecipientEmail: { $exists: false } },
+                    { reminderRecipientEmail: null },
+                    { reminderRecipientEmail: '' }
+                ]
+            },
+            {
+                $set: {
+                    reminderRecipientEmail: reminderEmail,
+                    updatedAt: new Date()
+                }
+            }
+        );
+
+        res.json({
+            success: true,
+            message: 'Email preference saved successfully',
+            data: { reminderEmail: user.reminderEmail }
+        });
+    } catch (error) {
+        console.error('❌ Error saving email preference:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to save email preference',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @route   GET /api/reminders/patient-email-preference
+ * @desc    Get patient's reminder email preference
+ * @access  Private (Patient only)
+ */
+router.get('/patient-email-preference', requireAuth, async (req, res) => {
+    try {
+        const patientEmail = req.user?.email || req.query.patientEmail || req.headers['x-patient-email'];
+
+        if (req.user?.role !== 'patient') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only patients can access reminder email preference'
+            });
+        }
+
+        if (!patientEmail) {
+            return res.status(400).json({
+                success: false,
+                message: 'Patient email is required'
+            });
+        }
+
+        const user = await User.findOne({ email: patientEmail }).select('reminderEmail');
+
+        res.json({
+            success: true,
+            data: {
+                reminderEmail: user?.reminderEmail || null,
+                isSet: !!user?.reminderEmail
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error fetching email preference:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch email preference',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @route   GET /api/reminders/patient-reminders
+ * @desc    Get all reminders set by doctors for a patient
+ * @access  Private (Patient only)
+ */
+router.get('/patient-reminders', requireAuth, async (req, res) => {
+    try {
+        const patientEmail = req.user?.email || req.query.patientEmail || req.headers['x-patient-email'];
+
+        if (req.user?.role !== 'patient') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only patients can access reminders'
+            });
+        }
+
+        if (!patientEmail) {
+            return res.status(400).json({
+                success: false,
+                message: 'Patient email is required'
+            });
+        }
+
+        // Get active future reminders for this patient, grouped by reminder set
+        const reminders = await MedicineReminder.aggregate([
+            {
+                $match: {
+                    patientEmail: patientEmail,
+                    sent: false,
+                    reminderDateTime: { $gte: new Date() }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        medicineName: '$medicineName',
+                        dose: '$dose',
+                        frequency: '$frequency',
+                        doctorEmail: '$doctorEmail',
+                        startDate: '$startDate',
+                        duration: '$duration'
+                    },
+                    medicine: { $first: '$medicineName' },
+                    dose: { $first: '$dose' },
+                    frequency: { $first: '$frequency' },
+                    doctorName: { $first: '$doctorName' },
+                    doctorEmail: { $first: '$doctorEmail' },
+                    startDate: { $first: '$startDate' },
+                    duration: { $first: '$duration' },
+                    reminderCount: { $sum: 1 },
+                    firstReminder: { $min: '$reminderDateTime' },
+                    lastReminder: { $max: '$reminderDateTime' }
+                }
+            },
+            {
+                $addFields: {
+                    _id: {
+                        $concat: [
+                            '$doctorEmail',
+                            '|',
+                            '$medicine',
+                            '|',
+                            '$dose',
+                            '|',
+                            '$startDate',
+                            '|',
+                            { $toString: '$duration' },
+                            '|',
+                            { $toString: '$frequency' }
+                        ]
+                    }
+                }
+            },
+            {
+                $sort: { firstReminder: 1 }
+            }
+        ]);
+
+        res.json({
+            success: true,
+            data: reminders
+        });
+    } catch (error) {
+        console.error('❌ Error fetching patient reminders:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch reminders',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @route   DELETE /api/reminders/patient-reminders
+ * @desc    Delete an active reminder set for the logged-in patient
+ * @access  Private (Patient only)
+ */
+router.delete('/patient-reminders', requireAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'patient') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only patients can delete reminders'
+            });
+        }
+
+        const patientEmail = req.user?.email;
+        const { medicineName, dose, doctorEmail, startDate, duration, frequency } = req.body;
+
+        if (!patientEmail || !medicineName || !dose || !doctorEmail || !startDate || !duration || !frequency) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields to delete reminder set'
+            });
+        }
+
+        const deletionResult = await MedicineReminder.deleteMany({
+            patientEmail,
+            medicineName,
+            dose,
+            doctorEmail,
+            startDate,
+            duration,
+            frequency,
+            sent: false,
+            reminderDateTime: { $gte: new Date() }
+        });
+
+        return res.json({
+            success: true,
+            message: deletionResult.deletedCount > 0
+                ? `Deleted ${deletionResult.deletedCount} reminder(s)`
+                : 'No active reminders found to delete',
+            data: {
+                deletedCount: deletionResult.deletedCount
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error deleting patient reminder set:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to delete reminder set',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }

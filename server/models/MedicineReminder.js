@@ -37,16 +37,21 @@ const medicineReminderSchema = new mongoose.Schema({
         required: [true, 'Patient email is required'],
         index: true // Index for efficient queries by patient
     },
+    reminderRecipientEmail: {
+        type: String,
+        required: [true, 'Reminder recipient email is required'],
+        index: true
+    },
     patientName: {
         type: String,
         required: [true, 'Patient name is required']
     },
 
-    // Appointment reference for access control
+    // Appointment reference for access control (now optional - using assigned patients instead)
     appointmentId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Appointment',
-        required: [true, 'Appointment ID is required'],
+        required: false,
         index: true
     },
 
@@ -91,6 +96,15 @@ const medicineReminderSchema = new mongoose.Schema({
         index: true // Index for scheduler queries (sent=false)
     },
     sentAt: {
+        type: Date,
+        default: null
+    },
+    dueNotificationSent: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    dueNotificationSentAt: {
         type: Date,
         default: null
     },

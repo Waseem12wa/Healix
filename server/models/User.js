@@ -153,6 +153,13 @@ const userSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  // Patient Reminder Email Preference
+  reminderEmail: {
+    type: String,
+    default: null,
+    trim: true,
+    match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email']
+  },
   createdAt: {
     type: Date,
     default: Date.now

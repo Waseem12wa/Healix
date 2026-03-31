@@ -170,9 +170,20 @@ From repository root:
 npm run dev
 ```
 
-This launches:
+This launches frontend only:
 - Frontend (Vite) on 5173
-- Backend stack via server npm start (API + Python services)
+
+Run backend stack in a separate terminal:
+
+```bash
+npm run start:backend
+```
+
+Or launch both frontend and backend from one command:
+
+```bash
+npm run dev:fullstack
+```
 
 Useful commands:
 

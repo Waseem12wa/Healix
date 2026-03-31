@@ -20,6 +20,7 @@ import paymentRoutes from './routes/payments.js';
 import reviewRoutes from './routes/reviews.js';
 import medicalRecordRoutes from './routes/medicalRecord.js';
 import { reminderEmailJob } from './jobs/reminderEmailJob.js';
+import { scheduleAppointmentReminderJob } from './jobs/appointmentReminderJob.js';
 
 dotenv.config();
 
@@ -245,9 +246,11 @@ const startServer = async () => {
 
   const startReminderJobIfNeeded = () => {
     if (reminderJobStarted) return;
-    cron.schedule('* * * * *', reminderEmailJob);
+    cron.schedule('*/30 * * * * *', reminderEmailJob);
+    scheduleAppointmentReminderJob();
     reminderJobStarted = true;
-    console.log('⏰ Reminder email job scheduled (runs every minute)\n');
+    console.log('⏰ Reminder email job scheduled (runs every 30 seconds for real-time email delivery)');
+    console.log('📅 Appointment reminder job scheduled\n');
   };
 
   const scheduleMongoReconnect = () => {

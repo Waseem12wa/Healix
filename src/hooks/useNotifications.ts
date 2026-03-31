@@ -2,7 +2,17 @@ import { useState, useEffect } from 'react'
 
 interface Notification {
   _id: string
-  type: 'appointment_request' | 'appointment_approved' | 'appointment_rejected' | 'appointment_cancelled' | 'doctor_review_request' | 'doctor_review_result'
+  type:
+    | 'appointment_request'
+    | 'appointment_approved'
+    | 'appointment_rejected'
+    | 'appointment_cancelled'
+    | 'appointment_reminder_patient'
+    | 'appointment_reminder_doctor'
+    | 'doctor_review_request'
+    | 'doctor_review_result'
+    | 'medication_reminder_set'
+    | 'medication_reminder_due'
   title: string
   message: string
   read: boolean
@@ -94,9 +104,27 @@ export function useNotifications() {
 
   useEffect(() => {
     loadNotifications()
-    // Refresh notifications every 30 seconds
-    const interval = setInterval(loadNotifications, 30000)
-    return () => clearInterval(interval)
+    // Refresh notifications every 5 seconds for near real-time updates.
+    const interval = setInterval(loadNotifications, 5000)
+
+    const onFocus = () => {
+      loadNotifications()
+    }
+
+    const onVisibility = () => {
+      if (!document.hidden) {
+        loadNotifications()
+      }
+    }
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   return {

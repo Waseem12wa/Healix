@@ -56,10 +56,26 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  doctorComments: {
+    type: String,
+    default: ''
+  },
+  meetingLink: {
+    type: String,
+    default: ''
+  },
+  appointmentLocationDetails: {
+    type: String,
+    default: ''
+  },
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected', 'cancelled'],
     default: 'pending'
+  },
+  reminderSent: {
+    type: Boolean,
+    default: false
   },
   createdAt: {
     type: Date,

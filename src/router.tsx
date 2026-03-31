@@ -28,6 +28,7 @@ import Appointments from './pages/Appointments'
 import DoctorProfile from './pages/DoctorProfile'
 import DoctorHistory from './pages/DoctorHistory'
 import AssignedPatients from './pages/AssignedPatients'
+import DoctorAppointments from './pages/DoctorAppointments'
 import DoctorFeatureReviews from './pages/DoctorFeatureReviews'
 import MedicineShop from './pages/MedicineShop'
 import OrderHistory from './pages/OrderHistory'
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { path: 'doctor-profile', element: protect(<DoctorProfile />) },
       { path: 'doctor-history', element: protect(<DoctorHistory />) },
       { path: 'doctor-assigned-patients', element: protect(<AssignedPatients />) },
+        { path: 'doctor-appointments', element: protect(<DoctorAppointments />) },
       { path: 'doctor-reviews/ddi', element: protect(<DoctorFeatureReviews feature="ddi" />) },
       { path: 'doctor-reviews/dfi', element: protect(<DoctorFeatureReviews feature="dfi" />) },
       { path: 'doctor-reviews/alternatives', element: protect(<DoctorFeatureReviews feature="alternatives" />) },

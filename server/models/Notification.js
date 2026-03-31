@@ -13,7 +13,19 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['appointment_request', 'appointment_approved', 'appointment_rejected', 'appointment_cancelled', 'doctor_review_request', 'doctor_review_result'],
+    enum: [
+      'appointment_request',
+      'appointment_approved',
+      'appointment_rejected',
+      'appointment_cancelled',
+      'appointment_details_shared',
+      'appointment_reminder_patient',
+      'appointment_reminder_doctor',
+      'doctor_review_request',
+      'doctor_review_result',
+      'medication_reminder_set',
+      'medication_reminder_due'
+    ],
     required: [true, 'Notification type is required']
   },
   title: {

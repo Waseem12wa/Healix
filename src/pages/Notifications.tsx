@@ -25,15 +25,20 @@ const typeLabel = (type: string) => {
   if (type === 'appointment_approved') return 'Appointment Approved'
   if (type === 'appointment_rejected') return 'Appointment Rejected'
   if (type === 'appointment_cancelled') return 'Appointment Cancelled'
+  if (type === 'appointment_details_shared') return 'Appointment Details Shared'
+  if (type === 'appointment_reminder_patient' || type === 'appointment_reminder_doctor') return 'Appointment Reminder'
   if (type === 'doctor_review_request') return 'Doctor Review Request'
   if (type === 'doctor_review_result') return 'Doctor Review Result'
+  if (type === 'medication_reminder_set') return 'Medication Reminder Set'
+  if (type === 'medication_reminder_due') return 'Medication Reminder Due'
   return 'Notification'
 }
 
 const typeColor = (type: string): 'default' | 'primary' | 'success' | 'error' | 'warning' | 'info' => {
-  if (type === 'appointment_approved' || type === 'doctor_review_result') return 'success'
+  if (type === 'appointment_approved' || type === 'appointment_details_shared' || type === 'doctor_review_result') return 'success'
+  if (type === 'medication_reminder_due' || type === 'appointment_reminder_patient' || type === 'appointment_reminder_doctor') return 'warning'
   if (type === 'appointment_rejected') return 'error'
-  if (type === 'appointment_request' || type === 'doctor_review_request') return 'warning'
+  if (type === 'appointment_request' || type === 'doctor_review_request' || type === 'medication_reminder_set') return 'warning'
   if (type === 'appointment_cancelled') return 'default'
   return 'info'
 }
@@ -65,8 +70,14 @@ export default function Notifications() {
   }
 
   const resolveNotificationPath = async (item: { type: string; reviewRequestId?: string }) => {
+    const role = localStorage.getItem('authRole') || ''
+
     if (item.type.startsWith('appointment_')) {
-      return '/tools/appointments'
+      return role === 'doctor' ? '/doctor-appointments' : '/tools/appointments'
+    }
+
+    if (item.type === 'medication_reminder_set' || item.type === 'medication_reminder_due') {
+      return '/tools/medication-reminder'
     }
 
     if ((item.type === 'doctor_review_request' || item.type === 'doctor_review_result') && item.reviewRequestId) {
@@ -82,7 +93,6 @@ export default function Notifications() {
       }
     }
 
-    const role = localStorage.getItem('authRole') || ''
     return role === 'doctor' ? '/doctor-dashboard' : '/dashboard'
   }
 
@@ -90,7 +100,11 @@ export default function Notifications() {
     try {
       setOpeningId(item._id)
       if (!item.read) {
-        await markAsRead(item._id)
+        try {
+          await markAsRead(item._id)
+        } catch {
+          // Do not block navigation if mark-as-read fails.
+        }
       }
       const path = await resolveNotificationPath(item)
       navigate(path)

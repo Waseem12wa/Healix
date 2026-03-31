@@ -1,6 +1,7 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { AppBar, Box, Container, Toolbar, Typography, Button, Stack } from '@mui/material'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
+import LogoutIcon from '@mui/icons-material/Logout'
 import Footer from './Footer'
 import HealthAssistant from '../pages/HealthAssistant'
 import footerBg from '../images/footer.jpg'
@@ -14,6 +15,13 @@ export function AppLayout() {
   const userRole = getCurrentUserRole()
   const previousPathRef = useRef<string>(location.pathname)
   const lastActivityPathRef = useRef<string>('')
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('authRole')
+    localStorage.removeItem('userId')
+    navigate('/login', { replace: true })
+  }
 
   // Validate route on location change (handles both programmatic and browser navigation)
   useEffect(() => {
@@ -195,7 +203,30 @@ export function AppLayout() {
             </Stack>
           </Box>
           <Stack direction="row" spacing={1}>
-            {!userRole && (
+            {userRole ? (
+              <Button
+                onClick={handleLogout}
+                variant="contained"
+                startIcon={<LogoutIcon />}
+                sx={{
+                  bgcolor: '#FFFFFF',
+                  color: '#00B4D8',
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1,
+                  borderRadius: 2,
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    bgcolor: '#F0F9FF',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
+                  }
+                }}
+              >
+                Logout
+              </Button>
+            ) : (
               <>
                 <Button
                   component={Link}

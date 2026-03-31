@@ -67,8 +67,11 @@ interface Appointment {
   location: string
   status: 'confirmed' | 'pending' | 'cancelled' | 'approved' | 'rejected'
   notes: string
-  consultationType?: string
+  consultationType?: 'in-person' | 'online'
   fee?: number
+  doctorComments?: string
+  meetingLink?: string
+  appointmentLocationDetails?: string
 }
 
 export default function Appointments() {
@@ -85,6 +88,7 @@ export default function Appointments() {
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loadingAppointments, setLoadingAppointments] = useState(false)
+  const [appointmentsLoadedOnce, setAppointmentsLoadedOnce] = useState(false)
 
   const [bookingForm, setBookingForm] = useState({
     date: '',
@@ -102,9 +106,22 @@ export default function Appointments() {
     }
   }, [tabValue])
 
+  useEffect(() => {
+    if (tabValue !== 1) return
+
+    const interval = setInterval(() => {
+      loadAppointments({ silent: true })
+    }, 10000)
+
+    return () => clearInterval(interval)
+  }, [tabValue])
+
   // Load patient appointments
-  const loadAppointments = async () => {
-    setLoadingAppointments(true)
+  const loadAppointments = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false
+    if (!silent) {
+      setLoadingAppointments(true)
+    }
     try {
       const token = localStorage.getItem('token')
       if (!token) {
@@ -121,6 +138,9 @@ export default function Appointments() {
 
       if (data.success) {
         setAppointments(data.data)
+        if (!appointmentsLoadedOnce) {
+          setAppointmentsLoadedOnce(true)
+        }
       } else {
         setError(data.message || 'Failed to load appointments')
       }
@@ -128,7 +148,9 @@ export default function Appointments() {
       console.error('Error loading appointments:', err)
       setError('Failed to load appointments. Please try again.')
     } finally {
-      setLoadingAppointments(false)
+      if (!silent) {
+        setLoadingAppointments(false)
+      }
     }
   }
 
@@ -714,7 +736,7 @@ export default function Appointments() {
           {/* My Appointments Tab */}
           {tabValue === 1 && (
             <>
-              {loadingAppointments && (
+              {loadingAppointments && !appointmentsLoadedOnce && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                   <CircularProgress />
                 </Box>
@@ -761,6 +783,14 @@ export default function Appointments() {
                             </Box>
 
                             <Stack spacing={1}>
+                              {appointment.consultationType && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <LocalHospitalIcon sx={{ color: '#1947D2', fontSize: 20 }} />
+                                  <Typography variant="body2">
+                                    {appointment.consultationType === 'online' ? 'Online Consultation' : 'In-Person Consultation'}
+                                  </Typography>
+                                </Box>
+                              )}
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <EventIcon sx={{ color: '#1947D2', fontSize: 20 }} />
                                 <Typography variant="body2">{appointment.date}</Typography>
@@ -781,6 +811,50 @@ export default function Appointments() {
                                   {appointment.notes}
                                 </Typography>
                               </Paper>
+                            )}
+
+                            {appointment.status === 'approved' && (
+                              <Stack spacing={1}>
+                                {appointment.doctorComments && (
+                                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#f0fdf4', borderColor: '#86efac' }}>
+                                    <Typography variant="caption" sx={{ color: '#166534', fontWeight: 600, display: 'block', mb: 0.5 }}>
+                                      Doctor Comments
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                      {appointment.doctorComments}
+                                    </Typography>
+                                  </Paper>
+                                )}
+
+                                {appointment.consultationType === 'online' && appointment.meetingLink && (
+                                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#eff6ff', borderColor: '#93c5fd' }}>
+                                    <Typography variant="caption" sx={{ color: '#1d4ed8', fontWeight: 600, display: 'block', mb: 0.5 }}>
+                                      Meeting Link
+                                    </Typography>
+                                    <Typography
+                                      component="a"
+                                      href={appointment.meetingLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      variant="body2"
+                                      sx={{ color: '#1d4ed8', textDecoration: 'underline' }}
+                                    >
+                                      {appointment.meetingLink}
+                                    </Typography>
+                                  </Paper>
+                                )}
+
+                                {appointment.consultationType === 'in-person' && appointment.appointmentLocationDetails && (
+                                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#fffbeb', borderColor: '#fcd34d' }}>
+                                    <Typography variant="caption" sx={{ color: '#92400e', fontWeight: 600, display: 'block', mb: 0.5 }}>
+                                      Location Details
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                      {appointment.appointmentLocationDetails}
+                                    </Typography>
+                                  </Paper>
+                                )}
+                              </Stack>
                             )}
 
                             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>

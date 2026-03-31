@@ -512,3 +512,227 @@ export const sendMedicineReminderEmail = async (patientEmail, patientName, medic
   }
 };
 
+  /**
+   * Send appointment reminder email to patient
+   */
+  export const sendAppointmentReminderEmail = async (
+    patientEmail,
+    patientName,
+    doctorName,
+    appointmentDate,
+    appointmentTime,
+    consultationType,
+    meetingLink,
+    locationDetails,
+    doctorComments
+  ) => {
+    // Development mode: Print reminder to console instead of sending email
+    if (DEVELOPMENT_MODE) {
+      console.log('\n' + '='.repeat(70));
+      console.log('📅 APPOINTMENT REMINDER (Development Mode - No Email Sent)');
+      console.log('='.repeat(70));
+      console.log(`👤 Patient: ${patientName}`);
+      console.log(`📬 Email: ${patientEmail}`);
+      console.log(`👨‍⚕️ Doctor: Dr. ${doctorName}`);
+      console.log(`📅 Date: ${appointmentDate}`);
+      console.log(`⏰ Time: ${appointmentTime}`);
+      console.log(`📱 Type: ${consultationType}`);
+      if (meetingLink) console.log(`🔗 Meeting Link: ${meetingLink}`);
+      if (locationDetails) console.log(`📍 Location: ${locationDetails}`);
+      if (doctorComments) console.log(`💬 Comments: ${doctorComments}`);
+      console.log('='.repeat(70));
+      console.log('💡 In production, this would send an email to the patient');
+      console.log('='.repeat(70) + '\n');
+
+      return { success: true, messageId: 'dev-mode-console' };
+    }
+
+    // Use Resend if configured
+    if (USE_RESEND && resend) {
+      try {
+        console.log(`📧 Sending appointment reminder via Resend to: ${patientEmail}`);
+        const { data, error } = await resend.emails.send({
+          from: 'Healix <onboarding@resend.dev>',
+          to: patientEmail,
+          subject: `Appointment Reminder: Consultation with Dr. ${doctorName}`,
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Appointment Reminder - Healix</title>
+            </head>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0;">📅 Healix Healthcare</h1>
+              </div>
+              <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #333; margin-top: 0;">Appointment Reminder</h2>
+                <p>Hello ${patientName},</p>
+                <p>This is a reminder that you have an upcoming appointment:</p>
+              
+                <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+                  <h3 style="margin: 0 0 15px 0; color: #667eea;">📋 Appointment Details</h3>
+                  <p style="margin: 8px 0;"><strong>Doctor:</strong> Dr. ${doctorName}</p>
+                  <p style="margin: 8px 0;"><strong>Date:</strong> ${appointmentDate}</p>
+                  <p style="margin: 8px 0;"><strong>Time:</strong> ${appointmentTime}</p>
+                  <p style="margin: 8px 0;"><strong>Type:</strong> ${consultationType === 'online' ? '🌐 Online Consultation' : '📍 In-Person Visit'}</p>
+                  ${
+                    consultationType === 'online' && meetingLink
+                      ? `<p style="margin: 8px 0;"><strong>Meeting Link:</strong> <a href="${meetingLink}" style="color: #667eea; text-decoration: none;">${meetingLink}</a></p>`
+                      : ''
+                  }
+                  ${
+                    consultationType === 'in-person' && locationDetails
+                      ? `<p style="margin: 8px 0;"><strong>Location:</strong> ${locationDetails}</p>`
+                      : ''
+                  }
+                </div>
+              
+                ${
+                  doctorComments
+                    ? `
+                  <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #2196F3;">
+                    <h4 style="margin: 0 0 10px 0; color: #1976D2;">💬 Doctor's Comments</h4>
+                    <p style="margin: 0; color: #0d47a1;">${doctorComments}</p>
+                  </div>
+                `
+                    : ''
+                }
+              
+                <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #ffc107;">
+                  <p style="margin: 0; color: #856404;">
+                    <strong>⏰ Important:</strong> Please be on time for your appointment. If you need to cancel or reschedule, please contact us as soon as possible.
+                  </p>
+                </div>
+              
+                <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                  If you have any questions or concerns, please don't hesitate to contact your doctor or our support team.
+                </p>
+              
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                <p style="color: #999; font-size: 12px; text-align: center;">
+                  © ${new Date().getFullYear()} Healix Healthcare. All rights reserved.
+                </p>
+              </div>
+            </body>
+            </html>
+          `,
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        console.log('✅ Appointment reminder email sent via Resend:', data?.id);
+        return { success: true, messageId: data?.id };
+      } catch (error) {
+        console.error('❌ Error sending appointment reminder via Resend:', error);
+        throw error;
+      }
+    }
+
+    // Use nodemailer/SMTP
+    try {
+      const transporter = createTransporter();
+
+      const mailOptions = {
+        from: `"Healix Healthcare" <${process.env.EMAIL_USER}>`,
+        to: patientEmail,
+        subject: `Appointment Reminder: Consultation with Dr. ${doctorName}`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Appointment Reminder - Healix</title>
+          </head>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+              <h1 style="color: white; margin: 0;">📅 Healix Healthcare</h1>
+            </div>
+            <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+              <h2 style="color: #333; margin-top: 0;">Appointment Reminder</h2>
+              <p>Hello ${patientName},</p>
+              <p>This is a reminder that you have an upcoming appointment:</p>
+            
+              <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+                <h3 style="margin: 0 0 15px 0; color: #667eea;">📋 Appointment Details</h3>
+                <p style="margin: 8px 0;"><strong>Doctor:</strong> Dr. ${doctorName}</p>
+                <p style="margin: 8px 0;"><strong>Date:</strong> ${appointmentDate}</p>
+                <p style="margin: 8px 0;"><strong>Time:</strong> ${appointmentTime}</p>
+                <p style="margin: 8px 0;"><strong>Type:</strong> ${consultationType === 'online' ? '🌐 Online Consultation' : '📍 In-Person Visit'}</p>
+                ${
+                  consultationType === 'online' && meetingLink
+                    ? `<p style="margin: 8px 0;"><strong>Meeting Link:</strong> <a href="${meetingLink}" style="color: #667eea; text-decoration: none;">${meetingLink}</a></p>`
+                    : ''
+                }
+                ${
+                  consultationType === 'in-person' && locationDetails
+                    ? `<p style="margin: 8px 0;"><strong>Location:</strong> ${locationDetails}</p>`
+                    : ''
+                }
+              </div>
+            
+              ${
+                doctorComments
+                  ? `
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #2196F3;">
+                  <h4 style="margin: 0 0 10px 0; color: #1976D2;">💬 Doctor's Comments</h4>
+                  <p style="margin: 0; color: #0d47a1;">${doctorComments}</p>
+                </div>
+              `
+                  : ''
+              }
+            
+              <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #ffc107;">
+                <p style="margin: 0; color: #856404;">
+                  <strong>⏰ Important:</strong> Please be on time for your appointment. If you need to cancel or reschedule, please contact us as soon as possible.
+                </p>
+              </div>
+            
+              <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                If you have any questions or concerns, please don't hesitate to contact your doctor or our support team.
+              </p>
+            
+              <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+              <p style="color: #999; font-size: 12px; text-align: center;">
+                © ${new Date().getFullYear()} Healix Healthcare. All rights reserved.
+              </p>
+            </div>
+          </body>
+          </html>
+        `,
+        text: `
+          Appointment Reminder - Healix Healthcare
+        
+          Hello ${patientName},
+        
+          This is a reminder that you have an upcoming appointment:
+        
+          Doctor: Dr. ${doctorName}
+          Date: ${appointmentDate}
+          Time: ${appointmentTime}
+          Type: ${consultationType === 'online' ? 'Online Consultation' : 'In-Person Visit'}
+          ${consultationType === 'online' && meetingLink ? `Meeting Link: ${meetingLink}` : ''}
+          ${consultationType === 'in-person' && locationDetails ? `Location: ${locationDetails}` : ''}
+        
+          ${doctorComments ? `Doctor's Comments: ${doctorComments}` : ''}
+        
+          Please be on time for your appointment.
+        
+          If you have any questions, please contact your doctor or our support team.
+        `,
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✅ Appointment reminder email sent:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('❌ Error sending appointment reminder email:', error);
+      throw new Error(`Failed to send appointment reminder: ${error.message || 'Unknown error'}`);
+    }
+  };
+

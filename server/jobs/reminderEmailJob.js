@@ -1,4 +1,6 @@
 import MedicineReminder from '../models/MedicineReminder.js';
+import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 import { sendMedicineReminderEmail } from '../utils/emailService.js';
 import mongoose from 'mongoose';
 
@@ -39,10 +41,63 @@ export const reminderEmailJob = async () => {
             try {
                 // Format time nicely for email
                 const timeFormatted = reminder.timeOfDay;
+                let reminderRecipientEmail = reminder.reminderRecipientEmail || reminder.patientEmail;
+
+                // Backfill legacy reminders that were created before reminderRecipientEmail existed
+                if (!reminder.reminderRecipientEmail) {
+                    const patient = await User.findById(reminder.patientId).select('reminderEmail email');
+                    const resolvedRecipientEmail = patient?.reminderEmail || patient?.email || reminder.patientEmail;
+
+                    if (resolvedRecipientEmail) {
+                        reminderRecipientEmail = resolvedRecipientEmail;
+                        await MedicineReminder.updateOne(
+                            { _id: reminder._id },
+                            {
+                                $set: {
+                                    reminderRecipientEmail: resolvedRecipientEmail,
+                                    updatedAt: new Date()
+                                }
+                            }
+                        );
+                    }
+                }
+
+                // Create due-time in-app notification once, independent from email success
+                if (!reminder.dueNotificationSent) {
+                    try {
+                        await Notification.create({
+                            userId: reminder.patientId,
+                            userEmail: reminder.patientEmail,
+                            type: 'medication_reminder_due',
+                            title: `Time to take ${reminder.medicineName}`,
+                            message: `Reminder: Take ${reminder.medicineName} (${reminder.dose}) at ${timeFormatted} as prescribed by Dr. ${reminder.doctorName}.`,
+                            read: false
+                        });
+
+                        await MedicineReminder.updateOne(
+                            { _id: reminder._id },
+                            {
+                                $set: {
+                                    dueNotificationSent: true,
+                                    dueNotificationSentAt: new Date(),
+                                    updatedAt: new Date()
+                                }
+                            }
+                        );
+
+                        console.log(`   🔔 Due notification created for ${reminder.patientName}`);
+                    } catch (notifError) {
+                        console.warn(`   ⚠️  Failed to create due notification:`, notifError.message);
+                    }
+                }
+
+                if (!reminderRecipientEmail) {
+                    throw new Error('No reminder recipient email found for this patient');
+                }
 
                 // Send email
                 await sendMedicineReminderEmail(
-                    reminder.patientEmail,
+                    reminderRecipientEmail,
                     reminder.patientName,
                     {
                         medicineName: reminder.medicineName,
@@ -53,10 +108,18 @@ export const reminderEmailJob = async () => {
                 );
 
                 // Mark as sent
-                reminder.sent = true;
-                reminder.sentAt = new Date();
-                reminder.error = null;
-                await reminder.save();
+                await MedicineReminder.updateOne(
+                    { _id: reminder._id },
+                    {
+                        $set: {
+                            sent: true,
+                            sentAt: new Date(),
+                            error: null,
+                            reminderRecipientEmail,
+                            updatedAt: new Date()
+                        }
+                    }
+                );
 
                 successCount++;
                 console.log(`   ✅ Sent reminder to ${reminder.patientName} for ${reminder.medicineName}`);
@@ -66,8 +129,15 @@ export const reminderEmailJob = async () => {
                 console.error(`   ❌ Failed to send reminder to ${reminder.patientName}:`, error.message);
 
                 // Log error but don't mark as sent - will retry next run
-                reminder.error = error.message;
-                await reminder.save();
+                await MedicineReminder.updateOne(
+                    { _id: reminder._id },
+                    {
+                        $set: {
+                            error: error.message,
+                            updatedAt: new Date()
+                        }
+                    }
+                );
             }
         }
 

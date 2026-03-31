@@ -7,8 +7,9 @@
     "node": ">=20.19.0"
   },
   "scripts": {
-    "dev": "npx concurrently -n UI,API -c cyan,green \"npm:dev:ui\" \"npm:start:backend\"",
+    "dev": "npm run dev:ui",
     "dev:ui": "vite",
+    "dev:fullstack": "npx concurrently -n UI,API -c cyan,green \"npm:dev:ui\" \"npm:start:backend\"",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "start:backend": "cd server && npm start",

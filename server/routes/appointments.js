@@ -267,7 +267,7 @@ router.get('/doctor', requireAuth, async (req, res) => {
 router.put('/:id/status', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, doctorComments, meetingLink, appointmentLocationDetails } = req.body;
     const doctorEmail = req.user.email;
 
     if (req.user.role !== 'doctor') {
@@ -298,6 +298,29 @@ router.put('/:id/status', requireAuth, async (req, res) => {
         success: false,
         message: 'Unauthorized: You can only update your own appointments'
       });
+    }
+
+    if (status === 'approved') {
+      const normalizedMeetingLink = String(meetingLink || '').trim();
+      const normalizedLocationDetails = String(appointmentLocationDetails || '').trim();
+
+      if (appointment.consultationType === 'online' && !normalizedMeetingLink) {
+        return res.status(400).json({
+          success: false,
+          message: 'Meeting link is required to approve online appointments'
+        });
+      }
+
+      if (appointment.consultationType === 'in-person' && !normalizedLocationDetails) {
+        return res.status(400).json({
+          success: false,
+          message: 'Location details are required to approve in-person appointments'
+        });
+      }
+
+      appointment.meetingLink = normalizedMeetingLink;
+      appointment.appointmentLocationDetails = normalizedLocationDetails;
+      appointment.doctorComments = String(doctorComments || '').trim();
     }
 
     // Update appointment status
@@ -437,6 +460,88 @@ router.delete('/:id', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error cancelling appointment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   PUT /api/appointments/:id/details
+ * @desc    Add/update appointment details by doctor (meeting link, location, comments)
+ * @access  Private
+ */
+router.put('/:id/details', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { doctorComments, meetingLink, appointmentLocationDetails } = req.body;
+    const doctorEmail = req.user.email;
+
+    if (req.user.role !== 'doctor') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only doctors can update appointment details'
+      });
+    }
+
+    const appointment = await Appointment.findById(id);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Verify doctor owns this appointment
+    if (appointment.doctorEmail.toLowerCase() !== doctorEmail.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You can only update your own appointments'
+      });
+    }
+
+    // Verify appointment is approved before adding details
+    if (appointment.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Appointment must be approved before adding details'
+      });
+    }
+
+    // Update fields
+    if (doctorComments !== undefined) appointment.doctorComments = doctorComments;
+    if (meetingLink !== undefined) appointment.meetingLink = meetingLink;
+    if (appointmentLocationDetails !== undefined) appointment.appointmentLocationDetails = appointmentLocationDetails;
+
+    await appointment.save();
+
+    // Create notification for patient about the details
+    const notificationMessage = appointment.consultationType === 'online'
+      ? `Your doctor has shared a meeting link for your appointment on ${appointment.date} at ${appointment.time}`
+      : `Your doctor has provided location details for your appointment on ${appointment.date} at ${appointment.time}`;
+
+    const patientNotification = new Notification({
+      userId: appointment.patientId,
+      userEmail: appointment.patientEmail,
+      type: 'appointment_details_shared',
+      title: 'Appointment Details Shared',
+      message: notificationMessage,
+      appointmentId: appointment._id
+    });
+    await patientNotification.save();
+
+    console.log(`✅ Appointment details updated: ${appointment._id}`);
+    console.log(`📧 Notification sent to patient: ${appointment.patientEmail}`);
+
+    res.json({
+      success: true,
+      message: 'Appointment details updated successfully',
+      data: appointment
+    });
+  } catch (error) {
+    console.error('❌ Error updating appointment details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating appointment details',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
