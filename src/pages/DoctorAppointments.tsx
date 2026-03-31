@@ -33,6 +33,8 @@ import {
   updateAppointmentStatus,
   updateAppointmentDetails,
   cancelAppointment,
+  completeAppointment,
+  addAppointmentPrescription,
   type Appointment,
 } from '../services/appointmentService';
 import BackButton from '../ui/BackButton';
@@ -65,11 +67,16 @@ export default function DoctorAppointments() {
   const [tabValue, setTabValue] = useState(0);
   const [detailsDialog, setDetailsDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState<'approve' | 'edit'>('edit');
+  const [prescriptionDialog, setPrescriptionDialog] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [formData, setFormData] = useState({
     doctorComments: '',
     meetingLink: '',
     appointmentLocationDetails: '',
+  });
+  const [prescriptionForm, setPrescriptionForm] = useState({
+    conditionDescription: '',
+    medicines: [{ name: '', dosage: '', instructions: '' }],
   });
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -132,6 +139,105 @@ export default function DoctorAppointments() {
     } catch (err) {
       setMessage({ type: 'error', text: 'Failed to reject appointment' });
       console.error(err);
+    }
+  };
+
+  const isPastAppointment = (appointment: Appointment) => {
+    const datePart = String(appointment.date || '').trim();
+    const timePart = String(appointment.time || '').trim();
+    if (!datePart || !timePart) return false;
+    const normalizedTime = timePart.length === 5 ? `${timePart}:00` : timePart;
+    const parsed = new Date(`${datePart}T${normalizedTime}`);
+    if (Number.isNaN(parsed.getTime())) return false;
+    return parsed.getTime() <= Date.now();
+  };
+
+  const handleCompleteAppointment = async (appointmentId: string) => {
+    try {
+      await completeAppointment(appointmentId);
+      setMessage({ type: 'success', text: 'Appointment marked as completed' });
+      loadAppointments();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to complete appointment' });
+      console.error(err);
+    }
+  };
+
+  const handleOpenPrescriptionDialog = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setPrescriptionForm({
+      conditionDescription: '',
+      medicines: [{ name: '', dosage: '', instructions: '' }],
+    });
+    setPrescriptionDialog(true);
+  };
+
+  const handleClosePrescriptionDialog = () => {
+    setPrescriptionDialog(false);
+    setSelectedAppointment(null);
+    setPrescriptionForm({
+      conditionDescription: '',
+      medicines: [{ name: '', dosage: '', instructions: '' }],
+    });
+  };
+
+  const handleAddMedicineField = () => {
+    setPrescriptionForm((prev) => ({
+      ...prev,
+      medicines: [...prev.medicines, { name: '', dosage: '', instructions: '' }],
+    }));
+  };
+
+  const handleRemoveMedicineField = (index: number) => {
+    setPrescriptionForm((prev) => ({
+      ...prev,
+      medicines: prev.medicines.filter((_, idx) => idx !== index),
+    }));
+  };
+
+  const handleUpdateMedicineField = (index: number, key: 'name' | 'dosage' | 'instructions', value: string) => {
+    setPrescriptionForm((prev) => ({
+      ...prev,
+      medicines: prev.medicines.map((item, idx) => (idx === index ? { ...item, [key]: value } : item)),
+    }));
+  };
+
+  const handleSavePrescription = async () => {
+    if (!selectedAppointment) return;
+
+    const conditionDescription = prescriptionForm.conditionDescription.trim();
+    const medicines = prescriptionForm.medicines
+      .map((med) => ({
+        name: med.name.trim(),
+        dosage: med.dosage.trim(),
+        instructions: med.instructions.trim(),
+      }))
+      .filter((med) => med.name);
+
+    if (!conditionDescription) {
+      setMessage({ type: 'error', text: 'Condition description is required' });
+      return;
+    }
+
+    if (medicines.length === 0) {
+      setMessage({ type: 'error', text: 'Add at least one medicine in the prescription' });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await addAppointmentPrescription(selectedAppointment._id, {
+        conditionDescription,
+        medicines,
+      });
+      setMessage({ type: 'success', text: 'Digital prescription saved successfully' });
+      handleClosePrescriptionDialog();
+      loadAppointments();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err?.response?.data?.message || 'Failed to save prescription' });
+      console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -230,6 +336,7 @@ export default function DoctorAppointments() {
       case 'pending':
         return 'warning';
       case 'approved':
+      case 'completed':
         return 'success';
       case 'rejected':
         return 'error';
@@ -244,6 +351,7 @@ export default function DoctorAppointments() {
 
   const pendingAppointments = appointments.filter(a => a.status === 'pending');
   const approvedAppointments = appointments.filter(a => a.status === 'approved');
+  const completedAppointments = appointments.filter(a => a.status === 'completed');
   const rejectedAppointments = appointments.filter(a => a.status === 'rejected');
 
   const renderAppointmentCard = (appointment: Appointment) => (
@@ -428,18 +536,40 @@ export default function DoctorAppointments() {
               )}
 
               {appointment.status === 'approved' && (
+                <>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                    startIcon={<EditIcon />}
+                    onClick={() => handleOpenDetailsDialog(appointment)}
+                  >
+                    Edit Details
+                  </Button>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    color="success"
+                    onClick={() => handleCompleteAppointment(appointment._id)}
+                    disabled={!isPastAppointment(appointment)}
+                  >
+                    Mark Completed
+                  </Button>
+                </>
+              )}
+
+              {appointment.status === 'completed' && (
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   size="small"
                   color="primary"
-                  startIcon={<EditIcon />}
-                  onClick={() => handleOpenDetailsDialog(appointment)}
+                  onClick={() => handleOpenPrescriptionDialog(appointment)}
                 >
-                  Edit Details
+                  Add Prescription
                 </Button>
               )}
 
-              {appointment.status !== 'rejected' && (
+              {appointment.status !== 'rejected' && appointment.status !== 'completed' && (
                 <Button
                   variant="text"
                   size="small"
@@ -501,7 +631,8 @@ export default function DoctorAppointments() {
             <Tabs value={tabValue} onChange={handleTabChange} aria-label="appointment tabs">
               <Tab label={`Pending (${pendingAppointments.length})`} id="appointment-tab-0" />
               <Tab label={`Approved (${approvedAppointments.length})`} id="appointment-tab-1" />
-              <Tab label={`Rejected (${rejectedAppointments.length})`} id="appointment-tab-2" />
+              <Tab label={`Completed (${completedAppointments.length})`} id="appointment-tab-2" />
+              <Tab label={`Rejected (${rejectedAppointments.length})`} id="appointment-tab-3" />
             </Tabs>
           </Paper>
 
@@ -526,6 +657,16 @@ export default function DoctorAppointments() {
           </TabPanel>
 
           <TabPanel value={tabValue} index={2}>
+            {completedAppointments.length === 0 ? (
+              <Alert severity="info">No completed appointments</Alert>
+            ) : (
+              <Stack spacing={2}>
+                {completedAppointments.map(renderAppointmentCard)}
+              </Stack>
+            )}
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={3}>
             {rejectedAppointments.length === 0 ? (
               <Alert severity="info">No rejected appointments</Alert>
             ) : (
@@ -601,6 +742,83 @@ export default function DoctorAppointments() {
             disabled={submitting || Boolean(getApprovalValidationError())}
           >
             {submitting ? 'Saving...' : dialogMode === 'approve' ? 'Approve Appointment' : 'Save Details'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={prescriptionDialog} onClose={handleClosePrescriptionDialog} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Add Digital Prescription
+          <Typography variant="body2" sx={{ color: '#718096', fontWeight: 400 }}>
+            {selectedAppointment?.patientName}
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Stack spacing={2}>
+            <TextField
+              label="Patient Condition Description"
+              value={prescriptionForm.conditionDescription}
+              onChange={(e) => setPrescriptionForm((prev) => ({ ...prev, conditionDescription: e.target.value }))}
+              multiline
+              rows={3}
+              required
+              fullWidth
+            />
+
+            <Divider />
+
+            <Typography variant="subtitle2" sx={{ color: '#1A1A2E', fontWeight: 700 }}>
+              Prescribed Medicines
+            </Typography>
+
+            {prescriptionForm.medicines.map((medicine, index) => (
+              <Stack key={index} spacing={1.2} sx={{ border: '1px solid #E2E8F0', borderRadius: 1.5, p: 1.5 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>Medicine {index + 1}</Typography>
+                  {prescriptionForm.medicines.length > 1 && (
+                    <Button size="small" color="error" onClick={() => handleRemoveMedicineField(index)}>
+                      Remove
+                    </Button>
+                  )}
+                </Stack>
+
+                <TextField
+                  label="Medicine Name"
+                  required
+                  value={medicine.name}
+                  onChange={(e) => handleUpdateMedicineField(index, 'name', e.target.value)}
+                  fullWidth
+                />
+
+                <TextField
+                  label="Dosage"
+                  placeholder="e.g., 1 tablet twice daily"
+                  value={medicine.dosage}
+                  onChange={(e) => handleUpdateMedicineField(index, 'dosage', e.target.value)}
+                  fullWidth
+                />
+
+                <TextField
+                  label="Instructions"
+                  placeholder="e.g., After meal"
+                  value={medicine.instructions}
+                  onChange={(e) => handleUpdateMedicineField(index, 'instructions', e.target.value)}
+                  multiline
+                  rows={2}
+                  fullWidth
+                />
+              </Stack>
+            ))}
+
+            <Button variant="outlined" onClick={handleAddMedicineField}>
+              Add Another Medicine
+            </Button>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleClosePrescriptionDialog}>Cancel</Button>
+          <Button onClick={handleSavePrescription} variant="contained" disabled={submitting}>
+            {submitting ? 'Saving...' : 'Save Prescription'}
           </Button>
         </DialogActions>
       </Dialog>

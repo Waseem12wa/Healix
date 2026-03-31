@@ -826,6 +826,8 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
   const [loading, setLoading] = useState(false)
   const [patients, setPatients] = useState<ApprovedPatient[]>([])
   const [selectedPatient, setSelectedPatient] = useState<ApprovedPatient | null>(null)
+  const [medicineOptions, setMedicineOptions] = useState<string[]>([])
+  const [medicineOptionsLoading, setMedicineOptionsLoading] = useState(false)
 
   const [medicineName, setMedicineName] = useState('')
   const [dose, setDose] = useState('')
@@ -847,7 +849,16 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
     setTimes([new Date()])
     setStartDate(new Date())
     setDuration(7)
+    setMedicineOptions([])
   }, [open])
+
+  useEffect(() => {
+    if (!selectedPatient) {
+      setMedicineOptions([])
+      return
+    }
+    loadPatientMedicineHistory(selectedPatient.patientId)
+  }, [selectedPatient])
 
   useEffect(() => {
     const newTimes = Array(frequency)
@@ -890,6 +901,29 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
     } catch (error) {
       console.error('Error loading approved patients:', error)
       setSnackbar({ open: true, message: 'Failed to load patients', severity: 'error' })
+    }
+  }
+
+  const loadPatientMedicineHistory = async (patientId: string) => {
+    try {
+      setMedicineOptionsLoading(true)
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/reminders/patient-medicine-history/${encodeURIComponent(patientId)}`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      })
+      const data = await response.json()
+      if (data.success && Array.isArray(data.data)) {
+        setMedicineOptions(data.data)
+      } else {
+        setMedicineOptions([])
+      }
+    } catch (error) {
+      console.error('Error loading patient medicine history:', error)
+      setMedicineOptions([])
+    } finally {
+      setMedicineOptionsLoading(false)
     }
   }
 
@@ -980,7 +1014,22 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
                 2. Medicine Details
               </Typography>
               <Stack spacing={2} sx={{ mt: 1 }}>
-                <TextField label="Medicine Name" value={medicineName} onChange={(e) => setMedicineName(e.target.value)} required fullWidth />
+                <Autocomplete
+                  freeSolo
+                  options={medicineOptions}
+                  loading={medicineOptionsLoading}
+                  value={medicineName}
+                  onInputChange={(_, value) => setMedicineName(value)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Medicine Name"
+                      placeholder="Select from history or type manually"
+                      required
+                      fullWidth
+                    />
+                  )}
+                />
                 <TextField label="Dose" value={dose} onChange={(e) => setDose(e.target.value)} placeholder="e.g., 1 tablet, 2 capsules" required fullWidth />
                 <FormControl fullWidth>
                   <InputLabel>Frequency (times per day)</InputLabel>

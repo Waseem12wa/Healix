@@ -9,6 +9,7 @@ interface Notification {
     | 'appointment_cancelled'
     | 'appointment_reminder_patient'
     | 'appointment_reminder_doctor'
+    | 'prescription_added'
     | 'doctor_review_request'
     | 'doctor_review_result'
     | 'medication_reminder_set'

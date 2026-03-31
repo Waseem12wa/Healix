@@ -22,8 +22,26 @@ export interface Appointment {
   doctorComments: string;
   meetingLink: string;
   appointmentLocationDetails: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status: 'pending' | 'approved' | 'completed' | 'rejected' | 'cancelled';
+  completedAt?: string | null;
   reminderSent: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PrescriptionMedicine {
+  name: string;
+  dosage?: string;
+  instructions?: string;
+}
+
+export interface Prescription {
+  _id: string;
+  appointmentId: string;
+  patientId: string;
+  doctorId: string;
+  conditionDescription: string;
+  medicines: PrescriptionMedicine[];
   createdAt: string;
   updatedAt: string;
 }
@@ -129,6 +147,50 @@ export const cancelAppointment = async (appointmentId: string): Promise<void> =>
     });
   } catch (error) {
     console.error('Error cancelling appointment:', error);
+    throw error;
+  }
+};
+
+export const completeAppointment = async (appointmentId: string): Promise<Appointment> => {
+  try {
+    const token = getAuthToken();
+    const response = await axios.put(
+      `${API_BASE_URL}/${appointmentId}/complete`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error('Error completing appointment:', error);
+    throw error;
+  }
+};
+
+export const addAppointmentPrescription = async (
+  appointmentId: string,
+  payload: {
+    conditionDescription: string;
+    medicines: PrescriptionMedicine[];
+  }
+): Promise<Prescription> => {
+  try {
+    const token = getAuthToken();
+    const response = await axios.post(
+      `${API_BASE_URL}/${appointmentId}/prescription`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error('Error adding prescription:', error);
     throw error;
   }
 };

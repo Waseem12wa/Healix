@@ -70,8 +70,12 @@ const appointmentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected', 'cancelled'],
+    enum: ['pending', 'approved', 'completed', 'rejected', 'cancelled'],
     default: 'pending'
+  },
+  completedAt: {
+    type: Date,
+    default: null
   },
   reminderSent: {
     type: Boolean,

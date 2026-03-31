@@ -21,6 +21,7 @@ const notificationSchema = new mongoose.Schema({
       'appointment_details_shared',
       'appointment_reminder_patient',
       'appointment_reminder_doctor',
+      'prescription_added',
       'doctor_review_request',
       'doctor_review_result',
       'medication_reminder_set',

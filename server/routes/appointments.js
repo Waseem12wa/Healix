@@ -2,11 +2,22 @@ import express from 'express';
 import mongoose from 'mongoose';
 import Appointment from '../models/Appointment.js';
 import Notification from '../models/Notification.js';
+import Prescription from '../models/Prescription.js';
 import User from '../models/User.js';
 import PatientActivity from '../models/PatientActivity.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+
+const parseAppointmentDateTime = (appointment) => {
+  const datePart = String(appointment.date || '').trim();
+  const timePart = String(appointment.time || '').trim();
+  if (!datePart || !timePart) return null;
+
+  const normalizedTime = timePart.length === 5 ? `${timePart}:00` : timePart;
+  const parsed = new Date(`${datePart}T${normalizedTime}`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
 
 /**
  * @route   POST /api/appointments
@@ -542,6 +553,198 @@ router.put('/:id/details', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating appointment details',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   PUT /api/appointments/:id/complete
+ * @desc    Mark an approved appointment as completed (Doctor)
+ * @access  Private
+ */
+router.put('/:id/complete', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doctorEmail = req.user.email;
+
+    if (req.user.role !== 'doctor') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only doctors can complete appointments'
+      });
+    }
+
+    const appointment = await Appointment.findById(id);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    if (appointment.doctorEmail.toLowerCase() !== doctorEmail.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You can only update your own appointments'
+      });
+    }
+
+    if (appointment.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only approved appointments can be marked as completed'
+      });
+    }
+
+    const appointmentDateTime = parseAppointmentDateTime(appointment);
+    if (appointmentDateTime && appointmentDateTime.getTime() > Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Appointment can only be completed after its scheduled time'
+      });
+    }
+
+    appointment.status = 'completed';
+    appointment.completedAt = new Date();
+    await appointment.save();
+
+    await Notification.create({
+      userId: appointment.patientId,
+      userEmail: appointment.patientEmail,
+      type: 'appointment_approved',
+      title: 'Appointment Marked Completed',
+      message: `${appointment.doctorName} marked your appointment on ${appointment.date} at ${appointment.time} as completed.`,
+      appointmentId: appointment._id,
+      read: false
+    });
+
+    try {
+      await PatientActivity.create({
+        userId: req.user.id,
+        category: 'other',
+        title: 'Completed appointment',
+        details: `Marked appointment for ${appointment.patientName} as completed`,
+        metadata: {
+          appointmentId: String(appointment._id),
+          patientId: String(appointment.patientId),
+          patientEmail: appointment.patientEmail,
+        },
+      });
+    } catch (activityError) {
+      console.warn('Doctor activity log failed for appointment completion:', activityError.message);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Appointment marked as completed',
+      data: appointment
+    });
+  } catch (error) {
+    console.error('❌ Error completing appointment:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error completing appointment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/appointments/:id/prescription
+ * @desc    Save digital prescription for a completed appointment (Doctor)
+ * @access  Private
+ */
+router.post('/:id/prescription', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doctorEmail = req.user.email;
+    const { conditionDescription, medicines } = req.body;
+
+    if (req.user.role !== 'doctor') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only doctors can add prescriptions'
+      });
+    }
+
+    const appointment = await Appointment.findById(id);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    if (appointment.doctorEmail.toLowerCase() !== doctorEmail.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You can only add prescriptions for your own appointments'
+      });
+    }
+
+    if (appointment.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Prescription can only be added after appointment is completed'
+      });
+    }
+
+    const normalizedCondition = String(conditionDescription || '').trim();
+    const normalizedMedicines = Array.isArray(medicines)
+      ? medicines
+        .map((item) => ({
+          name: String(item?.name || '').trim(),
+          dosage: String(item?.dosage || '').trim(),
+          instructions: String(item?.instructions || '').trim(),
+        }))
+        .filter((item) => item.name)
+      : [];
+
+    if (!normalizedCondition) {
+      return res.status(400).json({
+        success: false,
+        message: 'Condition description is required'
+      });
+    }
+
+    if (normalizedMedicines.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one prescribed medicine is required'
+      });
+    }
+
+    const prescription = await Prescription.create({
+      appointmentId: appointment._id,
+      patientId: appointment.patientId,
+      patientEmail: appointment.patientEmail,
+      doctorId: appointment.doctorId,
+      doctorEmail: appointment.doctorEmail,
+      conditionDescription: normalizedCondition,
+      medicines: normalizedMedicines,
+    });
+
+    await Notification.create({
+      userId: appointment.patientId,
+      userEmail: appointment.patientEmail,
+      type: 'prescription_added',
+      title: 'New Digital Prescription',
+      message: `${appointment.doctorName} added your digital prescription with ${normalizedMedicines.length} medicine(s).`,
+      appointmentId: appointment._id,
+      read: false
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Prescription saved successfully',
+      data: prescription
+    });
+  } catch (error) {
+    console.error('❌ Error saving prescription:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error saving prescription',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

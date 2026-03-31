@@ -1,5 +1,7 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import MedicineReminder from '../models/MedicineReminder.js';
+import Prescription from '../models/Prescription.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -571,6 +573,104 @@ router.get('/patient-reminders', requireAuth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to fetch reminders',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @route   GET /api/reminders/patient-medicine-history
+ * @desc    Get unique medicine names from the logged-in patient's prescription history
+ * @access  Private (Patient only)
+ */
+router.get('/patient-medicine-history', requireAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'patient') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only patients can access medicine history'
+            });
+        }
+
+        const patientId = req.user?.id;
+        const patientObjectId = new mongoose.Types.ObjectId(patientId);
+        const medicines = await Prescription.aggregate([
+            { $match: { patientId: patientObjectId } },
+            { $unwind: '$medicines' },
+            { $group: { _id: { $toLower: '$medicines.name' }, medicineName: { $first: '$medicines.name' } } },
+            { $project: { _id: 0, medicineName: 1 } },
+            { $sort: { medicineName: 1 } }
+        ]);
+
+        return res.json({
+            success: true,
+            data: medicines.map((item) => item.medicineName).filter(Boolean)
+        });
+    } catch (error) {
+        console.error('❌ Error fetching patient medicine history:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch medicine history',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+/**
+ * @route   GET /api/reminders/patient-medicine-history/:patientId
+ * @desc    Get unique medicine names from prescription history of a doctor-assigned patient
+ * @access  Private (Doctor only)
+ */
+router.get('/patient-medicine-history/:patientId', requireAuth, async (req, res) => {
+    try {
+        if (req.user?.role !== 'doctor') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only doctors can access patient medicine history'
+            });
+        }
+
+        const { patientId } = req.params;
+
+        const doctor = await User.findOne({
+            email: { $regex: `^${req.user.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+            role: 'doctor'
+        }).select('_id');
+
+        if (!doctor) {
+            return res.status(404).json({ success: false, message: 'Doctor not found' });
+        }
+
+        const patient = await User.findOne({
+            _id: patientId,
+            role: 'patient',
+            'patientProfile.assignedDoctorId': doctor._id
+        }).select('_id');
+
+        if (!patient) {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied: Patient is not assigned to this doctor'
+            });
+        }
+
+        const medicines = await Prescription.aggregate([
+            { $match: { patientId: patient._id } },
+            { $unwind: '$medicines' },
+            { $group: { _id: { $toLower: '$medicines.name' }, medicineName: { $first: '$medicines.name' } } },
+            { $project: { _id: 0, medicineName: 1 } },
+            { $sort: { medicineName: 1 } }
+        ]);
+
+        return res.json({
+            success: true,
+            data: medicines.map((item) => item.medicineName).filter(Boolean)
+        });
+    } catch (error) {
+        console.error('❌ Error fetching doctor patient medicine history:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch patient medicine history',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }

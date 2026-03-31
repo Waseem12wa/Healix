@@ -65,7 +65,7 @@ interface Appointment {
   date: string
   time: string
   location: string
-  status: 'confirmed' | 'pending' | 'cancelled' | 'approved' | 'rejected'
+  status: 'confirmed' | 'pending' | 'cancelled' | 'approved' | 'completed' | 'rejected'
   notes: string
   consultationType?: 'in-person' | 'online'
   fee?: number
@@ -351,6 +351,7 @@ export default function Appointments() {
     switch (status) {
       case 'confirmed':
       case 'approved':
+      case 'completed':
         return 'success'
       case 'pending':
         return 'warning'

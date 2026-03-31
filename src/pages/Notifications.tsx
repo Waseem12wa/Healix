@@ -27,6 +27,7 @@ const typeLabel = (type: string) => {
   if (type === 'appointment_cancelled') return 'Appointment Cancelled'
   if (type === 'appointment_details_shared') return 'Appointment Details Shared'
   if (type === 'appointment_reminder_patient' || type === 'appointment_reminder_doctor') return 'Appointment Reminder'
+  if (type === 'prescription_added') return 'Prescription Added'
   if (type === 'doctor_review_request') return 'Doctor Review Request'
   if (type === 'doctor_review_result') return 'Doctor Review Result'
   if (type === 'medication_reminder_set') return 'Medication Reminder Set'
@@ -37,6 +38,7 @@ const typeLabel = (type: string) => {
 const typeColor = (type: string): 'default' | 'primary' | 'success' | 'error' | 'warning' | 'info' => {
   if (type === 'appointment_approved' || type === 'appointment_details_shared' || type === 'doctor_review_result') return 'success'
   if (type === 'medication_reminder_due' || type === 'appointment_reminder_patient' || type === 'appointment_reminder_doctor') return 'warning'
+  if (type === 'prescription_added') return 'success'
   if (type === 'appointment_rejected') return 'error'
   if (type === 'appointment_request' || type === 'doctor_review_request' || type === 'medication_reminder_set') return 'warning'
   if (type === 'appointment_cancelled') return 'default'
@@ -74,6 +76,10 @@ export default function Notifications() {
 
     if (item.type.startsWith('appointment_')) {
       return role === 'doctor' ? '/doctor-appointments' : '/tools/appointments'
+    }
+
+    if (item.type === 'prescription_added') {
+      return '/tools/appointments'
     }
 
     if (item.type === 'medication_reminder_set' || item.type === 'medication_reminder_due') {
