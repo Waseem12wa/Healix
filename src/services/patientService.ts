@@ -9,7 +9,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token') || localStorage.getItem('authToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -87,4 +87,14 @@ export const logPatientActivity = async (payload: {
 export const getPatientActivities = async (category?: string, limit = 50) => {
   const response = await api.get('/activity', { params: { category, limit } });
   return response.data?.activities || [];
+};
+
+export const deleteMyAccount = async (password: string, confirmText: string) => {
+  const response = await api.delete('/me', {
+    data: {
+      password,
+      confirmText,
+    },
+  });
+  return response.data;
 };

@@ -1,9 +1,11 @@
 import { createTheme } from '@mui/material/styles'
 
+export type ThemeMode = 'light' | 'dark'
+
 // Modern Teal Design System: Professional, trustworthy, tech-forward
-export const appTheme = createTheme({
+export const createAppTheme = (mode: ThemeMode = 'light') => createTheme({
   palette: {
-    mode: 'light',
+    mode,
     primary: { 
       main: '#00B4D8', // Primary Teal
       light: '#90E0EF', // Light Teal (Accent)
@@ -36,14 +38,24 @@ export const appTheme = createTheme({
       light: '#90E0EF',
       dark: '#0096C7'
     },
-    background: { 
-      default: '#F5F5F7', // Light Neutral
-      paper: '#FFFFFF' 
-    },
-    text: { 
-      primary: '#1A1A2E', // Dark Gray (Neutral)
-      secondary: '#64748B' 
-    },
+    background: mode === 'dark'
+      ? {
+          default: '#0B1220',
+          paper: '#111827',
+        }
+      : {
+          default: '#F5F5F7', // Light Neutral
+          paper: '#FFFFFF',
+        },
+    text: mode === 'dark'
+      ? {
+          primary: '#E2E8F0',
+          secondary: '#94A3B8',
+        }
+      : {
+          primary: '#1A1A2E', // Dark Gray (Neutral)
+          secondary: '#64748B',
+        },
     grey: {
       50: '#F8FAFC',
       100: '#F1F5F9',

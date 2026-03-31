@@ -9,6 +9,7 @@ const PROFILE_COMPLETED_KEY = 'profileCompleted'
  */
 export function clearAuthData() {
   localStorage.removeItem('token')
+  localStorage.removeItem('authToken')
   localStorage.removeItem('userId')
   localStorage.removeItem('authRole')
   localStorage.removeItem('userRole')

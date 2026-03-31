@@ -4,14 +4,20 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Parse env values defensively (trimmed) to avoid mode mismatches from whitespace.
+const toBool = (value) => String(value || '').trim().toLowerCase() === 'true';
+const RESEND_API_KEY = String(process.env.RESEND_API_KEY || '').trim();
+const EMAIL_USER = String(process.env.EMAIL_USER || '').trim();
+const EMAIL_PASSWORD = String(process.env.EMAIL_PASSWORD || '').trim();
+
 // Initialize Resend if API key is provided
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const USE_RESEND = process.env.USE_RESEND === 'true' || !!process.env.RESEND_API_KEY;
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+const USE_RESEND = toBool(process.env.USE_RESEND) || !!RESEND_API_KEY;
 
 // Development mode - prints reset link to console instead of sending email
 const DEVELOPMENT_MODE = !USE_RESEND &&
-  (process.env.EMAIL_DEV_MODE === 'true' ||
-    (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD));
+  (toBool(process.env.EMAIL_DEV_MODE) ||
+    (!EMAIL_USER || !EMAIL_PASSWORD));
 
 /**
  * Send password reset email using Resend API
@@ -81,18 +87,18 @@ const createTransporter = () => {
   }
 
   // Check if email is configured
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+  if (!EMAIL_USER || !EMAIL_PASSWORD) {
     throw new Error('Email configuration is missing. Please set EMAIL_USER and EMAIL_PASSWORD in .env file');
   }
 
   // Gmail configuration (requires app password)
   if (process.env.EMAIL_SERVICE === 'gmail') {
     console.log('📧 Using Gmail service for email');
-    console.log('   Email user:', process.env.EMAIL_USER);
-    console.log('   Password length:', process.env.EMAIL_PASSWORD?.length || 0);
+    console.log('   Email user:', EMAIL_USER);
+    console.log('   Password length:', EMAIL_PASSWORD?.length || 0);
 
     // Remove spaces from App Password (Gmail App Passwords sometimes have spaces)
-    const appPassword = process.env.EMAIL_PASSWORD?.replace(/\s/g, '') || '';
+    const appPassword = EMAIL_PASSWORD.replace(/\s/g, '');
 
     if (appPassword.length !== 16) {
       console.warn('⚠️  Warning: App Password should be 16 characters (without spaces)');
@@ -101,7 +107,7 @@ const createTransporter = () => {
     return nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.EMAIL_USER,
+        user: EMAIL_USER,
         pass: appPassword, // App password, not regular password
       },
     });
@@ -117,8 +123,8 @@ const createTransporter = () => {
     port: smtpPort,
     secure: smtpPort === 465, // true for 465, false for other ports
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
+      user: EMAIL_USER,
+      pass: EMAIL_PASSWORD,
     },
   });
 };
@@ -163,7 +169,7 @@ export const sendPasswordResetEmail = async (email, resetToken, userName = 'User
     const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"Healix Healthcare" <${process.env.EMAIL_USER}>`,
+      from: `"Healix Healthcare" <${EMAIL_USER}>`,
       to: email,
       subject: 'Password Reset Request - Healix',
       html: `
@@ -299,7 +305,7 @@ export const sendPasswordResetConfirmation = async (email, userName = 'User') =>
     const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"Healix Healthcare" <${process.env.EMAIL_USER}>`,
+      from: `"Healix Healthcare" <${EMAIL_USER}>`,
       to: email,
       subject: 'Password Reset Successful - Healix',
       html: `
@@ -439,7 +445,7 @@ export const sendMedicineReminderEmail = async (patientEmail, patientName, medic
     const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"Healix Healthcare" <${process.env.EMAIL_USER}>`,
+      from: `"Healix Healthcare" <${EMAIL_USER}>`,
       to: patientEmail,
       subject: `Medicine Reminder: ${medicineName}`,
       html: `
@@ -638,7 +644,7 @@ export const sendMedicineReminderEmail = async (patientEmail, patientName, medic
       const transporter = createTransporter();
 
       const mailOptions = {
-        from: `"Healix Healthcare" <${process.env.EMAIL_USER}>`,
+        from: `"Healix Healthcare" <${EMAIL_USER}>`,
         to: patientEmail,
         subject: `Appointment Reminder: Consultation with Dr. ${doctorName}`,
         html: `

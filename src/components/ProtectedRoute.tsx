@@ -19,27 +19,26 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [checkingProfile, setCheckingProfile] = useState(false)
   const [profileCompleted, setProfileCompleted] = useState<boolean | null>(getProfileCompletionStatus())
 
-  const requiresCompletion = userRole === 'patient' || userRole === 'doctor'
+  const requiresCompletion = userRole === 'patient' || userRole === 'doctor' || userRole === 'admin'
 
   const completionPath = useMemo(() => {
     if (userRole === 'doctor') return '/doctor-profile'
     if (userRole === 'patient') return '/tools/profile'
+    if (userRole === 'admin') return '/profile/admin'
     return null
   }, [userRole])
 
   const isBypassRoute = useMemo(() => {
     const roleBypassRoutes: Record<UserRole, string[]> = {
-      patient: ['/dashboard', '/tools/profile', '/profile/patient'],
-      doctor: ['/doctor-dashboard', '/doctor-profile'],
-      admin: ['/admin', '/profile/admin'],
-      provider: ['/provider-dashboard', '/profile/provider'],
+      patient: ['/dashboard', '/tools/profile', '/profile/patient', '/settings'],
+      doctor: ['/doctor-dashboard', '/doctor-profile', '/settings'],
+      admin: ['/admin', '/profile/admin', '/settings'],
+      provider: ['/provider-dashboard', '/profile/provider', '/settings'],
     }
 
     if (!userRole) return false
 
-    return roleBypassRoutes[userRole].some((route) =>
-      location.pathname === route || location.pathname.startsWith(`${route}/`)
-    )
+    return roleBypassRoutes[userRole].includes(location.pathname)
   }, [location.pathname, userRole])
   
   useEffect(() => {

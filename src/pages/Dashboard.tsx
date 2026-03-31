@@ -35,6 +35,7 @@ import EventIcon from '@mui/icons-material/Event'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import SearchIcon from '@mui/icons-material/Search'
+import SettingsIcon from '@mui/icons-material/Settings'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNotifications } from '../hooks/useNotifications'
 import { clearAuthData } from '../utils/auth'
@@ -185,6 +186,7 @@ export default function Dashboard() {
     { label: 'Order History', icon: <TrendingUpIcon fontSize="small" />, href: '/shop/orders' },
     { label: 'Notifications', icon: <NotificationsIcon fontSize="small" />, href: '/tools/notifications' },
     { label: 'Profile', icon: <PersonIcon fontSize="small" />, href: '/tools/profile' },
+    { label: 'Settings', icon: <SettingsIcon fontSize="small" />, href: '/settings' },
   ]
 
   const recordActivity = async (title: string, details: string, metadata: Record<string, unknown> = {}) => {

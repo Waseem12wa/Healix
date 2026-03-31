@@ -36,6 +36,7 @@ export const roleRoutes: RouteConfig[] = [
   { path: '/tools/health-summary', allowedRoles: ['patient'] },
   { path: '/tools/appointments', allowedRoles: ['patient', 'doctor'] },
   { path: '/tools/notifications', allowedRoles: ['patient', 'doctor', 'admin', 'provider'] },
+  { path: '/settings', allowedRoles: ['patient', 'doctor', 'admin', 'provider'] },
   { path: '/tools/profile', allowedRoles: ['patient', 'doctor'] },
   { path: '/shop/medicines', allowedRoles: ['patient', 'doctor'] },
   { path: '/shop/checkout', allowedRoles: ['patient', 'doctor'] },
@@ -55,9 +56,16 @@ export const roleRoutes: RouteConfig[] = [
   { path: '/doctor-reviews/ai-assistant', allowedRoles: ['doctor'] },
   { path: '/doctor-reviews/medication-pharmacy', allowedRoles: ['doctor'] },
   { path: '/doctor-reviews/health-summary', allowedRoles: ['doctor'] },
+  { path: '/doctor-medicines', allowedRoles: ['doctor'] },
   
   // Admin-specific routes
   { path: '/admin', allowedRoles: ['admin'] },
+  { path: '/admin/analytics', allowedRoles: ['admin'] },
+  { path: '/admin/users', allowedRoles: ['admin'] },
+  { path: '/admin/appointments', allowedRoles: ['admin'] },
+  { path: '/admin/payments', allowedRoles: ['admin'] },
+  { path: '/admin/medicines', allowedRoles: ['admin'] },
+  { path: '/admin/settings', allowedRoles: ['admin'] },
   { path: '/profile/admin', allowedRoles: ['admin'] },
   
   // Provider-specific routes

@@ -22,7 +22,14 @@ import HealthRecordSummarization from './pages/HealthRecordSummarization'
 import Notifications from './pages/Notifications'
 import Profile from './pages/Profile'
 import AdminPanel from './pages/AdminPanel'
+import AdminAnalyticsPage from './pages/AdminAnalyticsPage'
+import AdminUsersPage from './pages/AdminUsersPage'
+import AdminAppointmentsPage from './pages/AdminAppointmentsPage'
+import AdminPaymentsPage from './pages/AdminPaymentsPage'
+import AdminSystemSettingsPage from './pages/AdminSystemSettingsPage'
+import AdminMedicinesPage from './pages/AdminMedicinesPage'
 import DoctorDashboard from './pages/DoctorDashboard'
+import DoctorMedicineManagerPage from './pages/DoctorMedicineManagerPage'
 import ProviderDashboard from './pages/ProviderDashboard'
 import Appointments from './pages/Appointments'
 import DoctorProfile from './pages/DoctorProfile'
@@ -33,6 +40,7 @@ import DoctorFeatureReviews from './pages/DoctorFeatureReviews'
 import MedicineShop from './pages/MedicineShop'
 import OrderHistory from './pages/OrderHistory'
 import PaymentCheckoutPage from './pages/PaymentCheckoutPage'
+import SettingsPage from './pages/SettingsPage'
 
 // Helper to wrap protected routes
 const protect = (element: React.ReactElement) => (
@@ -73,9 +81,16 @@ export const router = createBrowserRouter([
       { path: 'doctor-reviews/ai-assistant', element: protect(<DoctorFeatureReviews feature="ai-assistant" />) },
       { path: 'doctor-reviews/medication-pharmacy', element: protect(<DoctorFeatureReviews feature="medication-pharmacy" />) },
       { path: 'doctor-reviews/health-summary', element: protect(<DoctorFeatureReviews feature="health-summary" />) },
+      { path: 'doctor-medicines', element: protect(<DoctorMedicineManagerPage />) },
       
       // Protected routes - Admin
       { path: 'admin', element: protect(<AdminPanel />) },
+      { path: 'admin/analytics', element: protect(<AdminAnalyticsPage />) },
+      { path: 'admin/users', element: protect(<AdminUsersPage />) },
+      { path: 'admin/appointments', element: protect(<AdminAppointmentsPage />) },
+      { path: 'admin/payments', element: protect(<AdminPaymentsPage />) },
+      { path: 'admin/medicines', element: protect(<AdminMedicinesPage />) },
+      { path: 'admin/settings', element: protect(<AdminSystemSettingsPage />) },
       { path: 'profile/admin', element: protect(<AdminProfile />) },
       
       // Protected routes - Provider
@@ -90,6 +105,7 @@ export const router = createBrowserRouter([
       { path: 'tools/appointments', element: protect(<Appointments />) },
       { path: 'tools/notifications', element: protect(<Notifications />) },
       { path: 'tools/profile', element: protect(<Profile />) },
+      { path: 'settings', element: protect(<SettingsPage />) },
       
       // Protected routes - Payment & Shopping
       { path: 'shop/medicines', element: protect(<MedicineShop />) },

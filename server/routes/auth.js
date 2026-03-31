@@ -3,6 +3,13 @@ import mongoose from 'mongoose';
 import multer from 'multer';
 import User from '../models/User.js';
 import PatientActivity from '../models/PatientActivity.js';
+import Appointment from '../models/Appointment.js';
+import Notification from '../models/Notification.js';
+import MedicineReminder from '../models/MedicineReminder.js';
+import Order from '../models/Order.js';
+import PaymentTransaction from '../models/PaymentTransaction.js';
+import DoctorReviewRequest from '../models/DoctorReviewRequest.js';
+import Prescription from '../models/Prescription.js';
 import { requireAuth, signAuthToken } from '../middleware/auth.js';
 import { uploadProfileImageObject } from '../services/objectStorage.js';
 import { validatePassword, validateEmail, validateRole, validateUserName } from '../utils/validation.js';
@@ -78,6 +85,12 @@ const isProfileCompletedForUser = (user) => {
 
   if (user.role === 'patient') {
     return isPatientProfileCompleted(user);
+  }
+
+  if (user.role === 'admin') {
+    const hasName = Boolean(String(user.userName || '').trim());
+    const hasProfileImage = Boolean(String(user?.patientProfile?.profileImage || '').trim());
+    return hasName && hasProfileImage;
   }
 
   return true;
@@ -585,6 +598,103 @@ router.get('/me', requireAuth, async (req, res) => {
     return res.json({
       success: true,
       data: serializeUserForClient(user),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   DELETE /api/auth/me
+ * @desc    Delete currently authenticated account (with password confirmation)
+ * @access  Private
+ */
+router.delete('/me', requireAuth, async (req, res) => {
+  try {
+    const { password, confirmText } = req.body || {};
+
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ success: false, message: 'Current password is required' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const normalizedConfirm = String(confirmText || '').trim();
+    const isDeleteKeyword = normalizedConfirm.toUpperCase() === 'DELETE';
+    const isRegisteredEmail = normalizedConfirm.toLowerCase() === String(user.email || '').toLowerCase();
+    if (!isDeleteKeyword && !isRegisteredEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'Type DELETE or your registered email to confirm account deletion',
+      });
+    }
+
+    const passwordMatched = await user.comparePassword(password);
+    if (!passwordMatched) {
+      return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+    }
+
+    const userId = user._id;
+    const userEmail = user.email;
+
+    const userOrders = await Order.find({ userId }).select('_id').lean();
+    const orderIds = userOrders.map((order) => order._id);
+
+    await Promise.all([
+      Appointment.deleteMany({
+        $or: [
+          { patientId: userId },
+          { doctorId: userId },
+          { patientEmail: userEmail },
+          { doctorEmail: userEmail },
+        ],
+      }),
+      Notification.deleteMany({
+        $or: [{ userId }, { userEmail }],
+      }),
+      MedicineReminder.deleteMany({
+        $or: [
+          { patientId: userId },
+          { doctorId: userId },
+          { patientEmail: userEmail },
+          { doctorEmail: userEmail },
+          { reminderRecipientEmail: userEmail },
+        ],
+      }),
+      PatientActivity.deleteMany({ userId }),
+      DoctorReviewRequest.deleteMany({
+        $or: [
+          { patientId: userId },
+          { doctorId: userId },
+          { patientEmail: userEmail },
+          { doctorEmail: userEmail },
+        ],
+      }),
+      Prescription.deleteMany({
+        $or: [
+          { patientId: userId },
+          { doctorId: userId },
+          { patientEmail: userEmail },
+          { doctorEmail: userEmail },
+        ],
+      }),
+      Order.deleteMany({ userId }),
+      PaymentTransaction.deleteMany({
+        $or: [
+          { userId },
+          ...(orderIds.length ? [{ orderId: { $in: orderIds } }] : []),
+        ],
+      }),
+    ]);
+
+    await User.deleteOne({ _id: userId });
+
+    return res.json({
+      success: true,
+      message: 'Account deleted successfully',
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

@@ -34,18 +34,21 @@ router.post('/forgot', async (req, res) => {
       });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = String(email).toLowerCase().trim();
 
-    // Find user by email
-    const user = await User.findOne({ email: normalizedEmail });
-
-    // For security, don't reveal if user exists or not
-    // Always return success message
+    // Find user by registered account email.
+    // Use normalized exact match first, then a case-insensitive fallback for legacy data.
+    let user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      console.log('   User not found (but returning success for security)');
-      return res.json({
-        success: true,
-        message: 'If an account with that email exists, a password reset link has been sent.'
+      const escaped = normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      user = await User.findOne({ email: new RegExp(`^${escaped}$`, 'i') });
+    }
+
+    if (!user) {
+      console.log('   ❌ User not found for forgot password');
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address.'
       });
     }
 
@@ -63,10 +66,18 @@ router.post('/forgot', async (req, res) => {
 
     // Send reset email
     try {
+      const registeredEmail = String(user.email || '').trim().toLowerCase();
+      if (!registeredEmail) {
+        throw new Error('Registered email is missing for this account');
+      }
+
+      console.log('   Registered email matched:', registeredEmail === normalizedEmail ? 'exact' : 'normalized/fallback');
+      console.log('   Sending reset email to registered account:', registeredEmail);
+
       await sendPasswordResetEmail(
-        user.email,
+        registeredEmail,
         resetToken,
-        user.userName || user.email.split('@')[0]
+        user.userName || registeredEmail.split('@')[0]
       );
       console.log('   ✅ Password reset email sent');
     } catch (emailError) {

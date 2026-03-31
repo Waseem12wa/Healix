@@ -53,6 +53,7 @@ import RecommendIcon from '@mui/icons-material/Recommend'
 import GroupIcon from '@mui/icons-material/Group'
 import TrackChangesIcon from '@mui/icons-material/TrackChanges'
 import RefreshIcon from '@mui/icons-material/Refresh'
+import SettingsIcon from '@mui/icons-material/Settings'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNotifications } from '../hooks/useNotifications'
 import { clearAuthData } from '../utils/auth'
@@ -197,11 +198,10 @@ export default function DoctorDashboard() {
       href: '/doctor-reviews/side-effects',
     },
     {
-      label: 'Medicine Shop',
-      description: 'Purchase medicines directly from our store.',
+      label: 'Medicine Manager',
+      description: 'View and manage platform medicine records for patient safety.',
       icon: <ShoppingCartIcon sx={{ color: '#FFB703' }} />,
-      reviewFeature: 'medication-pharmacy',
-      href: '/doctor-reviews/medication-pharmacy',
+      href: '/doctor-medicines',
     },
     {
       label: 'AI Health Assistant',
@@ -563,6 +563,12 @@ export default function DoctorDashboard() {
                     <HistoryIcon fontSize="small" />
                   </ListItemIcon>
                   <ListItemText primary="History" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
+                </MenuItem>
+                <MenuItem onClick={() => handleProfileMenuNavigate('/settings', 'Opened settings')}>
+                  <ListItemIcon sx={{ color: '#64748B' }}>
+                    <SettingsIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText primary="Settings" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
                 </MenuItem>
                 <Divider />
                 <MenuItem onClick={handleLogout}>

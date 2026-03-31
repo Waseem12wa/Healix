@@ -1,4 +1,4 @@
-import { Box, Button, Card, CardContent, Chip, IconButton, Stack, Typography, Avatar, Badge, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
+import { Box, Button, Card, CardContent, Chip, IconButton, Stack, Typography, Avatar, Badge, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { Variants } from 'framer-motion'
@@ -16,7 +16,10 @@ import WarningIcon from '@mui/icons-material/Warning'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts'
+import SettingsIcon from '@mui/icons-material/Settings'
+import { clearAuthData } from '../utils/auth'
 
 interface Medicine {
   id: number
@@ -48,7 +51,9 @@ interface Payment {
 }
 
 export default function ProviderDashboard() {
+  const navigate = useNavigate()
   const [selectedTab, setSelectedTab] = useState('dashboard')
+  const [profileMenuAnchor, setProfileMenuAnchor] = useState<null | HTMLElement>(null)
   
   const [medicines, setMedicines] = useState<Medicine[]>([
     { id: 1, name: 'Aspirin', category: 'Pain Relief', stock: 500, price: 5.99, status: 'available', lastUpdated: '2025-01-10' },
@@ -76,6 +81,25 @@ export default function ProviderDashboard() {
   const userName = useMemo(() => {
     return (localStorage.getItem('userName') || 'Provider')
   }, [])
+
+  const handleOpenProfileMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setProfileMenuAnchor(event.currentTarget)
+  }
+
+  const handleCloseProfileMenu = () => {
+    setProfileMenuAnchor(null)
+  }
+
+  const handleProfileNavigate = (path: string) => {
+    handleCloseProfileMenu()
+    navigate(path)
+  }
+
+  const handleLogout = () => {
+    clearAuthData()
+    handleCloseProfileMenu()
+    navigate('/login')
+  }
 
   const featureItems = [
     { label: 'Provider Dashboard', description: 'Overview of inventory, requests and payments.', icon: <InventoryIcon color="primary" />, value: 'dashboard' as const },
@@ -192,13 +216,45 @@ export default function ProviderDashboard() {
               <Badge badgeContent={pendingRequests.length + pendingPayments.length + lowStockMedicines.length} color="error">
                 <IconButton><NotificationsIcon /></IconButton>
               </Badge>
-              <Stack direction="row" alignItems="center" spacing={1.5}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1.5}
+                onClick={handleOpenProfileMenu}
+                sx={{ cursor: 'pointer', px: 1.25, py: 0.75, borderRadius: 2, border: '1px solid', borderColor: 'transparent', '&:hover': { borderColor: '#E2E8F0', bgcolor: '#F8FAFC' } }}
+              >
                 <Avatar sx={{ bgcolor: '#1947D2', width: 40, height: 40 }}>{userName.charAt(0)}</Avatar>
                 <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                   <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#1947D2' }}>{userName}</Typography>
                   <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>Healthcare Provider</Typography>
                 </Box>
               </Stack>
+              <Menu
+                anchorEl={profileMenuAnchor}
+                open={Boolean(profileMenuAnchor)}
+                onClose={handleCloseProfileMenu}
+                PaperProps={{ sx: { mt: 1, minWidth: 220, borderRadius: 2 } }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                <MenuItem onClick={() => handleProfileNavigate('/tools/notifications')}>
+                  <ListItemIcon><NotificationsIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText primary="Notifications" />
+                </MenuItem>
+                <MenuItem onClick={() => handleProfileNavigate('/profile/provider')}>
+                  <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText primary="Profile" />
+                </MenuItem>
+                <MenuItem onClick={() => handleProfileNavigate('/settings')}>
+                  <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText primary="Settings" />
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText primary="Logout" />
+                </MenuItem>
+              </Menu>
             </Stack>
           </Stack>
         </Box>
