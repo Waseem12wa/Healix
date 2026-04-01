@@ -33,7 +33,15 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       patient: ['/dashboard', '/tools/profile', '/profile/patient', '/settings'],
       doctor: ['/doctor-dashboard', '/doctor-profile', '/settings'],
       admin: ['/admin', '/profile/admin', '/settings'],
-      provider: ['/provider-dashboard', '/profile/provider', '/settings'],
+      provider: [
+        '/provider-dashboard',
+        '/provider/overview',
+        '/provider/medicines',
+        '/provider/orders',
+        '/provider/payments',
+        '/profile/provider',
+        '/settings',
+      ],
     }
 
     if (!userRole) return false

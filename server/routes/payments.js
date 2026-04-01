@@ -105,9 +105,10 @@ router.post('/create-intent', requireAuth, express_json, async (req, res) => {
       }
 
       const orderItems = [];
+      const providerIds = new Set();
       for (const item of medicines) {
         const medicineDoc = await MedicineInventory.findById(item.medicineId)
-          .select('medicineName sellingPrice quantity isExpired isActive');
+          .select('medicineName sellingPrice quantity isExpired isActive providerId');
 
         if (!medicineDoc || !medicineDoc.isActive || medicineDoc.isExpired) {
           return res.status(400).json({
@@ -125,6 +126,9 @@ router.post('/create-intent', requireAuth, express_json, async (req, res) => {
         }
 
         const unitPrice = Number(medicineDoc.sellingPrice || 0);
+        if (medicineDoc.providerId) {
+          providerIds.add(String(medicineDoc.providerId));
+        }
         orderItems.push({
           medicineId: medicineDoc._id,
           medicineName: medicineDoc.medicineName,
@@ -139,6 +143,9 @@ router.post('/create-intent', requireAuth, express_json, async (req, res) => {
       newOrder.currency = (currency || 'PKR').toUpperCase();
       newOrder.totalAmount = totalAmount;
       newOrder.finalAmount = totalAmount;
+      if (providerIds.size === 1) {
+        newOrder.providerId = [...providerIds][0];
+      }
       await newOrder.save();
       orderId = newOrder._id;
     }

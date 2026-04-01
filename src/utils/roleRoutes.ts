@@ -70,6 +70,10 @@ export const roleRoutes: RouteConfig[] = [
   
   // Provider-specific routes
   { path: '/provider-dashboard', allowedRoles: ['provider'] },
+  { path: '/provider/overview', allowedRoles: ['provider'] },
+  { path: '/provider/medicines', allowedRoles: ['provider'] },
+  { path: '/provider/orders', allowedRoles: ['provider'] },
+  { path: '/provider/payments', allowedRoles: ['provider'] },
   { path: '/profile/provider', allowedRoles: ['provider'] },
 ]
 

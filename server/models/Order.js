@@ -15,6 +15,12 @@ const orderSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  providerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+    index: true
+  },
   
   // Medicine Details
   medicines: [{
@@ -124,7 +130,9 @@ const orderSchema = new mongoose.Schema({
     default: Date.now
   },
   paymentCompletedAt: Date,
-  deliveredAt: Date
+  deliveredAt: Date,
+  providerApprovedAt: Date,
+  providerRejectedAt: Date
 });
 
 // Middleware to generate order number

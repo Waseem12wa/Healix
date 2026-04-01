@@ -31,6 +31,10 @@ import AdminMedicinesPage from './pages/AdminMedicinesPage'
 import DoctorDashboard from './pages/DoctorDashboard'
 import DoctorMedicineManagerPage from './pages/DoctorMedicineManagerPage'
 import ProviderDashboard from './pages/ProviderDashboard'
+import ProviderOverviewPage from './pages/provider/ProviderOverviewPage'
+import ProviderMedicinesPage from './pages/provider/ProviderMedicinesPage'
+import ProviderOrdersPage from './pages/provider/ProviderOrdersPage'
+import ProviderPaymentsPage from './pages/provider/ProviderPaymentsPage'
 import Appointments from './pages/Appointments'
 import DoctorProfile from './pages/DoctorProfile'
 import DoctorHistory from './pages/DoctorHistory'
@@ -95,6 +99,10 @@ export const router = createBrowserRouter([
       
       // Protected routes - Provider
       { path: 'provider-dashboard', element: protect(<ProviderDashboard />) },
+      { path: 'provider/overview', element: protect(<ProviderOverviewPage />) },
+      { path: 'provider/medicines', element: protect(<ProviderMedicinesPage />) },
+      { path: 'provider/orders', element: protect(<ProviderOrdersPage />) },
+      { path: 'provider/payments', element: protect(<ProviderPaymentsPage />) },
       { path: 'profile/provider', element: protect(<ProviderProfile />) },
       
       // Protected routes - Shared (multiple roles)

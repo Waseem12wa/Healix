@@ -20,6 +20,7 @@ import paymentRoutes from './routes/payments.js';
 import reviewRoutes from './routes/reviews.js';
 import medicalRecordRoutes from './routes/medicalRecord.js';
 import adminRoutes from './routes/admin.js';
+import providerRoutes from './routes/provider.js';
 import { reminderEmailJob } from './jobs/reminderEmailJob.js';
 import { scheduleAppointmentReminderJob } from './jobs/appointmentReminderJob.js';
 
@@ -111,6 +112,7 @@ app.use('/api/medical-record', medicalRecordRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/provider', providerRoutes);
 
 // Test endpoint
 app.get('/', (req, res) => {

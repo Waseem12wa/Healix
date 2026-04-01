@@ -10,15 +10,19 @@ import {
   Divider,
   Drawer,
   IconButton,
+  InputAdornment,
   List,
   ListItem,
   ListItemText,
+  MenuItem,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
+import SearchIcon from '@mui/icons-material/Search'
 import { useNavigate } from 'react-router-dom'
 import BackButton from '../ui/BackButton'
 import { getMedicines, type Medicine } from '../services/paymentService'
@@ -45,6 +49,10 @@ export default function MedicineShop() {
   const [error, setError] = useState('')
   const [cart, setCart] = useState<CartData>({})
   const [cartOpen, setCartOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [stockFilter, setStockFilter] = useState('all')
+  const [sortBy, setSortBy] = useState<'name-asc' | 'price-asc' | 'price-desc'>('name-asc')
 
   const refreshCart = () => {
     setCart(getCart())
@@ -89,6 +97,51 @@ export default function MedicineShop() {
       }
     })
   }, [medicines])
+
+  const categories = useMemo(() => {
+    const unique = new Set<string>()
+    cards.forEach((item) => {
+      if (item.category) unique.add(item.category)
+    })
+    return Array.from(unique).sort((a, b) => a.localeCompare(b))
+  }, [cards])
+
+  const filteredCards = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    const next = cards.filter((item) => {
+      const matchesQuery =
+        !query ||
+        String(item.medicineName || '').toLowerCase().includes(query) ||
+        String(item.genericName || '').toLowerCase().includes(query) ||
+        String(item.category || '').toLowerCase().includes(query)
+
+      const matchesCategory = categoryFilter === 'all' || (item.category || '') === categoryFilter
+
+      const quantity = Number(item.quantity || 0)
+      const matchesStock =
+        stockFilter === 'all' ||
+        (stockFilter === 'in-stock' && quantity > 0) ||
+        (stockFilter === 'out-of-stock' && quantity <= 0)
+
+      return matchesQuery && matchesCategory && matchesStock
+    })
+
+    next.sort((a, b) => {
+      if (sortBy === 'name-asc') return String(a.medicineName || '').localeCompare(String(b.medicineName || ''))
+      if (sortBy === 'price-asc') return Number(a.sellingPrice || 0) - Number(b.sellingPrice || 0)
+      return Number(b.sellingPrice || 0) - Number(a.sellingPrice || 0)
+    })
+
+    return next
+  }, [cards, categoryFilter, searchQuery, sortBy, stockFilter])
+
+  const clearFilters = () => {
+    setSearchQuery('')
+    setCategoryFilter('all')
+    setStockFilter('all')
+    setSortBy('name-asc')
+  }
 
   const cartItems = useMemo(() => Object.values(cart), [cart])
   const cartCount = useMemo(() => getCartItemCount(), [cart])
@@ -145,13 +198,75 @@ export default function MedicineShop() {
           </IconButton>
         </Stack>
 
+        <Card sx={{ borderRadius: 2, border: '1px solid #D7E0EA' }}>
+          <CardContent sx={{ p: { xs: 2, md: 2.25 } }}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }}>
+              <TextField
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search medicine, generic name or category"
+                fullWidth
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                select
+                label="Category"
+                size="small"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                sx={{ minWidth: 170 }}
+              >
+                <MenuItem value="all">All Categories</MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category} value={category}>{category}</MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Stock"
+                size="small"
+                value={stockFilter}
+                onChange={(e) => setStockFilter(e.target.value)}
+                sx={{ minWidth: 140 }}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="in-stock">In Stock</MenuItem>
+                <MenuItem value="out-of-stock">Out of Stock</MenuItem>
+              </TextField>
+              <TextField
+                select
+                label="Sort"
+                size="small"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'name-asc' | 'price-asc' | 'price-desc')}
+                sx={{ minWidth: 170 }}
+              >
+                <MenuItem value="name-asc">Name (A-Z)</MenuItem>
+                <MenuItem value="price-asc">Price (Low to High)</MenuItem>
+                <MenuItem value="price-desc">Price (High to Low)</MenuItem>
+              </TextField>
+              <Button variant="outlined" onClick={clearFilters}>Reset</Button>
+            </Stack>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Showing {filteredCards.length} of {cards.length} medicines
+            </Typography>
+          </CardContent>
+        </Card>
+
         {loading ? (
           <Stack alignItems="center" sx={{ py: 7 }}>
             <CircularProgress />
           </Stack>
         ) : error ? (
           <Alert severity="error">{error}</Alert>
-        ) : cards.length === 0 ? (
+        ) : filteredCards.length === 0 ? (
           <Alert severity="info">No medicines available yet.</Alert>
         ) : (
           <Box
@@ -166,7 +281,7 @@ export default function MedicineShop() {
               gap: 2,
             }}
           >
-            {cards.map((item) => (
+            {filteredCards.map((item) => (
               <Box key={item._id}>
                 <Card sx={{ height: '100%', borderRadius: 2, border: '1px solid #D7E0EA' }}>
                   <CardContent sx={{ p: 2.25 }}>

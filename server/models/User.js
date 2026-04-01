@@ -117,6 +117,55 @@ const userSchema = new mongoose.Schema({
       default: false
     }
   },
+  // Provider Profile Fields (for pharmacies/medicine providers)
+  providerProfile: {
+    // Personal Information
+    fullName: String,
+    phoneNumber: String,
+    gender: {
+      type: String,
+      enum: ['Male', 'Female', 'Other']
+    },
+    profileImage: String, // Base64 encoded image
+    specialization: String, // e.g., "Pharmacy", "Medical Equipment", "Diagnostic Lab"
+    // Clinic/Pharmacy Details
+    clinicName: String,
+    pharmacyName: String,
+    clinicAddress: String,
+    city: String,
+    // License & Registration
+    licenseNumber: String,
+    licenseIssueDate: Date,
+    licenseExpiryDate: Date,
+    registrationNumber: String,
+    registrationIssueDate: Date,
+    registrationExpiryDate: Date,
+    paymentDetails: {
+      type: new mongoose.Schema(
+        {
+          accountHolderName: String,
+          bankName: String,
+          bankAccountNumber: String,
+          iban: String,
+          walletProvider: String,
+          walletNumber: String,
+        },
+        { _id: false }
+      ),
+      default: () => ({}),
+    },
+    // Availability
+    workingDays: [String], // e.g., ['Monday', 'Tuesday', 'Wednesday']
+    startTime: String, // e.g., '09:00'
+    endTime: String, // e.g., '17:00'
+    // Service Details
+    servicesOffered: [String], // e.g., ['Medicine Sales', 'Consultation', 'Delivery']
+    // Profile Completion Status
+    profileCompleted: {
+      type: Boolean,
+      default: false
+    }
+  },
   resetPasswordToken: {
     type: String,
     default: null

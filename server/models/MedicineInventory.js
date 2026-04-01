@@ -10,6 +10,16 @@ const medicineInventorySchema = new mongoose.Schema({
     trim: true
   },
   genericName: String,
+  providerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true,
+    default: null
+  },
+  providerName: {
+    type: String,
+    default: ''
+  },
   
   // Medicine Details (from existing system)
   activeIngredients: [String],
@@ -98,6 +108,10 @@ const medicineInventorySchema = new mongoose.Schema({
   
   // Images & Documentation
   imageUrl: String,
+  description: {
+    type: String,
+    default: ''
+  },
   documentUrl: String,
   
   // Timestamps
@@ -125,6 +139,7 @@ medicineInventorySchema.pre('save', function(next) {
 medicineInventorySchema.index({ medicineName: 1, isActive: 1 });
 medicineInventorySchema.index({ expiryDate: 1, isActive: 1 });
 medicineInventorySchema.index({ quantity: 1, reorderLevel: 1 });
+medicineInventorySchema.index({ providerId: 1, isActive: 1, createdAt: -1 });
 
 // Instance method to check stock availability
 medicineInventorySchema.methods.isInStock = function(requestedQuantity = 1) {

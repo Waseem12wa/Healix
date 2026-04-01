@@ -60,6 +60,98 @@ const sanitizeProfilePayload = (payload = {}) => {
   next.patientProfile = profileUpdate;
   return next;
 };
+const sanitizeProviderProfilePayload = (payload = {}, role) => {
+  const next = {};
+
+  // Top-level fields apply to all roles
+  if (typeof payload.userName === 'string') {
+    next.userName = payload.userName.trim();
+  }
+  if (typeof payload.email === 'string') {
+    next.email = payload.email.trim().toLowerCase();
+  }
+  if (typeof payload.phone === 'string') {
+    next.phone = payload.phone.trim();
+  }
+
+  // Handle role-specific profile updates
+  if (role === 'provider') {
+    const providerProfile = payload.providerProfile && typeof payload.providerProfile === 'object'
+      ? payload.providerProfile
+      : payload;
+
+    const profileUpdate = {};
+    if (typeof providerProfile.profileImage === 'string') profileUpdate.profileImage = providerProfile.profileImage;
+    if (typeof providerProfile.fullName === 'string') profileUpdate.fullName = providerProfile.fullName.trim();
+    if (typeof providerProfile.phoneNumber === 'string') profileUpdate.phoneNumber = providerProfile.phoneNumber.trim();
+    if (typeof providerProfile.gender === 'string') profileUpdate.gender = providerProfile.gender;
+    if (typeof providerProfile.specialization === 'string') profileUpdate.specialization = providerProfile.specialization.trim();
+    if (typeof providerProfile.clinicName === 'string') profileUpdate.clinicName = providerProfile.clinicName.trim();
+    if (typeof providerProfile.pharmacyName === 'string') profileUpdate.pharmacyName = providerProfile.pharmacyName.trim();
+    if (typeof providerProfile.clinicAddress === 'string') profileUpdate.clinicAddress = providerProfile.clinicAddress.trim();
+    if (typeof providerProfile.licenseNumber === 'string') profileUpdate.licenseNumber = providerProfile.licenseNumber.trim();
+    if (typeof providerProfile.registrationNumber === 'string') profileUpdate.registrationNumber = providerProfile.registrationNumber.trim();
+    if (Array.isArray(providerProfile.workingDays)) profileUpdate.workingDays = providerProfile.workingDays;
+    if (typeof providerProfile.startTime === 'string') profileUpdate.startTime = providerProfile.startTime.trim();
+    if (typeof providerProfile.endTime === 'string') profileUpdate.endTime = providerProfile.endTime.trim();
+    if (Array.isArray(providerProfile.servicesOffered)) profileUpdate.servicesOffered = providerProfile.servicesOffered;
+
+    next.providerProfile = profileUpdate;
+  } else if (role === 'doctor') {
+    const doctorProfile = payload.doctorProfile && typeof payload.doctorProfile === 'object'
+      ? payload.doctorProfile
+      : payload;
+
+    const profileUpdate = {};
+    if (typeof doctorProfile.profileImage === 'string') profileUpdate.profileImage = doctorProfile.profileImage;
+    if (typeof doctorProfile.fullName === 'string') profileUpdate.fullName = doctorProfile.fullName.trim();
+    if (typeof doctorProfile.phoneNumber === 'string') profileUpdate.phoneNumber = doctorProfile.phoneNumber.trim();
+    if (typeof doctorProfile.gender === 'string') profileUpdate.gender = doctorProfile.gender;
+    if (typeof doctorProfile.specialization === 'string') profileUpdate.specialization = doctorProfile.specialization.trim();
+    if (typeof doctorProfile.clinicName === 'string') profileUpdate.clinicName = doctorProfile.clinicName.trim();
+    if (typeof doctorProfile.clinicAddress === 'string') profileUpdate.clinicAddress = doctorProfile.clinicAddress.trim();
+    if (typeof doctorProfile.pmdcNumber === 'string') profileUpdate.pmdcNumber = doctorProfile.pmdcNumber.trim();
+    if (typeof doctorProfile.yearsOfExperience === 'number' || typeof doctorProfile.yearsOfExperience === 'string') {
+      const years = Number(doctorProfile.yearsOfExperience);
+      if (Number.isFinite(years)) profileUpdate.yearsOfExperience = years;
+    }
+    if (Array.isArray(doctorProfile.workingDays)) profileUpdate.workingDays = doctorProfile.workingDays;
+    if (typeof doctorProfile.startTime === 'string') profileUpdate.startTime = doctorProfile.startTime.trim();
+    if (typeof doctorProfile.endTime === 'string') profileUpdate.endTime = doctorProfile.endTime.trim();
+    if (typeof doctorProfile.inPersonFee === 'number' || typeof doctorProfile.inPersonFee === 'string') {
+      const fee = Number(doctorProfile.inPersonFee);
+      if (Number.isFinite(fee)) profileUpdate.inPersonFee = fee;
+    }
+    if (typeof doctorProfile.onlineFee === 'number' || typeof doctorProfile.onlineFee === 'string') {
+      const fee = Number(doctorProfile.onlineFee);
+      if (Number.isFinite(fee)) profileUpdate.onlineFee = fee;
+    }
+
+    next.doctorProfile = profileUpdate;
+  } else {
+    // Default to patient profile for other roles
+    const patientProfile = payload.patientProfile && typeof payload.patientProfile === 'object'
+      ? payload.patientProfile
+      : payload;
+
+    const profileUpdate = {};
+    if (typeof patientProfile.profileImage === 'string') profileUpdate.profileImage = patientProfile.profileImage;
+    if (typeof patientProfile.assignedDoctorId === 'string' || patientProfile.assignedDoctorId === null) {
+      profileUpdate.assignedDoctorId = patientProfile.assignedDoctorId;
+    }
+    if (typeof patientProfile.age === 'number' || typeof patientProfile.age === 'string') {
+      const age = Number(patientProfile.age);
+      if (Number.isFinite(age)) profileUpdate.age = age;
+    }
+    if (typeof patientProfile.gender === 'string') profileUpdate.gender = patientProfile.gender;
+    if (typeof patientProfile.mobileNumber === 'string') profileUpdate.mobileNumber = patientProfile.mobileNumber.trim();
+    if (typeof patientProfile.bio === 'string') profileUpdate.bio = patientProfile.bio.trim();
+
+    next.patientProfile = profileUpdate;
+  }
+
+  return next;
+};
 
 const isPatientProfileCompleted = (user) => {
   const profile = user?.patientProfile || {};
@@ -108,6 +200,12 @@ const serializeUserForClient = (user) => ({
     assignedDoctorId: user?.patientProfile?.assignedDoctorId
       ? String(user.patientProfile.assignedDoctorId)
       : null,
+  },
+  doctorProfile: {
+    ...(user.doctorProfile || {}),
+  },
+  providerProfile: {
+    ...(user.providerProfile || {}),
   },
   profileCompleted: isProfileCompletedForUser(user),
 });
@@ -745,7 +843,7 @@ router.put('/me/profile', requireAuth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const incoming = sanitizeProfilePayload(req.body || {});
+    const incoming = sanitizeProviderProfilePayload(req.body || {}, user.role);
 
     if (Object.prototype.hasOwnProperty.call(incoming.patientProfile || {}, 'assignedDoctorId')) {
       const nextAssignedDoctorId = incoming.patientProfile.assignedDoctorId;
@@ -793,22 +891,45 @@ router.put('/me/profile', requireAuth, async (req, res) => {
       user.email = incoming.email;
     }
 
-    user.patientProfile = {
-      ...(user.patientProfile || {}),
-      ...(incoming.patientProfile || {}),
-    };
+
+
+    // Handle role-based profile merging
+    if (user.role === 'provider') {
+      user.providerProfile = {
+        ...(user.providerProfile || {}),
+        ...(incoming.providerProfile || {}),
+      };
+    } else if (user.role === 'doctor') {
+      user.doctorProfile = {
+        ...(user.doctorProfile || {}),
+        ...(incoming.doctorProfile || {}),
+      };
+    } else {
+      user.patientProfile = {
+        ...(user.patientProfile || {}),
+        ...(incoming.patientProfile || {}),
+      };
+    }
 
     await user.save();
 
-    await PatientActivity.create({
-      userId: user._id,
-      category: 'profile-update',
-      title: 'Profile updated',
-      details: 'Patient profile information updated',
-      metadata: {
-        updatedFields: Object.keys(incoming.patientProfile || {}),
-      },
-    });
+    const profileTypeKey = user.role === 'provider'
+      ? 'providerProfile'
+      : user.role === 'doctor'
+      ? 'doctorProfile'
+      : 'patientProfile';
+
+    if (user.role === 'patient') {
+      await PatientActivity.create({
+        userId: user._id,
+        category: 'profile-update',
+        title: 'Profile updated',
+        details: 'Patient profile information updated',
+        metadata: {
+          updatedFields: Object.keys(incoming[profileTypeKey] || {}),
+        },
+      });
+    }
 
     return res.json({
       success: true,
@@ -843,10 +964,16 @@ router.post('/me/profile-image', requireAuth, upload.single('image'), async (req
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    user.patientProfile = {
-      ...(user.patientProfile || {}),
-      profileImage: uploaded.url,
-    };
+    if (user.role === 'provider') {
+      if (user.providerProfile && (user.providerProfile.paymentDetails === undefined || user.providerProfile.paymentDetails === null)) {
+        user.set('providerProfile.paymentDetails', {});
+      }
+      user.set('providerProfile.profileImage', uploaded.url);
+    } else if (user.role === 'doctor') {
+      user.set('doctorProfile.profileImage', uploaded.url);
+    } else {
+      user.set('patientProfile.profileImage', uploaded.url);
+    }
 
     await user.save();
 
@@ -866,6 +993,7 @@ router.post('/me/profile-image', requireAuth, upload.single('image'), async (req
       message: 'Profile image uploaded successfully',
       data: {
         profileImage: uploaded.url,
+        user: serializeUserForClient(user),
       },
     });
   } catch (error) {

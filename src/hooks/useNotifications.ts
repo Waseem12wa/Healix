@@ -15,6 +15,9 @@ interface Notification {
     | 'doctor_review_result'
     | 'medication_reminder_set'
     | 'medication_reminder_due'
+    | 'provider_order_update'
+    | 'provider_payment_update'
+    | 'provider_support_message'
   title: string
   message: string
   read: boolean
