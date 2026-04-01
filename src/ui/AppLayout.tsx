@@ -44,7 +44,7 @@ export function AppLayout() {
         navigate(dashboardPath, { replace: true })
       } else {
         // Not logged in - only redirect if not on a public route
-        const publicRoutes = ['/', '/about', '/contact', '/login', '/signup', '/forgot-password', '/reset-password']
+        const publicRoutes = ['/', '/about', '/contact', '/guide', '/guide/patient', '/guide/pateint', '/guide/doctor', '/guide/provider', '/login', '/signup', '/forgot-password', '/reset-password']
         if (!publicRoutes.includes(currentPath)) {
           console.warn(`🚫 Route access denied: ${currentPath} requires authentication. Redirecting to login`)
           navigate('/login', { replace: true })
@@ -60,7 +60,7 @@ export function AppLayout() {
     }
 
     const currentPath = location.pathname
-    const ignoredPaths = ['/', '/about', '/contact', '/login', '/signup', '/forgot-password', '/reset-password']
+    const ignoredPaths = ['/', '/about', '/contact', '/guide', '/guide/patient', '/guide/pateint', '/guide/doctor', '/guide/provider', '/login', '/signup', '/forgot-password', '/reset-password']
     if (ignoredPaths.includes(currentPath)) {
       return
     }
@@ -199,6 +199,25 @@ export function AppLayout() {
                 }}
               >
                 Contact
+              </Button>
+              <Button
+                component={Link}
+                to="/guide"
+                sx={{
+                  color: '#FFFFFF',
+                  fontSize: { xs: '0.9375rem', md: '1rem' },
+                  fontWeight: 600,
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.15)',
+                    transform: 'translateY(-2px)'
+                  }
+                }}
+              >
+                Guide
               </Button>
             </Stack>
           </Box>

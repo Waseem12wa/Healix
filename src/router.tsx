@@ -4,6 +4,13 @@ import ProtectedRoute from './components/ProtectedRoute'
 import LandingPage from './pages/LandingPage'
 import AboutPage from './pages/AboutPage'
 import ContactPage from './pages/ContactPage'
+import GuidePage from './pages/GuidePage'
+import PatientGuidePage from './pages/PatientGuidePage'
+import PatientGuideFeaturePage from './pages/PatientGuideFeaturePage'
+import DoctorGuidePage from './pages/DoctorGuidePage'
+import DoctorGuideFeaturePage from './pages/DoctorGuideFeaturePage'
+import ProviderGuidePage from './pages/ProviderGuidePage'
+import ProviderGuideFeaturePage from './pages/ProviderGuideFeaturePage'
 import LoginPage from './pages/auth/LoginPage'
 import SignupPage from './pages/auth/SignupPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
@@ -60,6 +67,14 @@ export const router = createBrowserRouter([
       { index: true, element: <LandingPage /> },
       { path: 'about', element: <AboutPage /> },
       { path: 'contact', element: <ContactPage /> },
+      { path: 'guide', element: <GuidePage /> },
+      { path: 'guide/patient', element: <PatientGuidePage /> },
+      { path: 'guide/pateint', element: <PatientGuidePage /> },
+      { path: 'guide/patient/:featureSlug', element: <PatientGuideFeaturePage /> },
+      { path: 'guide/doctor', element: <DoctorGuidePage /> },
+      { path: 'guide/doctor/:featureSlug', element: <DoctorGuideFeaturePage /> },
+      { path: 'guide/provider', element: <ProviderGuidePage /> },
+      { path: 'guide/provider/:featureSlug', element: <ProviderGuideFeaturePage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'signup', element: <SignupPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },

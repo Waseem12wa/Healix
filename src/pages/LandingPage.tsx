@@ -13,6 +13,7 @@ import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded'
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 export default function LandingPage() {
   const theme = useTheme()
@@ -330,6 +331,8 @@ export default function LandingPage() {
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
               <Button
+                component={Link}
+                to="/signup"
                 variant="contained"
                 size="large"
                 sx={{
@@ -344,6 +347,8 @@ export default function LandingPage() {
                 Get Started Free
               </Button>
               <Button
+                component={Link}
+                to="/about"
                 variant="outlined"
                 size="large"
                 sx={{

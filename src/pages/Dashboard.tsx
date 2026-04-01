@@ -40,6 +40,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNotifications } from '../hooks/useNotifications'
 import { clearAuthData } from '../utils/auth'
 import { getMyProfile, getPatientActivities, logPatientActivity } from '../services/patientService'
+import BackButton from '../ui/BackButton'
 import {
   Area,
   AreaChart,
@@ -563,6 +564,9 @@ export default function Dashboard() {
         </Box>
 
         <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 2.5, md: 3.5 }, px: { xs: 3, md: 4 }, width: '100%' }}>
+          <Box sx={{ mb: 2 }}>
+            <BackButton />
+          </Box>
           <motion.div variants={containerVariants} initial="hidden" animate="visible">
             <Stack spacing={4}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>

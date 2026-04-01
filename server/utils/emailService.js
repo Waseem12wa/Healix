@@ -742,3 +742,79 @@ export const sendMedicineReminderEmail = async (patientEmail, patientName, medic
     }
   };
 
+/**
+ * Send contact form message to configured support inbox
+ */
+export const sendContactMessageEmail = async ({ firstName, lastName, email, subject, message }) => {
+  const recipientEmail = String(process.env.SUPPORT_EMAIL || EMAIL_USER || '').trim();
+
+  if (!recipientEmail) {
+    throw new Error('Support email is not configured');
+  }
+
+  const senderName = `${firstName} ${lastName}`.trim();
+
+  // Development mode: Print contact request to console instead of sending.
+  if (DEVELOPMENT_MODE) {
+    console.log('\n' + '='.repeat(70));
+    console.log('📨 CONTACT MESSAGE (Development Mode - No Email Sent)');
+    console.log('='.repeat(70));
+    console.log(`👤 From: ${senderName}`);
+    console.log(`📬 Reply Email: ${email}`);
+    console.log(`🧾 Subject: ${subject}`);
+    console.log(`📩 Message:\n${message}`);
+    console.log(`📥 Would be delivered to: ${recipientEmail}`);
+    console.log('='.repeat(70) + '\n');
+    return { success: true, messageId: 'dev-mode-console' };
+  }
+
+  // Use Resend when configured.
+  if (USE_RESEND && resend) {
+    const { data, error } = await resend.emails.send({
+      from: 'Healix <onboarding@resend.dev>',
+      to: recipientEmail,
+      replyTo: email,
+      subject: `[Contact] ${subject}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 700px; margin: 0 auto; padding: 20px;">
+          <h2 style="margin-bottom: 10px;">New Contact Message</h2>
+          <p><strong>Name:</strong> ${senderName}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Subject:</strong> ${subject}</p>
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+          <p style="white-space: pre-wrap;">${message}</p>
+        </div>
+      `,
+      text: `New Contact Message\n\nName: ${senderName}\nEmail: ${email}\nSubject: ${subject}\n\nMessage:\n${message}`,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return { success: true, messageId: data?.id };
+  }
+
+  // Use nodemailer/SMTP.
+  const transporter = createTransporter();
+  const info = await transporter.sendMail({
+    from: `"Healix Contact" <${EMAIL_USER}>`,
+    to: recipientEmail,
+    replyTo: email,
+    subject: `[Contact] ${subject}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 700px; margin: 0 auto; padding: 20px;">
+        <h2 style="margin-bottom: 10px;">New Contact Message</h2>
+        <p><strong>Name:</strong> ${senderName}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Subject:</strong> ${subject}</p>
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;" />
+        <p style="white-space: pre-wrap;">${message}</p>
+      </div>
+    `,
+    text: `New Contact Message\n\nName: ${senderName}\nEmail: ${email}\nSubject: ${subject}\n\nMessage:\n${message}`,
+  });
+
+  return { success: true, messageId: info?.messageId };
+};
+

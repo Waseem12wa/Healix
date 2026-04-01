@@ -2,13 +2,20 @@ import { Box, Button, Card, CardContent, Container, Stack, TextField, Typography
 import { motion } from 'framer-motion'
 import EmailIcon from '@mui/icons-material/Email'
 import PhoneIcon from '@mui/icons-material/Phone'
-import LocationOnIcon from '@mui/icons-material/LocationOn'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import SendIcon from '@mui/icons-material/Send'
-import PageHeader from '../ui/PageHeader'
+import { useState } from 'react'
+import { sendContactMessage } from '../services/contactService'
 
 export default function ContactPage() {
   const theme = useTheme()
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const contactInfo = [
     {
@@ -21,25 +28,50 @@ export default function ContactPage() {
     {
       icon: PhoneIcon,
       title: 'Phone',
-      content: '+1 (415) 555-0199',
-      link: 'tel:+14155550199',
+      content: '+92 307 8932652',
+      link: 'tel:+923078932652',
       color: '#EF476F'
-    },
-    {
-      icon: LocationOnIcon,
-      title: 'Address',
-      content: '123 Market St, San Francisco, CA',
-      link: null,
-      color: '#118AB2'
     },
     {
       icon: AccessTimeIcon,
       title: 'Support Hours',
-      content: 'Mon–Fri, 9:00–18:00 (PT)',
+      content: '24/7 Availability',
       link: null,
       color: '#FFD166'
     }
   ]
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setSubmitMessage(null)
+
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !subject.trim() || !message.trim()) {
+      setSubmitMessage({ type: 'error', text: 'Please complete all required fields.' })
+      return
+    }
+
+    try {
+      setSubmitting(true)
+      await sendContactMessage({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        subject: subject.trim(),
+        message: message.trim(),
+      })
+
+      setSubmitMessage({ type: 'success', text: 'Your message has been sent successfully.' })
+      setFirstName('')
+      setLastName('')
+      setEmail('')
+      setSubject('')
+      setMessage('')
+    } catch (error: any) {
+      setSubmitMessage({ type: 'error', text: error?.response?.data?.message || 'Failed to send your message. Please try again.' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: theme.palette.background.default }}>
@@ -226,12 +258,25 @@ export default function ContactPage() {
                   Send us a Message
                 </Typography>
 
-                <Stack spacing={3} component="form" onSubmit={(e) => e.preventDefault()}>
+                <Stack spacing={3} component="form" onSubmit={handleSubmit}>
+                  {submitMessage && (
+                    <Typography
+                      sx={{
+                        color: submitMessage.type === 'success' ? '#06D6A0' : '#EF476F',
+                        fontWeight: 600,
+                        fontSize: '0.95rem'
+                      }}
+                    >
+                      {submitMessage.text}
+                    </Typography>
+                  )}
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
                     <TextField
                       label="First name"
                       required
                       fullWidth
+                      value={firstName}
+                      onChange={(event) => setFirstName(event.target.value)}
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: '12px',
@@ -243,6 +288,8 @@ export default function ContactPage() {
                       label="Last name"
                       required
                       fullWidth
+                      value={lastName}
+                      onChange={(event) => setLastName(event.target.value)}
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: '12px',
@@ -256,6 +303,8 @@ export default function ContactPage() {
                     type="email"
                     required
                     fullWidth
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
                     helperText="We’ll only use this to reply to your message."
                     sx={{
                       '& .MuiOutlinedInput-root': {
@@ -268,6 +317,8 @@ export default function ContactPage() {
                     label="Subject"
                     required
                     fullWidth
+                    value={subject}
+                    onChange={(event) => setSubject(event.target.value)}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '12px',
@@ -281,6 +332,8 @@ export default function ContactPage() {
                     fullWidth
                     multiline
                     minRows={6}
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '12px',
@@ -306,6 +359,7 @@ export default function ContactPage() {
                       type="submit"
                       variant="contained"
                       size="large"
+                      disabled={submitting}
                       endIcon={<SendIcon />}
                       sx={{
                         px: 4,
@@ -320,7 +374,7 @@ export default function ContactPage() {
                         }
                       }}
                     >
-                      Send Message
+                      {submitting ? 'Sending...' : 'Send Message'}
                     </Button>
                   </Stack>
                 </Stack>
