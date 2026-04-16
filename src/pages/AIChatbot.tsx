@@ -18,6 +18,7 @@ import {
   alpha
 } from '@mui/material'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
+import FavoriteIcon from '@mui/icons-material/Favorite'
 import SendIcon from '@mui/icons-material/Send'
 import PersonIcon from '@mui/icons-material/Person'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -65,6 +66,8 @@ const toPlainParagraph = (text: string) => {
 
 export default function AIChatbot() {
   const theme = useTheme()
+  // Pink accent from continue button / error color
+  const pink = '#EF476F'
   const navigate = useNavigate()
   const [messages, setMessages] = useState<Msg[]>([
     { id: 'm1', role: 'bot', text: 'Hello! I am your AI Health Assistant. How can I help you today?' },
@@ -266,22 +269,22 @@ export default function AIChatbot() {
                 width: 60,
                 height: 60,
                 borderRadius: '20px',
-                background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.1) 0%, rgba(6, 214, 160, 0.1) 100%)',
+                background: `linear-gradient(135deg, ${pink} 0%, #FF6B9D 100%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 border: '1px solid',
-                borderColor: 'rgba(0, 180, 216, 0.2)',
-                boxShadow: '0 8px 32px rgba(0, 180, 216, 0.1)'
+                borderColor: pink,
+                boxShadow: `0 8px 32px ${pink}22`
               }}>
-                <SmartToyIcon sx={{ fontSize: 32, color: '#00B4D8' }} />
+                <FavoriteIcon sx={{ fontSize: 32, color: '#fff' }} />
               </Box>
               <Box>
                 <Typography
                   variant="h4"
                   fontWeight={800}
                   sx={{
-                    background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                    background: `linear-gradient(135deg, ${pink} 0%, #FF6B9D 100%)`,
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     fontSize: { xs: '1.75rem', md: '2.25rem' },
@@ -337,10 +340,10 @@ export default function AIChatbot() {
             {/* Main Chat Area */}
             <Card sx={{
               borderRadius: '24px',
-              boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.05)}`,
-              bgcolor: alpha(theme.palette.background.paper, 0.6),
-              backdropFilter: 'blur(20px)',
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              boxShadow: `0 4px 20px ${pink}22`,
+              bgcolor: 'rgba(255,255,255,0.85)',
+              backdropFilter: 'blur(24px)',
+              border: `1.5px solid ${pink}33`,
               display: 'flex',
               flexDirection: 'column',
               height: { xs: '60vh', md: '100%' }
@@ -356,22 +359,23 @@ export default function AIChatbot() {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <Box sx={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                        <Box sx={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', mb: 0.5 }}>
                           <Stack direction={m.role === 'user' ? 'row-reverse' : 'row'} spacing={1.5} sx={{ maxWidth: '80%' }}>
                             <Box sx={{
                               width: 36,
                               height: 36,
                               borderRadius: '50%',
                               background: m.role === 'bot'
-                                ? 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)'
+                                ? `linear-gradient(135deg, ${pink} 0%, #FF6B9D 100%)`
                                 : alpha(theme.palette.grey[400], 0.3),
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              flexShrink: 0
+                              flexShrink: 0,
+                              boxShadow: m.role === 'bot' ? `0 2px 8px ${pink}33` : undefined
                             }}>
                               {m.role === 'bot' ? (
-                                <SmartToyIcon sx={{ fontSize: 20, color: '#fff' }} />
+                                <FavoriteIcon sx={{ fontSize: 20, color: '#fff' }} />
                               ) : (
                                 <PersonIcon sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
                               )}
@@ -379,13 +383,18 @@ export default function AIChatbot() {
                             <Box sx={{
                               px: 2,
                               py: 1.5,
-                              borderRadius: 3,
+                              borderRadius: m.role === 'bot' ? '18px 18px 18px 6px' : '18px 18px 6px 18px',
                               bgcolor: m.role === 'bot'
-                                ? alpha('#00B4D8', 0.1)
+                                ? alpha(pink, 0.08)
                                 : alpha(theme.palette.grey[300], 0.5),
-                              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                              border: m.role === 'bot'
+                                ? `2.5px solid ${pink}`
+                                : `1.5px solid ${alpha(theme.palette.divider, 0.15)}`,
+                              boxShadow: m.role === 'bot' ? `0 2px 8px ${pink}22` : undefined,
+                              position: 'relative',
+                              minWidth: 60
                             }}>
-                              <Typography sx={{ lineHeight: 1.6 }}>{m.text}</Typography>
+                              <Typography sx={{ lineHeight: 1.7, fontSize: '1.05rem', color: m.role === 'bot' ? pink : undefined }}>{m.text}</Typography>
                               {m.role === 'bot' && m.actions && m.actions.length > 0 && (
                                 <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap' }}>
                                   {m.actions.map((action) => (
@@ -397,11 +406,12 @@ export default function AIChatbot() {
                                       sx={{
                                         borderRadius: 2,
                                         textTransform: 'none',
-                                        borderColor: alpha('#00B4D8', 0.5),
-                                        color: '#0087A8',
+                                        borderColor: pink,
+                                        color: pink,
+                                        fontWeight: 600,
                                         '&:hover': {
-                                          borderColor: '#00B4D8',
-                                          backgroundColor: alpha('#00B4D8', 0.08)
+                                          borderColor: pink,
+                                          backgroundColor: alpha(pink, 0.08)
                                         }
                                       }}
                                     >
@@ -493,10 +503,11 @@ export default function AIChatbot() {
                           onClick={send}
                           disabled={!input.trim() || isTyping}
                           sx={{
-                            background: input.trim() ? 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)' : undefined,
+                            background: input.trim() ? `linear-gradient(135deg, ${pink} 0%, #FF6B9D 100%)` : undefined,
                             color: input.trim() ? '#fff' : undefined,
+                            boxShadow: input.trim() ? `0 2px 8px ${pink}33` : undefined,
                             '&:hover': {
-                              background: input.trim() ? 'linear-gradient(135deg, #0096C7 0%, #05B586 100%)' : undefined,
+                              background: input.trim() ? `linear-gradient(135deg, #FF6B9D 0%, ${pink} 100%)` : undefined,
                             }
                           }}
                         >
