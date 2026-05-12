@@ -158,7 +158,7 @@ export default function ProviderMedicinesPage() {
         <BackButton />
       </Box>
       <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2} sx={{ mb: 2 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, color: '#00B4D8' }}>Medicine Management</Typography>
+        <Typography variant="h4" sx={{ fontWeight: 800, color: '#0EA5E9' }}>Medicine Management</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>Add Medicine</Button>
       </Stack>
 

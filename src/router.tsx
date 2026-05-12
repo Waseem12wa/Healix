@@ -50,6 +50,7 @@ import DoctorAppointments from './pages/DoctorAppointments'
 import DoctorFeatureReviews from './pages/DoctorFeatureReviews'
 import MedicineShop from './pages/MedicineShop'
 import OrderHistory from './pages/OrderHistory'
+import OrderConfirmationPage from './pages/OrderConfirmationPage'
 import PaymentCheckoutPage from './pages/PaymentCheckoutPage'
 import SettingsPage from './pages/SettingsPage'
 
@@ -134,6 +135,7 @@ export const router = createBrowserRouter([
       { path: 'shop/medicines', element: protect(<MedicineShop />) },
       { path: 'shop/checkout', element: protect(<PaymentCheckoutPage />) },
       { path: 'shop/orders', element: protect(<OrderHistory />) },
+      { path: 'shop/orders/:orderId/confirmation', element: protect(<OrderConfirmationPage />) },
     ],
   },
 ])

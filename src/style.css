@@ -1,12 +1,32 @@
 :root {
-  /* Design System Color Tokens */
-  --color-primary: #00B4D8;
-  --color-secondary: #0096C7;
-  --color-accent: #90E0EF;
-  --color-neutral-dark: #1A1A2E;
-  --color-neutral-light: #F5F5F7;
-  --color-error: #EF476F;
-  --color-success: #06D6A0;
+  /* Healix 2026 — Mint → Teal → Blue */
+  --color-primary: #0EA5E9;
+  --color-primary-dark: #1D4ED8;
+  --color-primary-light: #67E8F9;
+  --color-secondary: #14B8A6;
+  --color-accent: #34D399;
+  --color-mint: #34D399;
+  --color-teal: #06B6D4;
+  --color-blue: #2563EB;
+  --color-neutral-dark: #0F172A;
+  --color-neutral-mid: #475569;
+  --color-neutral-light: #F1F5F9;
+  --color-surface: #FFFFFF;
+  --color-error: #F43F5E;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+
+  /* Signature gradients */
+  --gradient-brand: linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%);
+  --gradient-brand-soft: linear-gradient(135deg, rgba(52,211,153,0.14) 0%, rgba(6,182,212,0.14) 50%, rgba(37,99,235,0.14) 100%);
+  --gradient-hero: linear-gradient(140deg, #ECFEFF 0%, #F0FDFA 35%, #EFF6FF 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.55) 100%);
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md: 0 8px 24px rgba(15,23,42,0.06);
+  --shadow-lg: 0 20px 48px rgba(15,23,42,0.10);
+  --shadow-brand: 0 12px 32px rgba(14,165,233,0.22);
   
   /* Spacing Scale */
   --spacing-xs: 4px;
@@ -40,6 +60,39 @@ body {
   background-color: var(--color-neutral-light);
   color: var(--color-neutral-dark);
   animation: fadeIn 0.3s ease-in;
+  background-image:
+    radial-gradient(1200px 600px at -10% -10%, rgba(52,211,153,0.10) 0%, transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(37,99,235,0.10) 0%, transparent 60%),
+    radial-gradient(800px 500px at 50% 110%, rgba(6,182,212,0.08) 0%, transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Premium gradient utilities */
+.gradient-brand { background: var(--gradient-brand); }
+.gradient-text {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.gradient-border {
+  position: relative;
+  border-radius: 18px;
+  background: #FFFFFF;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: var(--gradient-brand);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
 }
 
 body.app-monochrome {

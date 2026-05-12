@@ -114,7 +114,7 @@ function StripePaymentForm({
       }
 
       if (paymentIntent?.status === 'succeeded') {
-        onSuccess(intent.paymentId)
+        onSuccess(intent.paymentId || intent.paymentIntentId || '')
         onClose()
       }
     } catch (err) {

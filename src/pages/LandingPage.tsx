@@ -84,7 +84,7 @@ export default function LandingPage() {
       <Box sx={{
         position: 'relative',
         overflow: 'hidden',
-        background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 1)} 0%, ${alpha(theme.palette.primary.light, 0.1)} 100%)`,
+        background: theme.extras.gradients.hero,
         pt: { xs: 12, md: 16 },
         pb: { xs: 10, md: 14 },
       }}>
@@ -145,7 +145,12 @@ export default function LandingPage() {
                 WebkitTextFillColor: 'transparent',
               }}>
                 Your Health, <br />
-                <Box component="span" sx={{ color: theme.palette.primary.main, WebkitTextFillColor: theme.palette.primary.main }}>Simplified.</Box>
+                <Box component="span" sx={{
+                  background: theme.extras.gradients.brand,
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}>Simplified.</Box>
               </Typography>
             </motion.div>
 
@@ -314,7 +319,7 @@ export default function LandingPage() {
           position: 'relative',
           borderRadius: '32px',
           overflow: 'hidden',
-          background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          background: theme.extras.gradients.brand,
           color: 'common.white',
           px: { xs: 4, md: 10 },
           py: { xs: 8, md: 10 },

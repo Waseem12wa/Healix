@@ -19,6 +19,7 @@ import {
 import PersonIcon from '@mui/icons-material/Person'
 import SaveIcon from '@mui/icons-material/Save'
 import BackButton from '../../ui/BackButton'
+import { BRAND_GRADIENT, colors } from '../../ui/premium'
 
 interface PatientProfileData {
   fullName: string
@@ -139,22 +140,22 @@ export default function PatientProfile() {
             width: 60,
             height: 60,
             borderRadius: '20px',
-            background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.1) 0%, rgba(6, 214, 160, 0.1) 100%)',
+            background: 'linear-gradient(135deg, rgba(52,211,153,0.14) 0%, rgba(6,182,212,0.14) 50%, rgba(37,99,235,0.14) 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             border: '1px solid',
-            borderColor: 'rgba(0, 180, 216, 0.2)',
-            boxShadow: '0 8px 32px rgba(0, 180, 216, 0.1)'
+            borderColor: 'rgba(14,165,233, 0.2)',
+            boxShadow: '0 8px 32px rgba(14,165,233, 0.1)'
           }}>
-            <PersonIcon sx={{ fontSize: 32, color: '#00B4D8' }} />
+            <PersonIcon sx={{ fontSize: 32, color: '#0EA5E9' }} />
           </Box>
           <Box>
             <Typography
               variant="h4"
               fontWeight={800}
               sx={{
-                background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                background: BRAND_GRADIENT,
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 fontSize: { xs: '1.75rem', md: '2.25rem' },
@@ -187,7 +188,7 @@ export default function PatientProfile() {
               <CardContent sx={{ p: { xs: 3, md: 4 } }}>
                 <Typography variant="h6" fontWeight={700} sx={{
                   mb: 3,
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: BRAND_GRADIENT,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
@@ -290,7 +291,7 @@ export default function PatientProfile() {
               <CardContent sx={{ p: { xs: 3, md: 4 } }}>
                 <Typography variant="h6" fontWeight={700} sx={{
                   mb: 3,
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: BRAND_GRADIENT,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
@@ -331,7 +332,7 @@ export default function PatientProfile() {
               <CardContent sx={{ p: { xs: 3, md: 4 } }}>
                 <Typography variant="h6" fontWeight={700} sx={{
                   mb: 3,
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: BRAND_GRADIENT,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
@@ -395,14 +396,14 @@ export default function PatientProfile() {
                   borderRadius: 3,
                   px: 4,
                   py: 1.5,
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
-                  boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)',
+                  background: BRAND_GRADIENT,
+                  boxShadow: '0 4px 12px rgba(14,165,233, 0.3)',
                   textTransform: 'none',
                   fontSize: '1rem',
                   fontWeight: 600,
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #0096C7 0%, #05B586 100%)',
-                    boxShadow: '0 6px 16px rgba(0, 180, 216, 0.4)'
+                    background: 'linear-gradient(135deg, #2563EB 0%, #06B6D4 50%, #34D399 100%)', // brandReverse
+                    boxShadow: '0 6px 16px rgba(14,165,233, 0.4)'
                   }
                 }}
               >

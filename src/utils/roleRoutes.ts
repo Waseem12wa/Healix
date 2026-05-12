@@ -69,6 +69,7 @@ export const roleRoutes: RouteConfig[] = [
   { path: '/shop/medicines', allowedRoles: ['patient', 'doctor'] },
   { path: '/shop/checkout', allowedRoles: ['patient', 'doctor'] },
   { path: '/shop/orders', allowedRoles: ['patient', 'doctor'] },
+  { path: '/shop/orders/:orderId/confirmation', allowedRoles: ['patient', 'doctor'] },
   { path: '/profile/patient', allowedRoles: ['patient'] },
   
   // Doctor-specific routes
@@ -122,21 +123,38 @@ export function getDashboardPath(role: UserRole | null): string {
 }
 
 /**
+ * Match a config path (which may contain :param segments) against an actual URL path.
+ * Examples:
+ *   matchPath('/shop/orders/:orderId/confirmation', '/shop/orders/abc/confirmation') === true
+ *   matchPath('/shop/orders', '/shop/orders/abc') === false
+ */
+function matchPath(configPath: string, actualPath: string): boolean {
+  if (configPath === actualPath) return true
+  if (!configPath.includes(':')) return false
+  const configSegments = configPath.split('/')
+  const actualSegments = actualPath.split('/')
+  if (configSegments.length !== actualSegments.length) return false
+  return configSegments.every((seg, i) =>
+    seg.startsWith(':') ? actualSegments[i].length > 0 : seg === actualSegments[i]
+  )
+}
+
+/**
  * Check if a route is allowed for a specific role
  */
 export function isRouteAllowed(path: string, role: UserRole | null): boolean {
+  const route = roleRoutes.find(r => matchPath(r.path, path))
+
   if (!role) {
     // Check if route is public
-    const route = roleRoutes.find(r => r.path === path)
     return route?.isPublic === true
   }
-  
-  const route = roleRoutes.find(r => r.path === path)
+
   if (!route) {
     // If route not found in config, deny access (fail secure)
     return false
   }
-  
+
   return route.allowedRoles.includes(role)
 }
 

@@ -2,9 +2,9 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { AppBar, Box, Container, Toolbar, Typography, Button, Stack } from '@mui/material'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
 import LogoutIcon from '@mui/icons-material/Logout'
+import DashboardIcon from '@mui/icons-material/Dashboard'
 import Footer from './Footer'
 import HealthAssistant from '../pages/HealthAssistant'
-import footerBg from '../images/footer.jpg'
 import { useEffect, useRef } from 'react'
 import { getCurrentUserRole, isRouteAllowed, getDashboardPath } from '../utils/roleRoutes'
 import { logPatientActivity } from '../services/patientService'
@@ -87,23 +87,20 @@ export function AppLayout() {
         position="sticky"
         elevation={0}
         sx={{
-          position: 'relative',
-          background: 'linear-gradient(135deg, #00B4D8 0%, #0096C7 100%)',
-          backgroundImage: `url(${footerBg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          '&::before': {
+          position: 'sticky',
+          top: 0,
+          background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.18)',
+          boxShadow: '0 8px 30px rgba(14,165,233,0.18), 0 1px 0 rgba(255,255,255,0.25) inset',
+          backdropFilter: 'saturate(140%) blur(12px)',
+          WebkitBackdropFilter: 'saturate(140%) blur(12px)',
+          '&::after': {
             content: '""',
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.95) 0%, rgba(0, 150, 199, 0.95) 100%)',
-            zIndex: 0,
-          },
-          borderBottom: 'none',
-          boxShadow: '0 4px 20px rgba(0, 180, 216, 0.15)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)'
+            pointerEvents: 'none',
+            background: 'radial-gradient(900px 200px at 0% 0%, rgba(255,255,255,0.18), transparent 60%), radial-gradient(900px 200px at 100% 100%, rgba(255,255,255,0.10), transparent 60%)',
+          }
         }}
       >
         <Toolbar sx={{ gap: 2, position: 'relative', zIndex: 2, minHeight: { xs: '70px', md: '80px' }, py: { xs: 2, md: 2.5 } }}>
@@ -219,6 +216,28 @@ export function AppLayout() {
               >
                 Guide
               </Button>
+              {userRole && (
+                <Button
+                  component={Link}
+                  to={getDashboardPath(userRole)}
+                  startIcon={<DashboardIcon sx={{ fontSize: 20 }} />}
+                  sx={{
+                    color: '#FFFFFF',
+                    fontSize: { xs: '0.9375rem', md: '1rem' },
+                    fontWeight: 600,
+                    px: 2,
+                    py: 1,
+                    borderRadius: 2,
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.15)',
+                      transform: 'translateY(-2px)'
+                    }
+                  }}
+                >
+                  Dashboard
+                </Button>
+              )}
             </Stack>
           </Box>
           <Stack direction="row" spacing={1}>
@@ -229,12 +248,12 @@ export function AppLayout() {
                 startIcon={<LogoutIcon />}
                 sx={{
                   bgcolor: '#FFFFFF',
-                  color: '#00B4D8',
-                  fontWeight: 600,
+                  color: '#1D4ED8',
+                  fontWeight: 700,
                   px: 3,
                   py: 1,
                   borderRadius: 2,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  boxShadow: '0 6px 18px rgba(15,23,42,0.18)',
                   transition: 'all 0.2s ease',
                   '&:hover': {
                     bgcolor: '#F0F9FF',
@@ -278,12 +297,12 @@ export function AppLayout() {
                   variant="contained"
                   sx={{
                     bgcolor: '#FFFFFF',
-                    color: '#00B4D8',
-                    fontWeight: 600,
+                    color: '#1D4ED8',
+                    fontWeight: 700,
                     px: 3,
                     py: 1,
                     borderRadius: 2,
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    boxShadow: '0 6px 18px rgba(15,23,42,0.18)',
                     transition: 'all 0.2s ease',
                     '&:hover': {
                       bgcolor: '#F0F9FF',
@@ -307,7 +326,7 @@ export function AppLayout() {
           flex: 1,
           py: { xs: 3, md: 4 },
           px: { xs: 2, sm: 3, md: 4 },
-          background: 'linear-gradient(to bottom, #F5F5F7 0%, #FFFFFF 100%)',
+          background: 'transparent',
           minHeight: 'calc(100vh - 200px)'
         }}
       >
@@ -316,8 +335,8 @@ export function AppLayout() {
 
       <Footer />
       
-      {/* AI Health Assistant - Always Available */}
-      <HealthAssistant />
+      {/* AI Health Assistant - Patient-only, requires login */}
+      {userRole === 'patient' && <HealthAssistant />}
     </Box>
   )
 }

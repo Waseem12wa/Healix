@@ -74,22 +74,25 @@ export default function BackButton() {
   return (
     <IconButton
       onClick={handleBack}
+      aria-label="Go back"
       sx={{
         width: 44,
         height: 44,
-        bgcolor: '#06D6A0',
         color: '#FFFFFF',
-        borderRadius: 2,
-        boxShadow: '0 4px 12px rgba(6, 214, 160, 0.3)',
-        transition: 'all 0.2s ease',
+        borderRadius: 2.5,
+        background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+        backgroundSize: '200% 200%',
+        backgroundPosition: '0% 50%',
+        boxShadow: '0 8px 20px rgba(14,165,233,0.30), 0 2px 6px rgba(37,99,235,0.20)',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         '&:hover': {
-          bgcolor: '#04A777',
-          boxShadow: '0 6px 16px rgba(6, 214, 160, 0.4)',
+          backgroundPosition: '100% 50%',
+          boxShadow: '0 12px 26px rgba(14,165,233,0.40), 0 4px 10px rgba(37,99,235,0.25)',
           transform: 'translateY(-2px)'
         },
         '&:active': {
           transform: 'translateY(0px)',
-          boxShadow: '0 2px 8px rgba(6, 214, 160, 0.3)'
+          boxShadow: '0 4px 12px rgba(14,165,233,0.28)'
         }
       }}
     >

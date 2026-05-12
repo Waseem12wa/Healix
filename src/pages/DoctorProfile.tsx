@@ -269,7 +269,7 @@ export default function DoctorProfile() {
   return (
     <Box sx={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5F5F7 0%, #E8F4F8 100%)',
+      background: 'linear-gradient(140deg, #ECFEFF 0%, #F0FDFA 35%, #EFF6FF 100%)',
       py: { xs: 4, md: 6 },
       px: { xs: 2, md: 4 }
     }}>
@@ -286,11 +286,11 @@ export default function DoctorProfile() {
                 width: 56,
                 height: 56,
                 borderRadius: 2.5,
-                bgcolor: '#06D6A0',
+                background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+                boxShadow: '0 8px 20px rgba(14,165,233,0.28), 0 2px 6px rgba(37,99,235,0.18)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(6, 214, 160, 0.3)'
               }}>
                 <PersonIcon sx={{ fontSize: 32, color: '#FFFFFF' }} />
               </Box>
@@ -299,7 +299,7 @@ export default function DoctorProfile() {
                   variant="h4"
                   fontWeight={800}
                   sx={{
-                    color: '#1A1A2E',
+                    color: '#0F172A',
                     fontSize: { xs: '1.75rem', md: '2.25rem' },
                     lineHeight: 1.2,
                     mb: 0.5
@@ -323,12 +323,12 @@ export default function DoctorProfile() {
                 <Stack direction="row" spacing={2} alignItems="center">
                   <Avatar
                     src={profileImage || undefined}
-                    sx={{ width: 76, height: 76, bgcolor: '#06D6A0', fontSize: '1.8rem', fontWeight: 700 }}
+                    sx={{ width: 76, height: 76, bgcolor: '#10B981', fontSize: '1.8rem', fontWeight: 700 }}
                   >
                     {(doctorName || 'D').charAt(0)}
                   </Avatar>
                   <Box>
-                    <Typography sx={{ fontSize: '1.15rem', fontWeight: 800, color: '#1A1A2E', mb: 0.25 }}>
+                    <Typography sx={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', mb: 0.25 }}>
                       {doctorName}
                     </Typography>
                   </Box>
@@ -358,8 +358,8 @@ export default function DoctorProfile() {
               {/* Personal Information */}
               <Card elevation={0} sx={{ borderRadius: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
                 <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                  <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#1A1A2E', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <PersonIcon sx={{ color: '#06D6A0' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon sx={{ color: '#10B981' }} />
                     Personal Information
                   </Typography>
                   <Grid container spacing={3}>
@@ -405,8 +405,8 @@ export default function DoctorProfile() {
               {/* Professional Details */}
               <Card elevation={0} sx={{ borderRadius: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
                 <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                  <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#1A1A2E', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <SchoolIcon sx={{ color: '#06D6A0' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <SchoolIcon sx={{ color: '#10B981' }} />
                     Professional Details
                   </Typography>
                   <Grid container spacing={3}>
@@ -469,9 +469,13 @@ export default function DoctorProfile() {
                           onClick={handleAddEducation}
                           variant="contained"
                           sx={{
-                            bgcolor: '#06D6A0',
+                            background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+                            backgroundSize: '200% 200%',
+                            backgroundPosition: '0% 50%',
                             color: '#fff',
-                            '&:hover': { bgcolor: '#05b588' },
+                            boxShadow: '0 6px 16px rgba(14,165,233,0.28)',
+                            transition: 'all 0.3s ease',
+                            '&:hover': { backgroundPosition: '100% 50%', boxShadow: '0 10px 22px rgba(14,165,233,0.38)' },
                             borderRadius: 2,
                             height: 40, // Match small textfield height roughly
                             px: 3
@@ -502,7 +506,7 @@ export default function DoctorProfile() {
                             onClick={() => handleToggleLanguage(lang)}
                             sx={{
                               borderRadius: 1.5,
-                              bgcolor: profile.languagesSpoken.includes(lang) ? '#06D6A0' : 'transparent',
+                              bgcolor: profile.languagesSpoken.includes(lang) ? '#10B981' : 'transparent',
                               color: profile.languagesSpoken.includes(lang) ? '#fff' : 'text.primary',
                               border: profile.languagesSpoken.includes(lang) ? 'none' : '1px solid #E2E8F0',
                               '&:hover': {
@@ -534,8 +538,8 @@ export default function DoctorProfile() {
               {/* Clinic / Practice Details */}
               <Card elevation={0} sx={{ borderRadius: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
                 <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                  <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#1A1A2E', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <LocalHospitalIcon sx={{ color: '#06D6A0' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <LocalHospitalIcon sx={{ color: '#10B981' }} />
                     Clinic / Practice Details
                   </Typography>
                   <Grid container spacing={3}>
@@ -588,8 +592,8 @@ export default function DoctorProfile() {
               {/* Availability */}
               <Card elevation={0} sx={{ borderRadius: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
                 <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                  <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#1A1A2E', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <AccessTimeIcon sx={{ color: '#06D6A0' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <AccessTimeIcon sx={{ color: '#10B981' }} />
                     Availability
                   </Typography>
                   <Grid container spacing={3}>
@@ -603,7 +607,7 @@ export default function DoctorProfile() {
                             onClick={() => handleToggleWorkingDay(day)}
                             sx={{
                               borderRadius: 1.5,
-                              bgcolor: profile.workingDays.includes(day) ? '#06D6A0' : 'transparent',
+                              bgcolor: profile.workingDays.includes(day) ? '#10B981' : 'transparent',
                               color: profile.workingDays.includes(day) ? '#fff' : 'text.primary',
                               border: profile.workingDays.includes(day) ? 'none' : '1px solid #E2E8F0',
                               '&:hover': {
@@ -664,8 +668,8 @@ export default function DoctorProfile() {
               {/* Fee Structure */}
               <Card elevation={0} sx={{ borderRadius: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
                 <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                  <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#1A1A2E', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <AttachMoneyIcon sx={{ color: '#06D6A0' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <AttachMoneyIcon sx={{ color: '#10B981' }} />
                     Fee Structure
                   </Typography>
                   <Grid container spacing={3}>
@@ -718,7 +722,9 @@ export default function DoctorProfile() {
                   startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
                   disabled={saving}
                   sx={{
-                    bgcolor: '#06D6A0',
+                    background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+                    backgroundSize: '200% 200%',
+                    backgroundPosition: '0% 50%',
                     color: '#FFFFFF',
                     px: 4,
                     py: 1.5,
@@ -726,10 +732,11 @@ export default function DoctorProfile() {
                     fontWeight: 700,
                     textTransform: 'none',
                     fontSize: '1rem',
-                    boxShadow: '0 4px 12px rgba(6, 214, 160, 0.3)',
+                    boxShadow: '0 10px 24px rgba(14,165,233,0.32), 0 4px 10px rgba(37,99,235,0.18)',
+                    transition: 'all 0.3s ease',
                     '&:hover': {
-                      bgcolor: '#04A777',
-                      boxShadow: '0 6px 16px rgba(6, 214, 160, 0.4)'
+                      backgroundPosition: '100% 50%',
+                      boxShadow: '0 14px 28px rgba(14,165,233,0.40), 0 6px 14px rgba(37,99,235,0.22)'
                     }
                   }}
                 >

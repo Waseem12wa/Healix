@@ -28,6 +28,7 @@ import {
   uploadMyProfileImage,
   type AvailableDoctor,
 } from '../services/patientService'
+import { BRAND_GRADIENT, HERO_BG, colors } from '../ui/premium'
 
 type FormState = {
   userName: string
@@ -183,17 +184,17 @@ export default function Profile() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #F5F5F7 0%, #E8F4F8 100%)', py: 4, px: 2 }}>
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(140deg, #ECFEFF 0%, #F0FDFA 35%, #EFF6FF 100%)', py: 4, px: 2 }}>
       <Box sx={{ maxWidth: 980, mx: 'auto' }}>
         <BackButton />
 
         <Stack spacing={3} sx={{ mt: 2 }}>
           <Stack direction="row" spacing={2} alignItems="center">
-            <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: '#06D6A0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <PersonIcon sx={{ color: '#fff', fontSize: 32 }} />
+            <Box sx={{ width: 56, height: 56, borderRadius: 2, background: BRAND_GRADIENT, boxShadow: '0 8px 20px rgba(14,165,233,0.28), 0 2px 6px rgba(37,99,235,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <PersonIcon sx={{ color: colors.surface, fontSize: 32 }} />
             </Box>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, color: '#1A1A2E' }}>Patient Profile</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: '#0F172A' }}>Patient Profile</Typography>
               <Typography variant="body2" sx={{ color: '#64748B' }}>Your information is securely stored and linked to your unique patient ID.</Typography>
             </Box>
           </Stack>
@@ -211,7 +212,7 @@ export default function Profile() {
               ) : (
                 <Stack spacing={3}>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }}>
-                    <Avatar src={form.profileImage || undefined} sx={{ width: 90, height: 90, bgcolor: '#00B4D8', fontSize: '2rem', fontWeight: 700 }}>
+                    <Avatar src={form.profileImage || undefined} sx={{ width: 90, height: 90, bgcolor: '#0EA5E9', fontSize: '2rem', fontWeight: 700 }}>
                       {avatarLabel}
                     </Avatar>
                     <Button component="label" variant="outlined" startIcon={uploadingImage ? <CircularProgress size={16} /> : <PhotoCameraIcon />} sx={{ textTransform: 'none' }} disabled={uploadingImage}>
@@ -307,7 +308,7 @@ export default function Profile() {
                     startIcon={saving ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
                     onClick={handleSave}
                     disabled={saving}
-                    sx={{ alignSelf: 'flex-start', textTransform: 'none', bgcolor: '#06D6A0', '&:hover': { bgcolor: '#04A777' } }}
+                    sx={{ alignSelf: 'flex-start', textTransform: 'none', background: BRAND_GRADIENT, backgroundSize: '200% 200%', backgroundPosition: '0% 50%', boxShadow: '0 6px 16px rgba(14,165,233,0.28)', '&:hover': { backgroundPosition: '100% 50%', boxShadow: '0 10px 22px rgba(14,165,233,0.38)' } }}
                   >
                     {saving ? 'Saving...' : 'Save Profile'}
                   </Button>
@@ -319,8 +320,8 @@ export default function Profile() {
           <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0, 0, 0, 0.06)' }}>
             <CardContent sx={{ p: { xs: 3, md: 4 } }}>
               <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
-                <HistoryIcon sx={{ color: '#00B4D8' }} />
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1A1A2E' }}>
+                <HistoryIcon sx={{ color: '#0EA5E9' }} />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0F172A' }}>
                   Profile Activity Timeline
                 </Typography>
               </Stack>
@@ -332,7 +333,7 @@ export default function Profile() {
                     <Box key={activity._id || idx}>
                       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
                         <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A1A2E' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A' }}>
                             {activity.title}
                           </Typography>
                           <Chip size="small" label={activity.category || 'other'} sx={{ textTransform: 'capitalize' }} />

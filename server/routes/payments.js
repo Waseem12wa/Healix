@@ -12,7 +12,11 @@ import { requireAuth } from '../middleware/auth.js';
 const router = express.Router();
 
 const ensureOwnerOrForbidden = (req, res, targetUserId) => {
-  if (String(req.user?.id) !== String(targetUserId)) {
+  // Handle both ObjectId and populated user object
+  const targetId = targetUserId && typeof targetUserId === 'object' && targetUserId._id
+    ? String(targetUserId._id)
+    : String(targetUserId);
+  if (String(req.user?.id) !== targetId) {
     res.status(403).json({ success: false, error: 'Forbidden: access to another user data is not allowed' });
     return false;
   }
@@ -333,7 +337,7 @@ router.post('/saved-methods', requireAuth, express_json, async (req, res) => {
  * POST /api/payments/stripe/confirm
  * Confirm Stripe payment after client-side processing
  */
-router.post('/stripe/confirm', express_json, async (req, res) => {
+router.post('/stripe/confirm', requireAuth, express_json, async (req, res) => {
   try {
     const { paymentIntentId, transactionId } = req.body;
 
@@ -350,7 +354,38 @@ router.post('/stripe/confirm', express_json, async (req, res) => {
       return res.status(400).json(result);
     }
 
-    return res.json(result);
+    // Authorize: only the order's owner may confirm.
+    const ownerId = result.order?.userId || result.transaction?.userId;
+    if (ownerId && String(ownerId) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, error: 'Forbidden: order belongs to another user' });
+    }
+
+    // Best-effort patient activity log (don't fail the response if this errors).
+    if (result.order && result.status === 'succeeded') {
+      try {
+        await PatientActivity.create({
+          userId: req.user.id,
+          category: 'purchase',
+          title: 'Order paid successfully',
+          details: `Order ${result.order.orderNumber || result.order._id} confirmed`,
+          metadata: {
+            orderId: String(result.order._id),
+            orderNumber: result.order.orderNumber,
+            amount: result.order.finalAmount,
+            currency: result.order.currency || 'PKR',
+          }
+        });
+      } catch (_) { /* swallow */ }
+    }
+
+    return res.json({
+      success: true,
+      status: result.status,
+      message: result.message,
+      orderId: String(result.orderId || result.order?._id || ''),
+      order: result.order,
+      transaction: result.transaction
+    });
   } catch (error) {
     console.error('❌ Stripe Confirm Error:', error.message);
     return res.status(500).json({

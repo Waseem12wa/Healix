@@ -179,7 +179,7 @@ export default function AboutPage() {
                   fontWeight: 800,
                   mb: 5,
                   fontSize: { xs: '2rem', md: '2.5rem' },
-                  background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                  background: `linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)`,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   textAlign: 'center'
@@ -274,7 +274,7 @@ export default function AboutPage() {
                   fontWeight: 800,
                   mb: 5,
                   fontSize: { xs: '2rem', md: '2.5rem' },
-                  background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                  background: `linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)`,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   textAlign: 'center'
@@ -313,7 +313,7 @@ export default function AboutPage() {
                           fontWeight: 800,
                           mb: 1,
                           fontSize: { xs: '2rem', md: '2.5rem' },
-                          background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                          background: `linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)`,
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent'
                         }}
@@ -391,7 +391,7 @@ export default function AboutPage() {
             <Card
               sx={{
                 borderRadius: '24px',
-                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                background: `linear-gradient(135deg, #2563EB 0%, #06B6D4 50%, #34D399 100%)`,
                 color: '#FFFFFF',
                 boxShadow: `0 12px 48px ${alpha(theme.palette.primary.main, 0.3)}`,
                 position: 'relative',

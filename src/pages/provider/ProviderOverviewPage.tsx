@@ -102,7 +102,7 @@ export default function ProviderOverviewPage() {
       <Box sx={{ mb: 1.5 }}>
         <BackButton />
       </Box>
-      <Typography variant="h4" sx={{ fontWeight: 800, color: '#00B4D8', mb: 2 }}>
+      <Typography variant="h4" sx={{ fontWeight: 800, color: '#0EA5E9', mb: 2 }}>
         Dashboard Overview & Analytics
       </Typography>
 
@@ -138,7 +138,7 @@ export default function ProviderOverviewPage() {
                     <XAxis dataKey="date" />
                     <YAxis />
                     <Tooltip />
-                    <Line type="monotone" dataKey="totalSales" stroke="#00B4D8" strokeWidth={3} />
+                    <Line type="monotone" dataKey="totalSales" stroke="#0EA5E9" strokeWidth={3} />
                   </LineChart>
                 </ResponsiveContainer>
               </Box>

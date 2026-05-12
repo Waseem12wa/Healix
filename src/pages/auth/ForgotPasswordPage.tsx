@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
           width: '600px',
           height: '600px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(0, 180, 216, 0.15) 0%, rgba(0, 180, 216, 0.05) 50%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(14,165,233, 0.15) 0%, rgba(14,165,233, 0.05) 50%, transparent 70%)',
           filter: 'blur(60px)',
           animation: 'float 20s ease-in-out infinite'
         }} />
@@ -96,7 +96,7 @@ export default function ForgotPasswordPage() {
           width: '500px',
           height: '500px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(6, 214, 160, 0.15) 0%, rgba(6, 214, 160, 0.05) 50%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(16,185,129, 0.15) 0%, rgba(16,185,129, 0.05) 50%, transparent 70%)',
           filter: 'blur(60px)',
           animation: 'float 25s ease-in-out infinite reverse'
         }} />
@@ -126,13 +126,13 @@ export default function ForgotPasswordPage() {
                   width: 64,
                   height: 64,
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   mx: 'auto',
                   mb: 2,
-                  boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)'
+                  boxShadow: '0 4px 12px rgba(14,165,233, 0.3)'
                 }}
               >
                 <LockResetIcon sx={{ fontSize: 32, color: '#ffffff' }} />
@@ -142,7 +142,7 @@ export default function ForgotPasswordPage() {
                 fontWeight={800}
                 gutterBottom
                 sx={{
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}
@@ -180,11 +180,11 @@ export default function ForgotPasswordPage() {
                     borderRadius: 2,
                     textTransform: 'none',
                     fontWeight: 600,
-                    borderColor: '#00B4D8',
-                    color: '#00B4D8',
+                    borderColor: '#0EA5E9',
+                    color: '#0EA5E9',
                     '&:hover': {
-                      borderColor: '#0096C7',
-                      bgcolor: alpha('#00B4D8', 0.05)
+                      borderColor: '#1D4ED8',
+                      bgcolor: alpha('#0EA5E9', 0.05)
                     }
                   }}
                 >
@@ -234,11 +234,14 @@ export default function ForgotPasswordPage() {
                     textTransform: 'none',
                     fontSize: '1rem',
                     fontWeight: 700,
-                    background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
-                    boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)',
+                    background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+                    backgroundSize: '200% 200%',
+                    backgroundPosition: '0% 50%',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 10px 24px rgba(14,165,233,0.32), 0 4px 10px rgba(37,99,235,0.18)',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #0096C7 0%, #05b588 100%)',
-                      boxShadow: '0 6px 16px rgba(0, 180, 216, 0.4)'
+                      backgroundPosition: '100% 50%',
+                      boxShadow: '0 6px 16px rgba(14,165,233, 0.4)'
                     }
                   }}
                 >
@@ -253,7 +256,7 @@ export default function ForgotPasswordPage() {
                     textTransform: 'none',
                     fontWeight: 600,
                     color: 'text.secondary',
-                    '&:hover': { color: '#00B4D8', bgcolor: 'transparent' }
+                    '&:hover': { color: '#0EA5E9', bgcolor: 'transparent' }
                   }}
                 >
                   Back to Login

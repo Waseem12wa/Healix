@@ -10,7 +10,7 @@ const guideRoles = [
     title: 'As a Patient',
     description: 'Learn each patient feature with short and practical steps.',
     href: '/guide/patient',
-    icon: <LocalHospitalIcon sx={{ color: '#00B4D8' }} />,
+    icon: <LocalHospitalIcon sx={{ color: '#0EA5E9' }} />,
     cta: 'Open Patient Guide',
     active: true,
   },
@@ -18,7 +18,7 @@ const guideRoles = [
     title: 'As a Doctor',
     description: 'Learn real doctor workflows, review flow, reminders, and appointment actions.',
     href: '/guide/doctor',
-    icon: <MedicalServicesIcon sx={{ color: '#06D6A0' }} />,
+    icon: <MedicalServicesIcon sx={{ color: '#10B981' }} />,
     cta: 'Open Doctor Guide',
     active: true,
   },
@@ -26,7 +26,7 @@ const guideRoles = [
     title: 'As a Provider',
     description: 'Learn real provider workflows for overview, medicines, orders, and payments.',
     href: '/guide/provider',
-    icon: <LocalPharmacyIcon sx={{ color: '#FFB703' }} />,
+    icon: <LocalPharmacyIcon sx={{ color: '#F59E0B' }} />,
     cta: 'Open Provider Guide',
     active: true,
   },
@@ -41,7 +41,7 @@ export default function GuidePage() {
           mb: 5,
           py: { xs: 4, md: 6 },
           borderRadius: 4,
-          background: 'radial-gradient(circle at top right, rgba(0, 180, 216, 0.14) 0%, rgba(0, 180, 216, 0.04) 40%, transparent 75%)',
+          background: 'radial-gradient(circle at top right, rgba(14,165,233, 0.14) 0%, rgba(14,165,233, 0.04) 40%, transparent 75%)',
         }}
       >
         <Typography
@@ -50,7 +50,7 @@ export default function GuidePage() {
             fontSize: { xs: '2.4rem', md: '4rem' },
             letterSpacing: '-0.02em',
             lineHeight: 1.08,
-            color: '#1A1A2E',
+            color: '#0F172A',
           }}
         >
           Your Guide,
@@ -87,8 +87,8 @@ export default function GuidePage() {
               '&:hover': role.active
                 ? {
                     transform: 'translateY(-4px)',
-                    borderColor: '#00B4D8',
-                    boxShadow: '0 12px 28px rgba(0, 180, 216, 0.16)',
+                    borderColor: '#0EA5E9',
+                    boxShadow: '0 12px 28px rgba(14,165,233, 0.16)',
                   }
                 : undefined,
             }}
@@ -103,12 +103,12 @@ export default function GuidePage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.12) 0%, rgba(6, 214, 160, 0.08) 100%)',
+                    background: 'linear-gradient(135deg, rgba(14,165,233, 0.12) 0%, rgba(16,185,129, 0.08) 100%)',
                   }}
                 >
                   {role.icon}
                 </Box>
-                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#1A1A2E' }}>{role.title}</Typography>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#0F172A' }}>{role.title}</Typography>
               </Stack>
 
               <Typography sx={{ color: '#64748B', lineHeight: 1.6, flex: 1 }}>{role.description}</Typography>
@@ -118,12 +118,12 @@ export default function GuidePage() {
                   label={role.active ? role.cta : 'Coming soon'}
                   size="small"
                   sx={{
-                    bgcolor: role.active ? 'rgba(0, 180, 216, 0.1)' : '#F5F5F7',
-                    color: role.active ? '#00B4D8' : '#64748B',
+                    bgcolor: role.active ? 'rgba(14,165,233, 0.1)' : '#F5F5F7',
+                    color: role.active ? '#0EA5E9' : '#64748B',
                     fontWeight: 600,
                   }}
                 />
-                {role.active && <ArrowForwardIcon sx={{ color: '#00B4D8' }} />}
+                {role.active && <ArrowForwardIcon sx={{ color: '#0EA5E9' }} />}
               </Stack>
             </CardContent>
           </Card>

@@ -122,7 +122,7 @@ export default function ProviderPaymentsPage() {
       <Box sx={{ mb: 1.5 }}>
         <BackButton />
       </Box>
-      <Typography variant="h4" sx={{ fontWeight: 800, color: '#00B4D8', mb: 2 }}>
+      <Typography variant="h4" sx={{ fontWeight: 800, color: '#0EA5E9', mb: 2 }}>
         Payment Management & Revenue Split
       </Typography>
 

@@ -59,7 +59,7 @@ export default function AssignedPatients() {
   }, [patients, query])
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #F5F7FA 0%, #E8F4F8 100%)', py: 4, px: 2 }}>
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(140deg, #ECFEFF 0%, #F0FDFA 35%, #EFF6FF 100%)', py: 4, px: 2 }}>
       <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
         <BackButton />
 
@@ -71,7 +71,8 @@ export default function AssignedPatients() {
                   width: 56,
                   height: 56,
                   borderRadius: 2,
-                  bgcolor: '#06D6A0',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+                  boxShadow: '0 8px 20px rgba(14,165,233,0.28), 0 2px 6px rgba(37,99,235,0.18)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -80,7 +81,7 @@ export default function AssignedPatients() {
                 <GroupIcon sx={{ color: '#fff', fontSize: 30 }} />
               </Box>
               <Box>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#1A1A2E' }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: '#0F172A' }}>
                   Assigned Patients
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#64748B' }}>
@@ -111,7 +112,7 @@ export default function AssignedPatients() {
           ) : filteredPatients.length === 0 ? (
             <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #E2E8F0' }}>
               <CardContent>
-                <Typography sx={{ fontSize: '1rem', color: '#1A1A2E', fontWeight: 700 }}>
+                <Typography sx={{ fontSize: '1rem', color: '#0F172A', fontWeight: 700 }}>
                   No assigned patients found
                 </Typography>
                 <Typography sx={{ fontSize: '0.9rem', color: '#64748B', mt: 0.5 }}>
@@ -126,15 +127,15 @@ export default function AssignedPatients() {
                   <CardContent sx={{ p: 3 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1.5}>
                       <Stack direction="row" spacing={1.5} alignItems="center">
-                        <Avatar sx={{ bgcolor: '#00B4D8' }}>{(patient.patientName || 'P').charAt(0).toUpperCase()}</Avatar>
+                        <Avatar sx={{ bgcolor: '#0EA5E9' }}>{(patient.patientName || 'P').charAt(0).toUpperCase()}</Avatar>
                         <Box>
-                          <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: '#1A1A2E' }}>
+                          <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>
                             {patient.patientName}
                           </Typography>
                           <Typography sx={{ fontSize: '0.85rem', color: '#64748B' }}>{patient.email}</Typography>
                         </Box>
                       </Stack>
-                      <Chip label="Assigned" size="small" sx={{ bgcolor: 'rgba(6,214,160,0.12)', color: '#0f766e', fontWeight: 700 }} />
+                      <Chip label="Assigned" size="small" sx={{ bgcolor: 'rgba(16,185,129,0.12)', color: '#0f766e', fontWeight: 700 }} />
                     </Stack>
 
                     <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>

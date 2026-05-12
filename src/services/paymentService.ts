@@ -105,14 +105,17 @@ export interface SavedPaymentMethod {
 
 export interface PaymentIntentResponse {
   success: boolean
-  paymentId: string
-  gateway: string
-  amount: number
-  currency: string
+  paymentId?: string
+  paymentIntentId?: string
+  transactionId?: string
+  publishableKey?: string
+  gateway?: string
+  amount?: number
+  currency?: string
   clientSecret?: string
   redirectUrl?: string
   paymentData?: Record<string, unknown>
-  status: string
+  status?: string
 }
 
 export interface ConfirmPaymentRequest {
@@ -231,13 +234,23 @@ export const createPaymentIntent = async (
  * Confirm Stripe payment
  */
 export const confirmStripePayment = async (
-  data: ConfirmPaymentRequest
-): Promise<{ success: boolean; message: string; orderId?: string }> => {
+  data: { paymentIntentId: string; transactionId: string }
+): Promise<{
+  success: boolean
+  status?: string
+  message?: string
+  orderId?: string
+  order?: Order
+  transaction?: PaymentTransaction
+}> => {
   try {
     const response = await apiClient.post<{
       success: boolean
-      message: string
+      status?: string
+      message?: string
       orderId?: string
+      order?: Order
+      transaction?: PaymentTransaction
     }>('/stripe/confirm', data)
     return response.data
   } catch (error) {

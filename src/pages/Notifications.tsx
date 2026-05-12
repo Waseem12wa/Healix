@@ -131,9 +131,9 @@ export default function Notifications() {
             <Stack spacing={2}>
               <Stack direction="row" justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1.5} flexWrap="wrap">
                 <Stack direction="row" alignItems="center" spacing={1.25}>
-                  <NotificationsIcon sx={{ color: '#06D6A0' }} />
+                  <NotificationsIcon sx={{ color: '#10B981' }} />
                   <Box>
-                    <Typography sx={{ fontSize: { xs: '1.35rem', md: '1.9rem' }, fontWeight: 900, color: '#1A1A2E' }}>
+                    <Typography sx={{ fontSize: { xs: '1.35rem', md: '1.9rem' }, fontWeight: 900, color: '#0F172A' }}>
                       Notifications
                     </Typography>
                     <Typography sx={{ color: '#64748B', fontSize: '0.9rem' }}>
@@ -184,7 +184,7 @@ export default function Notifications() {
                         <Box sx={{ flex: 1 }}>
                           <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
                             {!item.read && <CircleIcon sx={{ color: '#2563EB', fontSize: 10 }} />}
-                            <Typography sx={{ fontWeight: 800, color: '#1A1A2E' }}>{item.title}</Typography>
+                            <Typography sx={{ fontWeight: 800, color: '#0F172A' }}>{item.title}</Typography>
                             <Chip label={typeLabel(item.type)} color={typeColor(item.type)} size="small" />
                           </Stack>
 

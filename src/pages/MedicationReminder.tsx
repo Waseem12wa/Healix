@@ -272,23 +272,23 @@ export default function MedicationReminder() {
                 width: 60,
                 height: 60,
                 borderRadius: '20px',
-                background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.1) 0%, rgba(6, 214, 160, 0.1) 100%)',
+                background: 'linear-gradient(135deg, rgba(52,211,153,0.14) 0%, rgba(6,182,212,0.14) 50%, rgba(37,99,235,0.14) 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 border: '1px solid',
-                borderColor: 'rgba(0, 180, 216, 0.2)',
-                boxShadow: '0 8px 32px rgba(0, 180, 216, 0.1)',
+                borderColor: 'rgba(14,165,233, 0.2)',
+                boxShadow: '0 8px 32px rgba(14,165,233, 0.1)',
               }}
             >
-              <AccessAlarmIcon sx={{ fontSize: 32, color: '#00B4D8' }} />
+              <AccessAlarmIcon sx={{ fontSize: 32, color: '#0EA5E9' }} />
             </Box>
             <Box>
               <Typography
                 variant="h4"
                 fontWeight={800}
                 sx={{
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   fontSize: { xs: '1.75rem', md: '2.25rem' },
@@ -323,7 +323,7 @@ export default function MedicationReminder() {
                         variant="h6"
                         fontWeight={700}
                         sx={{
-                          background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                          background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           mb: 1,
@@ -366,12 +366,12 @@ export default function MedicationReminder() {
                           borderRadius: 3,
                           px: 4,
                           py: 1.5,
-                          background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
-                          boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)',
+                          background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+                          boxShadow: '0 4px 12px rgba(14,165,233, 0.3)',
                           alignSelf: 'flex-start',
                           '&:hover': {
-                            background: 'linear-gradient(135deg, #0096C7 0%, #05B586 100%)',
-                            boxShadow: '0 6px 16px rgba(0, 180, 216, 0.4)',
+                            background: 'linear-gradient(135deg, #2563EB 0%, #06B6D4 50%, #34D399 100%)',
+                            boxShadow: '0 6px 16px rgba(14,165,233, 0.4)',
                           },
                         }}
                       >
@@ -390,8 +390,8 @@ export default function MedicationReminder() {
               <Card
                 sx={{
                   borderRadius: '24px',
-                  background: 'linear-gradient(135deg, rgba(6, 214, 160, 0.1) 0%, rgba(0, 180, 216, 0.1) 100%)',
-                  border: '1px solid #06D6A0',
+                  background: 'linear-gradient(135deg, rgba(16,185,129, 0.1) 0%, rgba(14,165,233, 0.1) 100%)',
+                  border: '1px solid #10B981',
                 }}
               >
                 <CardContent sx={{ p: { xs: 2, md: 3 } }}>
@@ -454,9 +454,9 @@ export default function MedicationReminder() {
                             startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <EmailIcon />}
                             sx={{
                               borderRadius: 2,
-                              background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                              background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                               '&:hover': {
-                                background: 'linear-gradient(135deg, #0096C7 0%, #05B586 100%)',
+                                background: 'linear-gradient(135deg, #2563EB 0%, #06B6D4 50%, #34D399 100%)',
                               },
                             }}
                           >
@@ -497,7 +497,7 @@ export default function MedicationReminder() {
                 variant="h6"
                 fontWeight={700}
                 sx={{
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   mb: 2,
@@ -544,11 +544,11 @@ export default function MedicationReminder() {
                           bgcolor: alpha(theme.palette.background.paper, 0.6),
                           backdropFilter: 'blur(20px)',
                             border: newReminderIds.has(reminder._id) 
-                              ? `2px solid #06D6A0` 
+                              ? `2px solid #10B981` 
                               : `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                          borderLeft: `6px solid #06D6A0`,
+                          borderLeft: `6px solid #10B981`,
                             background: newReminderIds.has(reminder._id)
-                              ? `linear-gradient(135deg, ${alpha('#06D6A0', 0.08)} 0%, ${alpha('#00B4D8', 0.08)} 100%)`
+                              ? `linear-gradient(135deg, ${alpha('#10B981', 0.08)} 0%, ${alpha('#0EA5E9', 0.08)} 100%)`
                               : alpha(theme.palette.background.paper, 0.6),
                           transition: 'all 0.2s',
                           '&:hover': {
@@ -565,7 +565,7 @@ export default function MedicationReminder() {
                                   label="JUST ADDED" 
                                   size="small"
                                   sx={{
-                                    background: 'linear-gradient(135deg, #06D6A0 0%, #00B4D8 100%)',
+                                    background: 'linear-gradient(135deg, #2563EB 0%, #06B6D4 50%, #34D399 100%)',
                                     color: 'white',
                                     fontWeight: 700,
                                     fontSize: '0.7rem',
@@ -584,7 +584,7 @@ export default function MedicationReminder() {
                                 fontWeight={700}
                                 sx={{
                                   fontSize: '1.15rem',
-                                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                                   WebkitBackgroundClip: 'text',
                                   WebkitTextFillColor: 'transparent',
                                 }}
@@ -639,15 +639,15 @@ export default function MedicationReminder() {
                                 sx={{
                                   flex: 1,
                                   p: 1.5,
-                                  bgcolor: alpha('#00B4D8', 0.1),
+                                  bgcolor: alpha('#0EA5E9', 0.1),
                                   borderRadius: 2,
-                                  border: `1px solid ${alpha('#00B4D8', 0.2)}`,
+                                  border: `1px solid ${alpha('#0EA5E9', 0.2)}`,
                                 }}
                               >
                                 <Typography variant="caption" color="text.secondary" display="block">
                                   First Reminder
                                 </Typography>
-                                <Typography variant="body2" fontWeight={600} sx={{ color: '#00B4D8' }}>
+                                <Typography variant="body2" fontWeight={600} sx={{ color: '#0EA5E9' }}>
                                   {new Date(reminder.firstReminder).toLocaleString()}
                                 </Typography>
                               </Box>
@@ -655,15 +655,15 @@ export default function MedicationReminder() {
                                 sx={{
                                   flex: 1,
                                   p: 1.5,
-                                  bgcolor: alpha('#06D6A0', 0.1),
+                                  bgcolor: alpha('#10B981', 0.1),
                                   borderRadius: 2,
-                                  border: `1px solid ${alpha('#06D6A0', 0.2)}`,
+                                  border: `1px solid ${alpha('#10B981', 0.2)}`,
                                 }}
                               >
                                 <Typography variant="caption" color="text.secondary" display="block">
                                   Last Reminder
                                 </Typography>
-                                <Typography variant="body2" fontWeight={600} sx={{ color: '#06D6A0' }}>
+                                <Typography variant="body2" fontWeight={600} sx={{ color: '#10B981' }}>
                                   {new Date(reminder.lastReminder).toLocaleString()}
                                 </Typography>
                               </Box>

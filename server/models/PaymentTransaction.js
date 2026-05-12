@@ -159,13 +159,18 @@ const paymentTransactionSchema = new mongoose.Schema({
   }
 });
 
-// Middleware to generate transaction ID
-paymentTransactionSchema.pre('save', async function(next) {
+// Generate transactionId BEFORE validation so the `required: true` validator passes.
+paymentTransactionSchema.pre('validate', function(next) {
   if (!this.transactionId) {
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     this.transactionId = `TXN-${timestamp}-${this.gateway.toUpperCase()}-${random}`;
   }
+  next();
+});
+
+// Keep updatedAt fresh on every save.
+paymentTransactionSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   next();
 });

@@ -361,7 +361,7 @@ export default function DoctorAppointments() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card sx={{ mb: 2, borderLeft: '4px solid #06D6A0' }}>
+      <Card sx={{ mb: 2, borderLeft: '4px solid #10B981' }}>
         <CardContent>
           <Stack spacing={2}>
             <Stack direction="row" justifyContent="space-between" alignItems="start">
@@ -441,7 +441,7 @@ export default function DoctorAppointments() {
               <>
                 <Divider />
                 <div>
-                  <Typography variant="subtitle2" sx={{ mb: 1, color: '#06D6A0', fontWeight: 600 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1, color: '#10B981', fontWeight: 600 }}>
                     Appointment Details
                   </Typography>
                   
@@ -767,7 +767,7 @@ export default function DoctorAppointments() {
 
             <Divider />
 
-            <Typography variant="subtitle2" sx={{ color: '#1A1A2E', fontWeight: 700 }}>
+            <Typography variant="subtitle2" sx={{ color: '#0F172A', fontWeight: 700 }}>
               Prescribed Medicines
             </Typography>
 

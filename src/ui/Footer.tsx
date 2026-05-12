@@ -4,7 +4,6 @@ import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
 import XIcon from '@mui/icons-material/X'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import EmailIcon from '@mui/icons-material/Email'
-import footerBg from '../images/footer.jpg'
 
 export default function Footer() {
   const theme = useTheme()
@@ -15,25 +14,35 @@ export default function Footer() {
       component="footer"
       sx={{
         position: 'relative',
-        backgroundImage: `url(${footerBg})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        overflow: 'hidden',
+        background: 'linear-gradient(180deg, #0B1730 0%, #0F2A52 60%, #0B1730 100%)',
         '&::before': {
           content: '""',
           position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.8) 100%)',
+          top: -200,
+          left: -160,
+          width: 600,
+          height: 600,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(52,211,153,0.18) 0%, transparent 60%)',
+          filter: 'blur(40px)',
           zIndex: 0,
+          pointerEvents: 'none',
         },
         '&::after': {
           content: '""',
           position: 'absolute',
-          inset: 0,
-          background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.12)} 0%, ${alpha(theme.palette.primary.dark, 0.18)} 100%)`,
-          zIndex: 1,
+          bottom: -180,
+          right: -120,
+          width: 520,
+          height: 520,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(37,99,235,0.22) 0%, transparent 60%)',
+          filter: 'blur(40px)',
+          zIndex: 0,
           pointerEvents: 'none',
         },
+        borderTop: `1px solid ${alpha('#FFFFFF', 0.08)}`,
         pt: { xs: 8, md: 10 },
         pb: { xs: 5, md: 6 },
         zIndex: 2,
@@ -53,12 +62,12 @@ export default function Footer() {
                   width: 48,
                   height: 48,
                   borderRadius: '12px',
-                  bgcolor: theme.palette.primary.main,
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#FFFFFF',
-                  boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.4)}`,
+                  boxShadow: '0 8px 20px rgba(14,165,233,0.32), 0 2px 6px rgba(37,99,235,0.22)',
                 }}
               >
                 <LocalHospitalIcon sx={{ fontSize: 28 }} />

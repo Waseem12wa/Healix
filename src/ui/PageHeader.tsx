@@ -25,7 +25,7 @@ export default function PageHeader({ title, subtitle, after, showBack }: { title
       width: '100vw',
       maxWidth: '100vw',
       overflowX: 'clip',
-      background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 1)} 0%, ${alpha(theme.palette.primary.light, 0.08)} 100%)`,
+      background: theme.extras?.gradients?.hero ?? `linear-gradient(140deg, #ECFEFF 0%, #F0FDFA 35%, #EFF6FF 100%)`,
       borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
       py: { xs: 8, md: 10 },
       '&::before': {
@@ -86,7 +86,7 @@ export default function PageHeader({ title, subtitle, after, showBack }: { title
             variant="h2"
             fontWeight={800}
             sx={{
-              background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+              background: theme.extras?.gradients?.brand ?? `linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)`,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -104,7 +104,7 @@ export default function PageHeader({ title, subtitle, after, showBack }: { title
                 width: 60,
                 height: 4,
                 borderRadius: '2px',
-                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                background: `linear-gradient(90deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)`,
                 opacity: 0.6
               }
             }}

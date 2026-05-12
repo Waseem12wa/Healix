@@ -2,10 +2,52 @@ import Stripe from 'stripe';
 import dotenv from 'dotenv';
 import PaymentTransaction from '../models/PaymentTransaction.js';
 import Order from '../models/Order.js';
+import MedicineInventory from '../models/MedicineInventory.js';
+import User from '../models/User.js';
+import { sendOrderConfirmationEmail } from '../utils/emailService.js';
 
 dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+/**
+ * Side effects to run exactly once when an order's payment turns into "success":
+ *   1. Decrement medicine inventory.
+ *   2. Send the customer a confirmation email.
+ *
+ * Safe to call multiple times - guarded by `order._fulfilled` in-memory flag and
+ * by paymentStatus === 'success' check before mutating stock.
+ */
+async function fulfillOrder(order, transaction) {
+  if (!order) return;
+
+  // Decrement inventory (best-effort, non-blocking semantics for stock errors).
+  try {
+    for (const line of order.medicines || []) {
+      if (!line.medicineId) continue;
+      await MedicineInventory.updateOne(
+        { _id: line.medicineId, quantity: { $gte: line.quantity } },
+        { $inc: { quantity: -Math.abs(line.quantity || 0) } }
+      );
+    }
+  } catch (stockError) {
+    console.error('⚠️  Stock decrement error (continuing):', stockError.message);
+  }
+
+  // Send confirmation email to the patient's real email.
+  try {
+    const user = await User.findById(order.userId).select('email userName fullName');
+    const email = user?.email;
+    const userName = user?.fullName || user?.userName || 'Customer';
+    if (email) {
+      await sendOrderConfirmationEmail({ email, userName, order, transaction });
+    } else {
+      console.warn('⚠️  Cannot send order email: user email missing for order', order._id);
+    }
+  } catch (mailError) {
+    console.error('⚠️  Confirmation email error (continuing):', mailError.message);
+  }
+}
 
 class StripePaymentService {
   /**
@@ -84,6 +126,8 @@ class StripePaymentService {
 
       // Check payment status
       if (paymentIntent.status === 'succeeded') {
+        const wasAlreadySucceeded = transaction.status === 'succeeded';
+
         transaction.status = 'succeeded';
         transaction.completedAt = new Date();
         transaction.responseData = {
@@ -95,31 +139,58 @@ class StripePaymentService {
             amount_received: paymentIntent.amount_received
           }
         };
-        
-        // Extract card details if available
-        const charge = paymentIntent.charges.data[0];
-        if (charge && charge.payment_method_details?.card) {
-          transaction.cardDetails = {
-            last4Digits: charge.payment_method_details.card.last4,
-            cardBrand: charge.payment_method_details.card.brand,
-            expiryMonth: charge.payment_method_details.card.exp_month,
-            expiryYear: charge.payment_method_details.card.exp_year
-          };
+
+        // Extract card details if available. Newer Stripe API versions (>=2022-11-15)
+        // do not expand `charges` on PaymentIntent, so retrieve via latest_charge.
+        try {
+          let charge = paymentIntent.charges?.data?.[0];
+          if (!charge && paymentIntent.latest_charge) {
+            charge = await stripe.charges.retrieve(paymentIntent.latest_charge);
+          }
+          if (charge && charge.payment_method_details?.card) {
+            transaction.cardDetails = {
+              last4Digits: charge.payment_method_details.card.last4,
+              cardBrand: charge.payment_method_details.card.brand,
+              expiryMonth: charge.payment_method_details.card.exp_month,
+              expiryYear: charge.payment_method_details.card.exp_year
+            };
+          }
+        } catch (cardErr) {
+          console.warn('⚠️  Could not extract card details:', cardErr.message);
         }
 
         await transaction.save();
 
-        // Update order status
+        // Update order status (idempotent: only fulfil on first transition).
         const order = await Order.findById(transaction.orderId);
+        let alreadyPaid = false;
         if (order) {
-          await order.markPaymentComplete();
+          alreadyPaid = order.paymentStatus === 'success';
+          if (!alreadyPaid) {
+            order.paymentIntentId = paymentIntent.id;
+            order.transactionId = transaction._id;
+            await order.markPaymentComplete();
+          }
         }
+
+        // Fire post-payment side-effects only on the first successful confirmation
+        // (prevents duplicate emails / double stock decrement on refresh).
+        if (order && !alreadyPaid && !wasAlreadySucceeded) {
+          await fulfillOrder(order, transaction);
+        }
+
+        // Re-load the order populated so callers can render a confirmation page.
+        const populatedOrder = order
+          ? await Order.findById(order._id).populate('medicines.medicineId').lean()
+          : null;
 
         return {
           success: true,
           status: 'succeeded',
           message: 'Payment confirmed successfully',
-          transaction: transaction
+          transaction: transaction,
+          order: populatedOrder,
+          orderId: populatedOrder?._id
         };
       } else if (paymentIntent.status === 'processing') {
         transaction.status = 'pending';

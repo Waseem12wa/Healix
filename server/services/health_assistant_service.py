@@ -13,6 +13,13 @@ Routes user queries intelligently to relevant backend services:
 Runs on port 5006
 """
 
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 from flask import Flask, request, jsonify
 import requests
 import json

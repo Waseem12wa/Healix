@@ -71,8 +71,8 @@ export default function DoctorHistory() {
           <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1.5} sx={{ mb: 2.5 }}>
               <Stack direction="row" alignItems="center" spacing={1.25}>
-                <HistoryIcon sx={{ color: '#06D6A0' }} />
-                <Typography sx={{ fontSize: { xs: '1.45rem', md: '2rem' }, fontWeight: 900, color: '#06D6A0' }}>
+                <HistoryIcon sx={{ color: '#10B981' }} />
+                <Typography sx={{ fontSize: { xs: '1.45rem', md: '2rem' }, fontWeight: 900, color: '#10B981' }}>
                   Doctor Activity History
                 </Typography>
               </Stack>
@@ -103,7 +103,7 @@ export default function DoctorHistory() {
                   <Box key={activity._id || index}>
                     <Stack direction="row" justifyContent="space-between" alignItems="start" gap={1.5}>
                       <Box>
-                        <Typography sx={{ fontWeight: 700, color: '#1A1A2E' }}>
+                        <Typography sx={{ fontWeight: 700, color: '#0F172A' }}>
                           {activity.title || 'Untitled activity'}
                         </Typography>
                         <Typography variant="caption" sx={{ color: '#64748B' }}>

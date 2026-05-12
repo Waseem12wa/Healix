@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
+  Avatar,
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  Container,
   Dialog,
   DialogActions,
   DialogContent,
@@ -16,24 +18,39 @@ import {
   InputAdornment,
   MenuItem,
   Paper,
+  Skeleton,
   Stack,
   TextField,
+  Tooltip as MuiTooltip,
   Typography,
   CircularProgress,
   Alert,
-  Tabs,
-  Tab
+  alpha,
 } from '@mui/material'
 import { motion } from 'framer-motion'
+import type { Variants } from 'framer-motion'
 import BackButton from '../ui/BackButton'
-import DeleteIcon from '@mui/icons-material/Delete'
-import AccessTimeIcon from '@mui/icons-material/AccessTime'
-import LocationOnIcon from '@mui/icons-material/LocationOn'
-import EventIcon from '@mui/icons-material/Event'
-import SearchIcon from '@mui/icons-material/Search'
-import PersonIcon from '@mui/icons-material/Person'
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
+import DeleteIcon from '@mui/icons-material/DeleteOutlineRounded'
+import AccessTimeIcon from '@mui/icons-material/AccessTimeRounded'
+import LocationOnIcon from '@mui/icons-material/LocationOnRounded'
+import EventIcon from '@mui/icons-material/EventRounded'
+import SearchIcon from '@mui/icons-material/SearchRounded'
+import PersonIcon from '@mui/icons-material/PersonRounded'
+import LocalHospitalIcon from '@mui/icons-material/LocalHospitalRounded'
+import CalendarTodayIcon from '@mui/icons-material/CalendarMonthRounded'
+import VideocamRoundedIcon from '@mui/icons-material/VideocamRounded'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
+import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
+import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded'
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
+import { BRAND_GRADIENT, HERO_BG, GLASS_SURFACE as GLASS, SOFT_BORDER, PREMIUM_SHADOW } from '../ui/premium'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import FiberManualRecordRoundedIcon from '@mui/icons-material/FiberManualRecordRounded'
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
+import PendingRoundedIcon from '@mui/icons-material/PendingRounded'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
+import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded'
 
 interface Doctor {
   id: string
@@ -397,490 +414,669 @@ export default function Appointments() {
     return slots
   }
 
-  return (
-    <Box sx={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5F5F7 0%, #E8F4F8 100%)',
-      py: { xs: 4, md: 6 },
-      px: { xs: 2, md: 4 }
-    }}>
-      {/* Main Content */}
-      <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
-        <Stack spacing={4}>
-          {/* Back Button */}
-          <Box>
-            <BackButton />
-          </Box>
+  // Premium tokens
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+  }
+  const cardVariants: Variants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  }
 
-          {/* Page Header */}
-          <Box>
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-              <Box sx={{
-                width: 56,
-                height: 56,
-                borderRadius: 2.5,
-                bgcolor: '#06D6A0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(6, 214, 160, 0.3)'
-              }}>
-                <CalendarTodayIcon sx={{ fontSize: 32, color: '#FFFFFF' }} />
-              </Box>
-              <Box>
-                <Typography
-                  variant="h4"
-                  fontWeight={800}
-                  sx={{
-                    color: '#1A1A2E',
-                    fontSize: { xs: '1.75rem', md: '2.25rem' },
-                    lineHeight: 1.2,
-                    mb: 0.5
-                  }}
-                >
-                  Doctor Appointments
-                </Typography>
-                <Typography variant="body1" sx={{ color: '#64748B', fontSize: '14px' }}>
-                  Browse doctors and manage your appointments
-                </Typography>
-              </Box>
+  // Appointment KPIs
+  const upcomingCount = useMemo(() => appointments.filter(a => a.status === 'pending' || a.status === 'approved' || a.status === 'confirmed').length, [appointments])
+  const pendingCount = useMemo(() => appointments.filter(a => a.status === 'pending').length, [appointments])
+  const completedCount = useMemo(() => appointments.filter(a => a.status === 'completed').length, [appointments])
+
+  const statusMeta = (status: string) => {
+    switch (status) {
+      case 'approved':
+      case 'confirmed':
+        return { label: 'Confirmed', color: '#10B981', bg: alpha('#10B981', 0.12), Icon: CheckCircleRoundedIcon }
+      case 'pending':
+        return { label: 'Pending', color: '#F59E0B', bg: alpha('#F59E0B', 0.14), Icon: PendingRoundedIcon }
+      case 'rejected':
+      case 'cancelled':
+        return { label: status.charAt(0).toUpperCase() + status.slice(1), color: '#F43F5E', bg: alpha('#F43F5E', 0.12), Icon: CancelRoundedIcon }
+      case 'completed':
+        return { label: 'Completed', color: '#1D4ED8', bg: alpha('#1D4ED8', 0.10), Icon: VerifiedRoundedIcon }
+      default:
+        return { label: status, color: '#64748B', bg: alpha('#0F172A', 0.06), Icon: EventIcon }
+    }
+  }
+
+  return (
+    <Box sx={{ width: '100%', minHeight: '100vh', position: 'relative' }}>
+      {/* Ambient mesh */}
+      <Box sx={{
+        position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none',
+        backgroundImage:
+          'radial-gradient(900px 500px at -10% -10%, rgba(52,211,153,0.10) 0%, transparent 60%),' +
+          'radial-gradient(700px 400px at 110% 0%, rgba(37,99,235,0.10) 0%, transparent 60%),' +
+          'radial-gradient(600px 400px at 50% 110%, rgba(6,182,212,0.08) 0%, transparent 60%)',
+      }} />
+
+      {/* Glass header */}
+      <Box sx={{
+        position: 'sticky', top: 0, zIndex: 20,
+        bgcolor: GLASS, backdropFilter: 'saturate(180%) blur(16px)',
+        WebkitBackdropFilter: 'saturate(180%) blur(16px)',
+        borderBottom: SOFT_BORDER,
+      }}>
+        <Container maxWidth="xl" sx={{ py: 1.25, px: { xs: 2, md: 3 } }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              <BackButton />
+              <Stack direction="row" alignItems="center" spacing={1.25} sx={{ pl: 0.5 }}>
+                <Box sx={{
+                  width: 38, height: 38, borderRadius: '11px',
+                  background: BRAND_GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 6px 16px rgba(14,165,233,0.32), 0 2px 4px rgba(37,99,235,0.18)',
+                }}>
+                  <CalendarTodayIcon sx={{ color: '#FFFFFF', fontSize: 22 }} />
+                </Box>
+                <Box>
+                  <Typography sx={{
+                    fontSize: '1.05rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.01em',
+                    background: BRAND_GRADIENT, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  }}>Appointments</Typography>
+                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'text.secondary', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Find doctors · Manage visits
+                  </Typography>
+                </Box>
+              </Stack>
             </Stack>
 
-            <Tabs
-              value={tabValue}
-              onChange={(_e, newValue) => setTabValue(newValue)}
-              sx={{
-                mb: 3,
-                '& .MuiTab-root': {
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  color: '#64748B',
-                  '&.Mui-selected': {
-                    color: '#06D6A0'
-                  }
-                },
-                '& .MuiTabs-indicator': {
-                  backgroundColor: '#06D6A0',
-                  height: 3,
-                  borderRadius: '3px 3px 0 0'
-                }
-              }}
-            >
-              <Tab label="Browse Doctors" />
-              <Tab label="My Appointments" />
-            </Tabs>
-          </Box>
+            {/* Premium pill tabs */}
+            <Box sx={{
+              display: 'flex', p: 0.4, gap: 0.4,
+              bgcolor: alpha('#FFFFFF', 0.75), backdropFilter: 'blur(8px)',
+              border: SOFT_BORDER, borderRadius: 999,
+            }}>
+              {[
+                { value: 0, label: 'Browse', shortLabel: 'Browse', Icon: SearchIcon },
+                { value: 1, label: `My Appointments${upcomingCount > 0 ? ` · ${upcomingCount}` : ''}`, shortLabel: 'Mine', Icon: EventAvailableRoundedIcon },
+              ].map((t) => {
+                const TIcon = t.Icon
+                const active = tabValue === t.value
+                return (
+                  <Button
+                    key={t.value}
+                    onClick={() => setTabValue(t.value)}
+                    startIcon={<TIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      textTransform: 'none', fontWeight: 700, fontSize: '0.78rem',
+                      borderRadius: 999, px: { xs: 1.25, md: 2 }, py: 0.6,
+                      minWidth: { xs: 'auto', md: 0 },
+                      ...(active
+                        ? {
+                            color: '#FFFFFF',
+                            background: BRAND_GRADIENT,
+                            boxShadow: '0 4px 12px rgba(14,165,233,0.30)',
+                          }
+                        : {
+                            color: 'text.secondary',
+                            '&:hover': { color: '#0F172A', bgcolor: alpha('#0F172A', 0.04) },
+                          }),
+                    }}
+                  >
+                    <Box sx={{ display: { xs: 'none', sm: 'inline' } }}>{t.label}</Box>
+                    <Box sx={{ display: { xs: 'inline', sm: 'none' } }}>{t.shortLabel}</Box>
+                  </Button>
+                )
+              })}
+            </Box>
+          </Stack>
+        </Container>
+      </Box>
 
+      {/* Body */}
+      <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 }, px: { xs: 2, md: 3 } }}>
+        <motion.div variants={containerVariants} initial="hidden" animate="visible">
+          <Stack spacing={{ xs: 3, md: 3.5 }}>
           {/* Browse Doctors Tab */}
           {tabValue === 0 && (
             <Stack spacing={3}>
-              {/* Search Filters */}
-              <Card elevation={0} sx={{
-                borderRadius: 3,
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                border: '1px solid rgba(0, 0, 0, 0.06)',
-                bgcolor: '#FFFFFF'
-              }}>
-                <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                  <Stack spacing={2}>
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                      <TextField
-                        fullWidth
-                        placeholder="Search by doctor name..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <SearchIcon sx={{ color: '#64748B' }} />
-                            </InputAdornment>
-                          )
-                        }}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            bgcolor: '#F5F5F7',
-                            borderRadius: 2,
-                            '& fieldset': {
-                              borderColor: '#E2E8F0'
-                            },
-                            '&:hover fieldset': {
-                              borderColor: '#00B4D8'
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#00B4D8',
-                              borderWidth: '2px'
-                            }
-                          }
-                        }}
-                      />
-                      <TextField
-                        fullWidth
-                        placeholder="Filter by specialization..."
-                        value={specializationFilter}
-                        onChange={(e) => setSpecializationFilter(e.target.value)}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            bgcolor: '#F5F5F7',
-                            borderRadius: 2,
-                            '& fieldset': {
-                              borderColor: '#E2E8F0'
-                            },
-                            '&:hover fieldset': {
-                              borderColor: '#00B4D8'
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#00B4D8',
-                              borderWidth: '2px'
-                            }
-                          }
-                        }}
-                      />
-                      <TextField
-                        fullWidth
-                        placeholder="Filter by city..."
-                        value={cityFilter}
-                        onChange={(e) => setCityFilter(e.target.value)}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <LocationOnIcon sx={{ color: '#64748B' }} />
-                            </InputAdornment>
-                          )
-                        }}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            bgcolor: '#F5F5F7',
-                            borderRadius: 2,
-                            '& fieldset': {
-                              borderColor: '#E2E8F0'
-                            },
-                            '&:hover fieldset': {
-                              borderColor: '#00B4D8'
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#00B4D8',
-                              borderWidth: '2px'
-                            }
-                          }
-                        }}
-                      />
-                    </Stack>
-                    <Button
-                      variant="contained"
-                      onClick={() => {
-                        searchDoctors()
-                      }}
-                      disabled={loading}
+              {/* HERO BANNER */}
+              <motion.div variants={cardVariants}>
+                <Card sx={{
+                  position: 'relative', overflow: 'hidden',
+                  borderRadius: 4, border: SOFT_BORDER,
+                  background: HERO_BG, boxShadow: PREMIUM_SHADOW,
+                }}>
+                  <Box sx={{ position: 'absolute', top: -120, right: -100, width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,211,153,0.22) 0%, transparent 60%)', filter: 'blur(20px)', pointerEvents: 'none' }} />
+                  <Box sx={{ position: 'absolute', bottom: -100, left: '40%', width: 360, height: 360, borderRadius: '50%', background: 'radial-gradient(circle, rgba(37,99,235,0.18) 0%, transparent 60%)', filter: 'blur(20px)', pointerEvents: 'none' }} />
+                  <CardContent sx={{ position: 'relative', p: { xs: 3, md: 4.5 } }}>
+                    <Chip
+                      size="small"
+                      icon={<VerifiedRoundedIcon sx={{ fontSize: 14 }} />}
+                      label="VERIFIED DOCTORS"
                       sx={{
-                        bgcolor: '#06D6A0',
-                        color: '#FFFFFF',
-                        textTransform: 'none',
-                        borderRadius: 2,
-                        px: 3,
-                        py: 1.25,
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        boxShadow: '0 2px 8px rgba(6, 214, 160, 0.3)',
-                        '&:hover': {
-                          bgcolor: '#04A777',
-                          boxShadow: '0 4px 12px rgba(6, 214, 160, 0.4)'
-                        },
-                        alignSelf: 'flex-start'
+                        bgcolor: alpha('#FFFFFF', 0.65), backdropFilter: 'blur(8px)',
+                        border: SOFT_BORDER, color: '#1D4ED8', fontWeight: 800, letterSpacing: '0.06em',
+                        fontSize: '0.65rem', height: 24, mb: 2,
+                        '& .MuiChip-icon': { color: '#06B6D4' },
                       }}
-                    >
-                      {loading ? <CircularProgress size={20} sx={{ color: '#FFFFFF' }} /> : 'Search'}
-                    </Button>
-                  </Stack>
-                </CardContent>
-              </Card>
+                    />
+                    <Typography sx={{
+                      fontSize: { xs: '1.75rem', sm: '2.15rem', md: '2.6rem' },
+                      fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.025em', color: '#0F172A',
+                    }}>
+                      Find your{' '}
+                      <Box component="span" sx={{
+                        background: BRAND_GRADIENT, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                      }}>perfect doctor</Box>
+                    </Typography>
+                    <Typography sx={{ fontSize: { xs: '0.95rem', md: '1.05rem' }, color: 'text.secondary', mt: 1.25, maxWidth: 620, lineHeight: 1.6 }}>
+                      Browse <strong>{doctors.length || 'verified'}</strong> licensed specialists. Book in-person or online consultations instantly.
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* SEARCH + FILTERS */}
+              <motion.div variants={cardVariants}>
+                <Card sx={{
+                  borderRadius: 3, border: SOFT_BORDER,
+                  bgcolor: alpha('#FFFFFF', 0.85), backdropFilter: 'blur(8px)', boxShadow: PREMIUM_SHADOW,
+                }}>
+                  <CardContent sx={{ p: { xs: 2.25, md: 2.75 } }}>
+                    <Stack spacing={1.75}>
+                      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+                        <TextField
+                          fullWidth size="small"
+                          placeholder="Doctor name…"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                              </InputAdornment>
+                            ),
+                          }}
+                          sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#FFFFFF', borderRadius: 999 } }}
+                        />
+                        <TextField
+                          fullWidth size="small"
+                          placeholder="Specialization…"
+                          value={specializationFilter}
+                          onChange={(e) => setSpecializationFilter(e.target.value)}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <WorkspacePremiumRoundedIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                              </InputAdornment>
+                            ),
+                          }}
+                          sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#FFFFFF', borderRadius: 999 } }}
+                        />
+                        <TextField
+                          fullWidth size="small"
+                          placeholder="City…"
+                          value={cityFilter}
+                          onChange={(e) => setCityFilter(e.target.value)}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <LocationOnIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                              </InputAdornment>
+                            ),
+                          }}
+                          sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#FFFFFF', borderRadius: 999 } }}
+                        />
+                        <Button
+                          onClick={() => { searchDoctors() }}
+                          disabled={loading}
+                          startIcon={loading ? <CircularProgress size={16} sx={{ color: '#FFFFFF' }} /> : <SearchIcon sx={{ fontSize: 18 }} />}
+                          sx={{
+                            background: BRAND_GRADIENT,
+                            backgroundSize: '200% 200%', backgroundPosition: '0% 50%',
+                            color: '#FFFFFF', textTransform: 'none', fontWeight: 700, fontSize: '0.85rem',
+                            borderRadius: 999, px: 3, py: 1, minWidth: 140,
+                            boxShadow: '0 6px 16px rgba(14,165,233,0.28)',
+                            transition: 'all 0.3s ease',
+                            '&:hover': { backgroundPosition: '100% 50%', boxShadow: '0 10px 22px rgba(14,165,233,0.38)' },
+                          }}
+                        >
+                          {loading ? 'Searching…' : 'Search'}
+                        </Button>
+                      </Stack>
+                      <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>
+                        {doctors.length > 0 ? `Showing ${doctors.length} ${doctors.length === 1 ? 'doctor' : 'doctors'}` : 'Use filters to find specialists in your area'}
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
               {error && <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>}
 
               {loading && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                  <CircularProgress sx={{ color: '#06D6A0' }} />
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 2.5 }}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Card key={i} sx={{ borderRadius: 3, border: SOFT_BORDER, p: 3 }}>
+                      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                        <Skeleton variant="circular" width={56} height={56} />
+                        <Box sx={{ flex: 1 }}>
+                          <Skeleton variant="text" width="70%" />
+                          <Skeleton variant="text" width="50%" />
+                        </Box>
+                      </Stack>
+                      <Skeleton variant="text" />
+                      <Skeleton variant="text" width="80%" />
+                      <Skeleton variant="rounded" height={36} sx={{ mt: 1.5, borderRadius: 1.5 }} />
+                    </Card>
+                  ))}
                 </Box>
               )}
 
               {!loading && doctors.length === 0 && !error && (
-                <Alert severity="info" sx={{ borderRadius: 2 }}>No doctors found. Try adjusting your search filters.</Alert>
+                <Card sx={{ borderRadius: 3, border: SOFT_BORDER, p: 5, textAlign: 'center', bgcolor: alpha('#FFFFFF', 0.7) }}>
+                  <Box sx={{
+                    width: 56, height: 56, mx: 'auto', mb: 2, borderRadius: 2,
+                    background: `linear-gradient(135deg, ${alpha('#0EA5E9', 0.18)} 0%, ${alpha('#0EA5E9', 0.06)} 100%)`,
+                    border: `1px solid ${alpha('#0EA5E9', 0.25)}`, color: '#0EA5E9',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <SearchIcon sx={{ fontSize: 28 }} />
+                  </Box>
+                  <Typography sx={{ fontWeight: 800, color: '#0F172A', mb: 0.5 }}>No doctors found</Typography>
+                  <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>Try adjusting your search filters or pick a different city.</Typography>
+                </Card>
               )}
 
               {/* Doctors Grid */}
-              <Grid container spacing={3}>
-                {doctors.map((doctor) => (
-                  <Grid size={{ xs: 12, md: 6, lg: 4 }} key={doctor.id}>
-                    <Card
-                      elevation={0}
-                      sx={{
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        borderRadius: 3,
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                        border: '1px solid rgba(0, 0, 0, 0.06)',
-                        bgcolor: '#FFFFFF',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)'
-                        }
-                      }}
-                    >
-                      <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 3 }}>
-                        <Stack spacing={2}>
-                          {/* Doctor Name and Specialization */}
-                          <Box>
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                              <PersonIcon sx={{ color: '#06D6A0', fontSize: 24 }} />
-                              <Typography variant="h6" fontWeight={700} sx={{ color: '#1A1A2E', fontSize: '18px' }}>
-                                {doctor.name}
+              {!loading && doctors.length > 0 && (
+                <Box sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+                  gap: { xs: 2, md: 2.5 },
+                }}>
+                  {doctors.map((doctor) => (
+                    <motion.div key={doctor.id} variants={cardVariants} whileHover={{ y: -6 }} transition={{ duration: 0.25, ease: 'easeOut' }}>
+                      <Card sx={{
+                        position: 'relative', overflow: 'hidden', height: '100%',
+                        display: 'flex', flexDirection: 'column',
+                        borderRadius: 3, border: SOFT_BORDER,
+                        bgcolor: alpha('#FFFFFF', 0.92), backdropFilter: 'blur(8px)',
+                        boxShadow: PREMIUM_SHADOW,
+                        transition: 'border-color 0.25s ease, box-shadow 0.25s ease',
+                        '&:hover': { borderColor: alpha('#0EA5E9', 0.4), boxShadow: '0 16px 40px rgba(14,165,233,0.20)' },
+                      }}>
+                        <Box sx={{
+                          position: 'absolute', top: -50, right: -50, width: 160, height: 160, borderRadius: '50%',
+                          background: 'radial-gradient(circle, rgba(52,211,153,0.18) 0%, transparent 65%)',
+                          pointerEvents: 'none',
+                        }} />
+
+                        <CardContent sx={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', p: { xs: 2.5, md: 3 } }}>
+                          {/* Doctor identity */}
+                          <Stack direction="row" spacing={1.75} alignItems="center" sx={{ mb: 2 }}>
+                            <Box sx={{
+                              position: 'relative',
+                              '&::before': {
+                                content: '""', position: 'absolute', inset: -3, borderRadius: '50%', padding: '2px',
+                                background: BRAND_GRADIENT,
+                                WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+                                mask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+                                WebkitMaskComposite: 'xor', maskComposite: 'exclude',
+                              },
+                            }}>
+                              <Avatar sx={{ width: 56, height: 56, bgcolor: alpha('#0EA5E9', 0.12), color: '#1D4ED8', fontWeight: 800, fontSize: '1.25rem' }}>
+                                {doctor.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                            </Box>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  Dr. {doctor.name}
+                                </Typography>
+                                <VerifiedRoundedIcon sx={{ fontSize: 16, color: '#0EA5E9' }} />
+                              </Stack>
+                              <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mt: 0.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {doctor.specialization}{doctor.subSpecialization && ` · ${doctor.subSpecialization}`}
                               </Typography>
-                            </Stack>
-                            <Typography variant="body2" sx={{ color: '#64748B', mb: 1, fontSize: '13px' }}>
-                              {doctor.specialization}
-                              {doctor.subSpecialization && ` - ${doctor.subSpecialization}`}
-                            </Typography>
+                            </Box>
+                          </Stack>
+
+                          {/* Tags row */}
+                          <Stack direction="row" spacing={0.75} sx={{ mb: 2, flexWrap: 'wrap', gap: 0.75 }}>
                             <Chip
-                              label={`${doctor.experience} years experience`}
                               size="small"
-                              sx={{
-                                bgcolor: '#E8F4F8',
-                                color: '#00B4D8',
-                                fontWeight: 600,
-                                fontSize: '12px'
-                              }}
+                              icon={<WorkspacePremiumRoundedIcon sx={{ fontSize: '0.85rem !important' }} />}
+                              label={`${doctor.experience} yrs`}
+                              sx={{ bgcolor: alpha('#0EA5E9', 0.10), color: '#1D4ED8', fontWeight: 700, fontSize: '0.7rem', height: 22, '& .MuiChip-icon': { color: '#0EA5E9', ml: 0.5 } }}
                             />
-                          </Box>
+                            {doctor.onlineFee && (
+                              <Chip
+                                size="small"
+                                icon={<VideocamRoundedIcon sx={{ fontSize: '0.85rem !important' }} />}
+                                label="Online"
+                                sx={{ bgcolor: alpha('#10B981', 0.10), color: '#059669', fontWeight: 700, fontSize: '0.7rem', height: 22, '& .MuiChip-icon': { color: '#10B981', ml: 0.5 } }}
+                              />
+                            )}
+                            <Chip
+                              size="small"
+                              icon={<StorefrontRoundedIcon sx={{ fontSize: '0.85rem !important' }} />}
+                              label="In-person"
+                              sx={{ bgcolor: alpha('#F59E0B', 0.10), color: '#92400E', fontWeight: 700, fontSize: '0.7rem', height: 22, '& .MuiChip-icon': { color: '#F59E0B', ml: 0.5 } }}
+                            />
+                          </Stack>
 
-                          <Divider sx={{ borderColor: '#E2E8F0' }} />
-
-                          {/* Clinic Info */}
-                          <Box>
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                              <LocalHospitalIcon sx={{ fontSize: 18, color: '#64748B' }} />
-                              <Typography variant="body2" fontWeight={600} sx={{ color: '#1A1A2E', fontSize: '13px' }}>
-                                {doctor.clinicName}
-                              </Typography>
+                          {/* Info rows */}
+                          <Stack spacing={1} sx={{ mb: 2 }}>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <LocalHospitalIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+                              <Typography sx={{ fontSize: '0.8rem', color: '#0F172A', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doctor.clinicName}</Typography>
                             </Stack>
                             <Stack direction="row" spacing={1} alignItems="center">
-                              <LocationOnIcon sx={{ fontSize: 18, color: '#64748B' }} />
-                              <Typography variant="body2" sx={{ color: '#64748B', fontSize: '13px' }}>
-                                {doctor.city}
+                              <LocationOnIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+                              <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{doctor.city}</Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <AccessTimeIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+                              <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
+                                {doctor.availability.workingDays.slice(0, 3).join(', ')}{doctor.availability.workingDays.length > 3 ? '…' : ''} · {formatTime(doctor.availability.startTime)}–{formatTime(doctor.availability.endTime)}
                               </Typography>
                             </Stack>
-                          </Box>
+                          </Stack>
 
-                          {/* Availability */}
-                          <Box>
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                              <AccessTimeIcon sx={{ fontSize: 18, color: '#64748B' }} />
-                              <Typography variant="body2" fontWeight={600} sx={{ color: '#1A1A2E', fontSize: '13px' }}>
-                                Availability
+                          <Box sx={{ flex: 1 }} />
+
+                          {/* Footer: Fees + Book */}
+                          <Box sx={{
+                            mt: 1, pt: 2, borderTop: SOFT_BORDER,
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1,
+                          }}>
+                            <Box>
+                              <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                Starts from
                               </Typography>
-                            </Stack>
-                            <Typography variant="body2" sx={{ color: '#64748B', mb: 0.5, fontSize: '12px' }}>
-                              {doctor.availability.workingDays.join(', ')}
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: '#64748B', fontSize: '12px' }}>
-                              {formatTime(doctor.availability.startTime)} - {formatTime(doctor.availability.endTime)}
-                            </Typography>
+                              <Typography sx={{
+                                fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.01em',
+                                background: BRAND_GRADIENT, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                                lineHeight: 1.2,
+                              }}>
+                                PKR {Math.min(doctor.inPersonFee, doctor.onlineFee || doctor.inPersonFee).toLocaleString()}
+                              </Typography>
+                            </Box>
+                            <Button
+                              onClick={() => handleBookAppointment(doctor)}
+                              endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />}
+                              sx={{
+                                background: BRAND_GRADIENT,
+                                backgroundSize: '200% 200%', backgroundPosition: '0% 50%',
+                                color: '#FFFFFF', textTransform: 'none', fontWeight: 700, fontSize: '0.82rem',
+                                borderRadius: 999, px: 2, py: 0.85,
+                                boxShadow: '0 6px 16px rgba(14,165,233,0.28)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': { backgroundPosition: '100% 50%', boxShadow: '0 10px 22px rgba(14,165,233,0.38)' },
+                              }}
+                            >
+                              Book
+                            </Button>
                           </Box>
-
-                          {/* Fees */}
-                          <Box sx={{ mt: 'auto', pt: 2 }}>
-                            <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
-                              <Box>
-                                <Typography variant="body2" sx={{ color: '#64748B', fontSize: '12px' }}>
-                                  In-person: <strong style={{ color: '#1A1A2E' }}>PKR {doctor.inPersonFee.toLocaleString()}</strong>
-                                </Typography>
-                                {doctor.onlineFee && (
-                                  <Typography variant="body2" sx={{ color: '#64748B', fontSize: '12px' }}>
-                                    Online: <strong style={{ color: '#1A1A2E' }}>PKR {doctor.onlineFee.toLocaleString()}</strong>
-                                  </Typography>
-                                )}
-                              </Box>
-                              <Button
-                                variant="contained"
-                                startIcon={<CalendarTodayIcon sx={{ fontSize: 18 }} />}
-                                onClick={() => handleBookAppointment(doctor)}
-                                sx={{
-                                  bgcolor: '#06D6A0',
-                                  color: '#FFFFFF',
-                                  textTransform: 'none',
-                                  borderRadius: 2,
-                                  px: 2,
-                                  py: 1,
-                                  fontSize: '13px',
-                                  fontWeight: 600,
-                                  boxShadow: '0 2px 8px rgba(6, 214, 160, 0.3)',
-                                  '&:hover': {
-                                    bgcolor: '#04A777',
-                                    boxShadow: '0 4px 12px rgba(6, 214, 160, 0.4)'
-                                  }
-                                }}
-                              >
-                                Book
-                              </Button>
-                            </Stack>
-                          </Box>
-                        </Stack>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </Box>
+              )}
             </Stack>
           )}
 
           {/* My Appointments Tab */}
           {tabValue === 1 && (
-            <>
-              {loadingAppointments && !appointmentsLoadedOnce && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                  <CircularProgress />
-                </Box>
-              )}
-              {!loadingAppointments && appointments.length === 0 && (
-                <Alert severity="info">You have no appointments yet. Browse doctors to book one.</Alert>
-              )}
-              <Grid container spacing={3}>
-                {appointments.map((appointment) => (
-                  <Grid size={{ xs: 12, md: 6 }} key={appointment._id || appointment.id}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Card
-                        sx={{
-                          height: '100%',
-                          borderRadius: 2,
-                          boxShadow: 2,
-                          transition: 'transform 0.2s, box-shadow 0.2s',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: 4,
-                          },
-                        }}
-                      >
-                        <CardContent>
-                          <Stack spacing={2}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                              <Box>
-                                <Typography variant="h6" fontWeight={800} color="#1947D2">
-                                  {appointment.doctorName}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  {appointment.specialization}
-                                </Typography>
-                              </Box>
-                              <Chip
-                                label={appointment.status === 'approved' ? 'Confirmed' : appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                                color={getStatusColor(appointment.status) as any}
-                                size="small"
-                              />
+            <Stack spacing={3}>
+              {/* KPI strip */}
+              {!loadingAppointments && appointments.length > 0 && (
+                <motion.div variants={cardVariants}>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: { xs: 1.5, md: 2 } }}>
+                    {[
+                      { label: 'Upcoming', value: upcomingCount, color: '#0EA5E9', Icon: EventAvailableRoundedIcon },
+                      { label: 'Pending', value: pendingCount, color: '#F59E0B', Icon: PendingRoundedIcon },
+                      { label: 'Completed', value: completedCount, color: '#10B981', Icon: CheckCircleRoundedIcon },
+                    ].map(({ label, value, color, Icon }) => (
+                      <Card key={label} sx={{
+                        position: 'relative', overflow: 'hidden',
+                        borderRadius: 3, border: SOFT_BORDER,
+                        bgcolor: alpha('#FFFFFF', 0.85), backdropFilter: 'blur(8px)', boxShadow: PREMIUM_SHADOW,
+                      }}>
+                        <Box sx={{
+                          position: 'absolute', top: -30, right: -30, width: 100, height: 100, borderRadius: '50%',
+                          background: `radial-gradient(circle, ${alpha(color, 0.18)} 0%, transparent 65%)`,
+                          pointerEvents: 'none',
+                        }} />
+                        <CardContent sx={{ position: 'relative', p: 2.25 }}>
+                          <Stack direction="row" alignItems="center" spacing={1.5}>
+                            <Box sx={{
+                              width: 40, height: 40, borderRadius: 2,
+                              background: `linear-gradient(135deg, ${alpha(color, 0.18)} 0%, ${alpha(color, 0.06)} 100%)`,
+                              border: `1px solid ${alpha(color, 0.25)}`, color,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              <Icon sx={{ fontSize: 22 }} />
                             </Box>
-
-                            <Stack spacing={1}>
-                              {appointment.consultationType && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <LocalHospitalIcon sx={{ color: '#1947D2', fontSize: 20 }} />
-                                  <Typography variant="body2">
-                                    {appointment.consultationType === 'online' ? 'Online Consultation' : 'In-Person Consultation'}
-                                  </Typography>
-                                </Box>
-                              )}
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <EventIcon sx={{ color: '#1947D2', fontSize: 20 }} />
-                                <Typography variant="body2">{appointment.date}</Typography>
-                              </Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <AccessTimeIcon sx={{ color: '#1947D2', fontSize: 20 }} />
-                                <Typography variant="body2">{appointment.time}</Typography>
-                              </Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <LocationOnIcon sx={{ color: '#1947D2', fontSize: 20 }} />
-                                <Typography variant="body2">{appointment.location}</Typography>
-                              </Box>
-                            </Stack>
-
-                            {appointment.notes && (
-                              <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#f5f7fa' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  {appointment.notes}
-                                </Typography>
-                              </Paper>
-                            )}
-
-                            {appointment.status === 'approved' && (
-                              <Stack spacing={1}>
-                                {appointment.doctorComments && (
-                                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#f0fdf4', borderColor: '#86efac' }}>
-                                    <Typography variant="caption" sx={{ color: '#166534', fontWeight: 600, display: 'block', mb: 0.5 }}>
-                                      Doctor Comments
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                      {appointment.doctorComments}
-                                    </Typography>
-                                  </Paper>
-                                )}
-
-                                {appointment.consultationType === 'online' && appointment.meetingLink && (
-                                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#eff6ff', borderColor: '#93c5fd' }}>
-                                    <Typography variant="caption" sx={{ color: '#1d4ed8', fontWeight: 600, display: 'block', mb: 0.5 }}>
-                                      Meeting Link
-                                    </Typography>
-                                    <Typography
-                                      component="a"
-                                      href={appointment.meetingLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      variant="body2"
-                                      sx={{ color: '#1d4ed8', textDecoration: 'underline' }}
-                                    >
-                                      {appointment.meetingLink}
-                                    </Typography>
-                                  </Paper>
-                                )}
-
-                                {appointment.consultationType === 'in-person' && appointment.appointmentLocationDetails && (
-                                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#fffbeb', borderColor: '#fcd34d' }}>
-                                    <Typography variant="caption" sx={{ color: '#92400e', fontWeight: 600, display: 'block', mb: 0.5 }}>
-                                      Location Details
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                      {appointment.appointmentLocationDetails}
-                                    </Typography>
-                                  </Paper>
-                                )}
-                              </Stack>
-                            )}
-
-                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                              {appointment.status === 'pending' && (
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => {
-                                    const appointmentId = appointment._id || appointment.id
-                                    if (appointmentId) handleDelete(appointmentId)
-                                  }}
-                                >
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              )}
+                            <Box>
+                              <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: 'text.secondary', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</Typography>
+                              <Typography sx={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A', lineHeight: 1, letterSpacing: '-0.02em' }}>{value}</Typography>
                             </Box>
                           </Stack>
                         </CardContent>
                       </Card>
-                    </motion.div>
-                  </Grid>
-                ))}
-              </Grid>
-            </>
+                    ))}
+                  </Box>
+                </motion.div>
+              )}
+
+              {loadingAppointments && !appointmentsLoadedOnce && (
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2.5 }}>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Card key={i} sx={{ borderRadius: 3, border: SOFT_BORDER, p: 3 }}>
+                      <Skeleton variant="text" width="60%" />
+                      <Skeleton variant="text" width="40%" />
+                      <Stack spacing={1} sx={{ mt: 2 }}>
+                        <Skeleton variant="text" />
+                        <Skeleton variant="text" />
+                        <Skeleton variant="text" width="70%" />
+                      </Stack>
+                    </Card>
+                  ))}
+                </Box>
+              )}
+
+              {!loadingAppointments && appointments.length === 0 && (
+                <Card sx={{ borderRadius: 3, border: SOFT_BORDER, p: 5, textAlign: 'center', bgcolor: alpha('#FFFFFF', 0.7) }}>
+                  <Box sx={{
+                    width: 56, height: 56, mx: 'auto', mb: 2, borderRadius: 2,
+                    background: `linear-gradient(135deg, ${alpha('#0EA5E9', 0.18)} 0%, ${alpha('#0EA5E9', 0.06)} 100%)`,
+                    border: `1px solid ${alpha('#0EA5E9', 0.25)}`, color: '#0EA5E9',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <EventIcon sx={{ fontSize: 28 }} />
+                  </Box>
+                  <Typography sx={{ fontWeight: 800, color: '#0F172A', mb: 0.5 }}>No appointments yet</Typography>
+                  <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem', mb: 2 }}>Browse doctors to book your first consultation.</Typography>
+                  <Button
+                    onClick={() => setTabValue(0)}
+                    endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      background: BRAND_GRADIENT,
+                      backgroundSize: '200% 200%', backgroundPosition: '0% 50%',
+                      color: '#FFFFFF', textTransform: 'none', fontWeight: 700, fontSize: '0.85rem',
+                      borderRadius: 999, px: 2.5, py: 1,
+                      boxShadow: '0 6px 16px rgba(14,165,233,0.28)',
+                      transition: 'all 0.3s ease',
+                      '&:hover': { backgroundPosition: '100% 50%' },
+                    }}
+                  >
+                    Browse doctors
+                  </Button>
+                </Card>
+              )}
+
+              {appointments.length > 0 && (
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: { xs: 2, md: 2.5 } }}>
+                  {appointments.map((appointment) => {
+                    const meta = statusMeta(appointment.status)
+                    const StatusIcon = meta.Icon
+                    return (
+                      <motion.div key={appointment._id || appointment.id} variants={cardVariants}>
+                        <Card sx={{
+                          position: 'relative', overflow: 'hidden', height: '100%',
+                          borderRadius: 3, border: SOFT_BORDER,
+                          bgcolor: alpha('#FFFFFF', 0.92), backdropFilter: 'blur(8px)',
+                          boxShadow: PREMIUM_SHADOW,
+                          transition: 'border-color 0.25s ease, box-shadow 0.25s ease',
+                          '&:hover': { borderColor: alpha(meta.color, 0.4), boxShadow: `0 16px 40px ${alpha(meta.color, 0.18)}` },
+                        }}>
+                          {/* Status side rail */}
+                          <Box sx={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: meta.color }} />
+
+                          <CardContent sx={{ position: 'relative', p: { xs: 2.5, md: 3 }, pl: { xs: 3, md: 3.5 } }}>
+                            {/* Header row */}
+                            <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1.5} sx={{ mb: 2 }}>
+                              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
+                                <Avatar sx={{ width: 44, height: 44, bgcolor: alpha('#0EA5E9', 0.12), color: '#1D4ED8', fontWeight: 800, fontSize: '1rem' }}>
+                                  {appointment.doctorName.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Box sx={{ minWidth: 0 }}>
+                                  <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    Dr. {appointment.doctorName}
+                                  </Typography>
+                                  <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mt: 0.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {appointment.specialization}
+                                  </Typography>
+                                </Box>
+                              </Stack>
+                              <Chip
+                                size="small"
+                                icon={<StatusIcon sx={{ fontSize: '0.85rem !important' }} />}
+                                label={meta.label}
+                                sx={{
+                                  bgcolor: meta.bg, color: meta.color, fontWeight: 800, fontSize: '0.7rem', height: 24,
+                                  '& .MuiChip-icon': { color: meta.color, ml: 0.5 },
+                                }}
+                              />
+                            </Stack>
+
+                            {/* Visit details */}
+                            <Box sx={{ p: 1.5, bgcolor: alpha('#0F172A', 0.025), borderRadius: 2, border: SOFT_BORDER, mb: appointment.notes || appointment.status === 'approved' ? 2 : 0 }}>
+                              <Stack spacing={0.85}>
+                                {appointment.consultationType && (
+                                  <Stack direction="row" spacing={1} alignItems="center">
+                                    {appointment.consultationType === 'online' ? <VideocamRoundedIcon sx={{ fontSize: 16, color: '#10B981' }} /> : <StorefrontRoundedIcon sx={{ fontSize: 16, color: '#F59E0B' }} />}
+                                    <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#0F172A' }}>
+                                      {appointment.consultationType === 'online' ? 'Online consultation' : 'In-person consultation'}
+                                    </Typography>
+                                  </Stack>
+                                )}
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  <EventIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+                                  <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
+                                    <Box component="span" sx={{ color: '#0F172A', fontWeight: 700 }}>{appointment.date}</Box> · {appointment.time}
+                                  </Typography>
+                                </Stack>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  <LocationOnIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+                                  <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {appointment.location}
+                                  </Typography>
+                                </Stack>
+                                {appointment.fee !== undefined && appointment.fee !== null && (
+                                  <Stack direction="row" spacing={1} alignItems="center">
+                                    <FiberManualRecordRoundedIcon sx={{ fontSize: 8, color: '#1D4ED8' }} />
+                                    <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary' }}>
+                                      Fee: <Box component="span" sx={{ color: '#0F172A', fontWeight: 700 }}>PKR {Number(appointment.fee).toLocaleString()}</Box>
+                                    </Typography>
+                                  </Stack>
+                                )}
+                              </Stack>
+                            </Box>
+
+                            {appointment.notes && (
+                              <Box sx={{
+                                p: 1.5, mb: appointment.status === 'approved' ? 1.5 : 0,
+                                bgcolor: alpha('#0EA5E9', 0.05), border: `1px solid ${alpha('#0EA5E9', 0.15)}`, borderRadius: 2,
+                              }}>
+                                <Typography sx={{ fontSize: '0.7rem', color: '#1D4ED8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5 }}>Your notes</Typography>
+                                <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', lineHeight: 1.5 }}>{appointment.notes}</Typography>
+                              </Box>
+                            )}
+
+                            {/* Approved-only blocks */}
+                            {appointment.status === 'approved' && (
+                              <Stack spacing={1.25}>
+                                {appointment.doctorComments && (
+                                  <Box sx={{ p: 1.5, bgcolor: alpha('#10B981', 0.06), border: `1px solid ${alpha('#10B981', 0.18)}`, borderRadius: 2 }}>
+                                    <Typography sx={{ fontSize: '0.7rem', color: '#059669', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5 }}>Doctor comments</Typography>
+                                    <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', lineHeight: 1.5 }}>{appointment.doctorComments}</Typography>
+                                  </Box>
+                                )}
+                                {appointment.consultationType === 'online' && appointment.meetingLink && (
+                                  <Button
+                                    component="a" href={appointment.meetingLink} target="_blank" rel="noopener noreferrer"
+                                    fullWidth
+                                    startIcon={<VideocamRoundedIcon sx={{ fontSize: 18 }} />}
+                                    endIcon={<OpenInNewRoundedIcon sx={{ fontSize: 14 }} />}
+                                    sx={{
+                                      background: BRAND_GRADIENT,
+                                      backgroundSize: '200% 200%', backgroundPosition: '0% 50%',
+                                      color: '#FFFFFF', textTransform: 'none', fontWeight: 700, fontSize: '0.85rem',
+                                      borderRadius: 2, py: 1,
+                                      boxShadow: '0 6px 16px rgba(14,165,233,0.28)',
+                                      transition: 'all 0.3s ease',
+                                      '&:hover': { backgroundPosition: '100% 50%' },
+                                    }}
+                                  >
+                                    Join meeting
+                                  </Button>
+                                )}
+                                {appointment.consultationType === 'in-person' && appointment.appointmentLocationDetails && (
+                                  <Box sx={{ p: 1.5, bgcolor: alpha('#F59E0B', 0.08), border: `1px solid ${alpha('#F59E0B', 0.20)}`, borderRadius: 2 }}>
+                                    <Typography sx={{ fontSize: '0.7rem', color: '#92400E', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5 }}>Location details</Typography>
+                                    <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', lineHeight: 1.5 }}>{appointment.appointmentLocationDetails}</Typography>
+                                  </Box>
+                                )}
+                              </Stack>
+                            )}
+
+                            {/* Footer actions */}
+                            {appointment.status === 'pending' && (
+                              <Box sx={{ mt: 2, pt: 1.5, borderTop: SOFT_BORDER, display: 'flex', justifyContent: 'flex-end' }}>
+                                <MuiTooltip title="Cancel appointment" arrow>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => {
+                                      const appointmentId = appointment._id || appointment.id
+                                      if (appointmentId) handleDelete(appointmentId)
+                                    }}
+                                    sx={{
+                                      color: '#F43F5E', bgcolor: alpha('#F43F5E', 0.06), border: `1px solid ${alpha('#F43F5E', 0.18)}`,
+                                      borderRadius: 1.5,
+                                      '&:hover': { bgcolor: alpha('#F43F5E', 0.12), borderColor: alpha('#F43F5E', 0.4) },
+                                    }}
+                                    aria-label="Cancel appointment"
+                                  >
+                                    <DeleteIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                </MuiTooltip>
+                              </Box>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )
+                  })}
+                </Box>
+              )}
+            </Stack>
           )}
+          </Stack>
+        </motion.div>
+      </Container>
 
           {/* Booking Dialog */}
           <Dialog open={bookingDialogOpen} onClose={() => setBookingDialogOpen(false)} maxWidth="md" fullWidth>
@@ -1029,8 +1225,6 @@ export default function Appointments() {
               </Button>
             </DialogActions>
           </Dialog>
-        </Stack>
-      </Box>
     </Box>
   )
 }

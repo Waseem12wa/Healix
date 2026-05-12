@@ -8,6 +8,7 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Container,
   Dialog,
   DialogActions,
   DialogContent,
@@ -22,38 +23,47 @@ import {
   Menu,
   MenuItem,
   Select,
+  Skeleton,
   Snackbar,
   Stack,
   TextField,
+  Tooltip as MuiTooltip,
   Typography,
   Autocomplete,
+  alpha,
+  useTheme,
 } from '@mui/material'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { Variants } from 'framer-motion'
-import NotificationsIcon from '@mui/icons-material/Notifications'
-import PersonIcon from '@mui/icons-material/Person'
-import LogoutIcon from '@mui/icons-material/Logout'
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
-import ScienceIcon from '@mui/icons-material/Science'
-import FastfoodIcon from '@mui/icons-material/Fastfood'
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
-import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
-import SmartToyIcon from '@mui/icons-material/SmartToy'
-import SummarizeIcon from '@mui/icons-material/Summarize'
-import EventIcon from '@mui/icons-material/Event'
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
-import SearchIcon from '@mui/icons-material/Search'
-import HistoryIcon from '@mui/icons-material/History'
-import AlarmIcon from '@mui/icons-material/Alarm'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import CancelIcon from '@mui/icons-material/Cancel'
-import RecommendIcon from '@mui/icons-material/Recommend'
-import GroupIcon from '@mui/icons-material/Group'
-import TrackChangesIcon from '@mui/icons-material/TrackChanges'
-import RefreshIcon from '@mui/icons-material/Refresh'
-import SettingsIcon from '@mui/icons-material/Settings'
+import NotificationsIcon from '@mui/icons-material/NotificationsRounded'
+import PersonIcon from '@mui/icons-material/PersonRounded'
+import LogoutIcon from '@mui/icons-material/LogoutRounded'
+import LocalHospitalIcon from '@mui/icons-material/LocalHospitalRounded'
+import ScienceIcon from '@mui/icons-material/ScienceRounded'
+import FastfoodIcon from '@mui/icons-material/FastfoodRounded'
+import SwapHorizIcon from '@mui/icons-material/SwapHorizRounded'
+import TrendingUpIcon from '@mui/icons-material/TrendingUpRounded'
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCartRounded'
+import SmartToyIcon from '@mui/icons-material/SmartToyRounded'
+import SummarizeIcon from '@mui/icons-material/SummarizeRounded'
+import EventIcon from '@mui/icons-material/EventRounded'
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDownRounded'
+import SearchIcon from '@mui/icons-material/SearchRounded'
+import HistoryIcon from '@mui/icons-material/HistoryRounded'
+import AlarmIcon from '@mui/icons-material/AlarmRounded'
+import CheckCircleIcon from '@mui/icons-material/CheckCircleRounded'
+import CancelIcon from '@mui/icons-material/CancelRounded'
+import RecommendIcon from '@mui/icons-material/RecommendRounded'
+import GroupIcon from '@mui/icons-material/GroupRounded'
+import TrackChangesIcon from '@mui/icons-material/TrackChangesRounded'
+import RefreshIcon from '@mui/icons-material/RefreshRounded'
+import SettingsIcon from '@mui/icons-material/SettingsRounded'
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
+import FiberManualRecordRoundedIcon from '@mui/icons-material/FiberManualRecordRounded'
+import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded'
+import ArrowOutwardRoundedIcon from '@mui/icons-material/ArrowOutwardRounded'
+import { BRAND_GRADIENT, HERO_BG, GLASS_SURFACE, SOFT_BORDER, PREMIUM_SHADOW } from '../ui/premium'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNotifications } from '../hooks/useNotifications'
 import { clearAuthData } from '../utils/auth'
@@ -121,12 +131,15 @@ type FeatureItem = {
   label: string
   description: string
   icon: React.ReactElement
+  Icon: React.ComponentType<any>
+  accent: string
   isSetReminder?: boolean
   href?: string
   reviewFeature?: 'ddi' | 'dfi' | 'alternatives' | 'side-effects' | 'ai-assistant' | 'medication-pharmacy' | 'health-summary'
 }
 
 export default function DoctorDashboard() {
+  useTheme()
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [doctorName, setDoctorName] = useState(() => localStorage.getItem('userName') || 'Doctor')
@@ -158,73 +171,25 @@ export default function DoctorDashboard() {
   }
 
   const featureItems: FeatureItem[] = [
-    {
-      label: 'Set Reminder',
-      description: 'Create medication recommendations and schedules for your patients.',
-      icon: <AlarmIcon sx={{ color: '#FFD166' }} />,
-      isSetReminder: true,
-    },
-    {
-      label: 'Assigned Patient',
-      description: 'Open the list of patients who selected you in their profile.',
-      icon: <GroupIcon sx={{ color: '#06D6A0' }} />,
-      href: '/doctor-assigned-patients',
-    },
-    {
-      label: 'Drug Interaction Checker',
-      description: 'Check interactions between medications in seconds.',
-      icon: <ScienceIcon sx={{ color: '#00B4D8' }} />,
-      reviewFeature: 'ddi',
-      href: '/doctor-reviews/ddi',
-    },
-    {
-      label: 'Drug-Food Interaction',
-      description: 'See how foods may affect your prescriptions.',
-      icon: <FastfoodIcon sx={{ color: '#06D6A0' }} />,
-      reviewFeature: 'dfi',
-      href: '/doctor-reviews/dfi',
-    },
-    {
-      label: 'Drug Alternatives',
-      description: 'Explore safer or more affordable alternatives.',
-      icon: <SwapHorizIcon sx={{ color: '#0096C7' }} />,
-      reviewFeature: 'alternatives',
-      href: '/doctor-reviews/alternatives',
-    },
-    {
-      label: 'Side Effect Predictor',
-      description: 'Predict potential side effects from medications.',
-      icon: <TrendingUpIcon sx={{ color: '#EF476F' }} />,
-      reviewFeature: 'side-effects',
-      href: '/doctor-reviews/side-effects',
-    },
-    {
-      label: 'Medicine Manager',
-      description: 'View and manage platform medicine records for patient safety.',
-      icon: <ShoppingCartIcon sx={{ color: '#FFB703' }} />,
-      href: '/doctor-medicines',
-    },
-    {
-      label: 'AI Health Assistant',
-      description: 'Chat with an AI to understand your health data.',
-      icon: <SmartToyIcon sx={{ color: '#90E0EF' }} />,
-      reviewFeature: 'ai-assistant',
-      href: '/doctor-reviews/ai-assistant',
-    },
-    {
-      label: 'Record Summarization',
-      description: 'Turn complex reports into clear summaries.',
-      icon: <SummarizeIcon sx={{ color: '#00B4D8' }} />,
-      reviewFeature: 'health-summary',
-      href: '/doctor-reviews/health-summary',
-    },
-    {
-      label: 'My Appointment',
-      description: 'Manage and review upcoming visits.',
-      icon: <EventIcon sx={{ color: '#06D6A0' }} />,
-      href: '/doctor-appointments',
-    },
+    { label: 'Set Reminder', description: 'Create medication recommendations and schedules for your patients.', icon: <AlarmIcon />, Icon: AlarmIcon, accent: '#F59E0B', isSetReminder: true },
+    { label: 'Assigned Patient', description: 'Open the list of patients who selected you in their profile.', icon: <GroupIcon />, Icon: GroupIcon, accent: '#10B981', href: '/doctor-assigned-patients' },
+    { label: 'Drug Interaction Checker', description: 'Check interactions between medications in seconds.', icon: <ScienceIcon />, Icon: ScienceIcon, accent: '#0EA5E9', reviewFeature: 'ddi', href: '/doctor-reviews/ddi' },
+    { label: 'Drug-Food Interaction', description: 'See how foods may affect your prescriptions.', icon: <FastfoodIcon />, Icon: FastfoodIcon, accent: '#10B981', reviewFeature: 'dfi', href: '/doctor-reviews/dfi' },
+    { label: 'Drug Alternatives', description: 'Explore safer or more affordable alternatives.', icon: <SwapHorizIcon />, Icon: SwapHorizIcon, accent: '#1D4ED8', reviewFeature: 'alternatives', href: '/doctor-reviews/alternatives' },
+    { label: 'Side Effect Predictor', description: 'Predict potential side effects from medications.', icon: <TrendingUpIcon />, Icon: TrendingUpIcon, accent: '#F43F5E', reviewFeature: 'side-effects', href: '/doctor-reviews/side-effects' },
+    { label: 'Medicine Manager', description: 'View and manage platform medicine records for patient safety.', icon: <ShoppingCartIcon />, Icon: ShoppingCartIcon, accent: '#F59E0B', href: '/doctor-medicines' },
+    { label: 'AI Health Assistant', description: 'Chat with an AI to understand your health data.', icon: <SmartToyIcon />, Icon: SmartToyIcon, accent: '#2563EB', reviewFeature: 'ai-assistant', href: '/doctor-reviews/ai-assistant' },
+    { label: 'Record Summarization', description: 'Turn complex reports into clear summaries.', icon: <SummarizeIcon />, Icon: SummarizeIcon, accent: '#06B6D4', reviewFeature: 'health-summary', href: '/doctor-reviews/health-summary' },
+    { label: 'My Appointment', description: 'Manage and review upcoming visits.', icon: <EventIcon />, Icon: EventIcon, accent: '#10B981', href: '/doctor-appointments' },
   ]
+
+  const firstName = useMemo(() => doctorName.split(' ')[0] || doctorName, [doctorName])
+  const greeting = useMemo(() => {
+    const h = new Date().getHours()
+    if (h < 12) return 'Good morning'
+    if (h < 18) return 'Good afternoon'
+    return 'Good evening'
+  }, [])
 
   const filteredFeatureItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -463,335 +428,613 @@ export default function DoctorDashboard() {
     },
   }
 
-  return (
-    <Box sx={{ width: '100%', minHeight: '100vh', display: 'flex', bgcolor: '#F5F7FA', overflowX: 'hidden' }}>
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%' }}>
-        <Box sx={{ bgcolor: '#ffffff', borderBottom: '1px solid', borderColor: 'divider', p: { xs: 2.5, md: 3.5 }, px: { xs: 3, md: 4 } }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
-            <Stack direction="row" alignItems="center" spacing={2.5}>
-              <Box sx={{ width: 44, height: 44, borderRadius: '50%', bgcolor: '#06D6A0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <LocalHospitalIcon sx={{ color: '#ffffff' }} />
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: { xs: '1.75rem', md: '2.35rem' }, fontWeight: 900, color: '#1A1A2E' }}>
-                  Doctor Dashboard
-                </Typography>
-                <Typography sx={{ fontSize: '0.9rem', color: '#64748B' }}>
-                  Live monitoring of doctor actions and patient module activity
-                </Typography>
-                <Typography sx={{ fontSize: '0.78rem', color: '#94A3B8', mt: 0.25 }}>
-                  {loadingDashboard ? 'Syncing live data...' : `Live sync: ${lastSyncedAt ? lastSyncedAt.toLocaleTimeString() : 'not synced'}`}
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" alignItems="center" spacing={2}>
-              <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', minWidth: { sm: 220, md: 280 }, bgcolor: '#F5F5F7', borderRadius: 2, border: '1px solid', borderColor: '#E2E8F0', '&:hover': { borderColor: '#00B4D8', bgcolor: '#FFFFFF' } }}>
-                <TextField
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search tools..."
-                  variant="standard"
-                  fullWidth
-                  InputProps={{
-                    disableUnderline: true,
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon sx={{ color: '#64748B', fontSize: 20 }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ px: 2, py: 0.25, '& .MuiInputBase-input': { fontSize: '0.9375rem', color: '#1A1A2E' } }}
-                />
-              </Box>
-
-              <Badge badgeContent={unreadCount + dashboardData.appointments.pending} color="error">
-                <IconButton component={Link} to="/tools/notifications" onClick={() => recordActivity('Opened notifications', 'Viewed doctor notifications', { source: 'doctor-header' })}>
-                  <NotificationsIcon />
-                </IconButton>
-              </Badge>
-
-              <IconButton
-                onClick={handleManualRefresh}
-                disabled={manualRefreshLoading}
-                title="Refresh dashboard metrics"
-                sx={{ color: '#06D6A0', '&:hover': { bgcolor: '#E8F5F0' } }}
-              >
-                <RefreshIcon sx={{ animation: manualRefreshLoading ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } } }} />
-              </IconButton>
-
-              <Stack
-                direction="row"
-                alignItems="center"
-                spacing={1.5}
-                onClick={handleOpenProfileMenu}
-                sx={{ cursor: 'pointer', px: 1.25, py: 0.75, borderRadius: 2, border: '1px solid', borderColor: 'transparent', '&:hover': { borderColor: '#E2E8F0', bgcolor: '#F8FAFC' } }}
-                role="button"
-                aria-label="Open doctor profile menu"
-              >
-                <Avatar src={profileImage || undefined} sx={{ bgcolor: '#06D6A0', width: 40, height: 40 }}>
-                  {doctorName.charAt(0)}
-                </Avatar>
-                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                  <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#1A1A2E' }}>{doctorName}</Typography>
-                  <Typography sx={{ fontSize: '0.75rem', color: '#64748B' }}>Doctor</Typography>
-                </Box>
-                <ArrowDropDownIcon sx={{ color: '#64748B', display: { xs: 'none', sm: 'block' } }} />
-              </Stack>
-
-              <Menu
-                anchorEl={profileMenuAnchor}
-                open={Boolean(profileMenuAnchor)}
-                onClose={handleCloseProfileMenu}
-                PaperProps={{ sx: { mt: 1, minWidth: 220, borderRadius: 2, border: '1px solid', borderColor: '#E2E8F0', boxShadow: '0 12px 28px rgba(15, 23, 42, 0.12)' } }}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-              >
-                <MenuItem onClick={() => handleProfileMenuNavigate('/tools/notifications', 'Opened notifications')}>
-                  <ListItemIcon sx={{ color: '#64748B' }}>
-                    <NotificationsIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Notifications" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
-                </MenuItem>
-                <MenuItem onClick={() => handleProfileMenuNavigate('/doctor-profile', 'Opened doctor profile')}>
-                  <ListItemIcon sx={{ color: '#64748B' }}>
-                    <PersonIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Profile" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
-                </MenuItem>
-                <MenuItem onClick={handleOpenHistory}>
-                  <ListItemIcon sx={{ color: '#64748B' }}>
-                    <HistoryIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="History" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
-                </MenuItem>
-                <MenuItem onClick={() => handleProfileMenuNavigate('/settings', 'Opened settings')}>
-                  <ListItemIcon sx={{ color: '#64748B' }}>
-                    <SettingsIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Settings" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
-                </MenuItem>
-                <Divider />
-                <MenuItem onClick={handleLogout}>
-                  <ListItemIcon sx={{ color: '#64748B' }}>
-                    <LogoutIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Logout" primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
-                </MenuItem>
-              </Menu>
-            </Stack>
+  // Premium design tokens
+  const ChartTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null
+    return (
+      <Box sx={{
+        background: alpha('#FFFFFF', 0.96), backdropFilter: 'blur(8px)',
+        border: SOFT_BORDER, borderRadius: 2, px: 1.75, py: 1.25,
+        boxShadow: '0 12px 32px rgba(15,23,42,0.10)', minWidth: 140,
+      }}>
+        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A', mb: 0.75 }}>{label}</Typography>
+        {payload.map((p: any, i: number) => (
+          <Stack key={i} direction="row" alignItems="center" spacing={1} sx={{ fontSize: '0.78rem' }}>
+            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: p.color || p.stroke || p.fill }} />
+            <Typography sx={{ fontSize: '0.78rem', color: '#475569', flex: 1 }}>{p.name}</Typography>
+            <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A' }}>{p.value}</Typography>
           </Stack>
-        </Box>
+        ))}
+      </Box>
+    )
+  }
 
-        <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 2.5, md: 3.5 }, px: { xs: 3, md: 4 }, width: '100%' }}>
-          <Box sx={{ mb: 2 }}>
-            <BackButton />
-          </Box>
-          <motion.div variants={containerVariants} initial="hidden" animate="visible">
-            <Stack spacing={3.5}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5}>
-                <Typography sx={{ color: '#64748B', fontSize: '0.9rem' }}>
-                  Assigned Patients: {dashboardData.monitoring.assignedPatients} | Tracked patient activities: {dashboardData.monitoring.trackedPatientActivities}
-                </Typography>
-                <Button variant="outlined" size="small" onClick={loadLiveDashboard} sx={{ borderRadius: 2, textTransform: 'none' }}>
-                  Refresh live data
-                </Button>
+  return (
+    <>
+      <Box sx={{ width: '100%', minHeight: '100vh', position: 'relative' }}>
+        {/* Ambient bg mesh */}
+        <Box sx={{
+          position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none',
+          backgroundImage:
+            'radial-gradient(900px 500px at -10% -10%, rgba(52,211,153,0.10) 0%, transparent 60%),' +
+            'radial-gradient(700px 400px at 110% 0%, rgba(37,99,235,0.10) 0%, transparent 60%),' +
+            'radial-gradient(600px 400px at 50% 110%, rgba(6,182,212,0.08) 0%, transparent 60%)',
+        }} />
+
+        {/* Glass header */}
+        <Box sx={{
+          position: 'sticky', top: 0, zIndex: 20,
+          bgcolor: GLASS_SURFACE, backdropFilter: 'saturate(180%) blur(16px)',
+          WebkitBackdropFilter: 'saturate(180%) blur(16px)',
+          borderBottom: SOFT_BORDER,
+        }}>
+          <Container maxWidth="xl" sx={{ py: 1.25, px: { xs: 2, md: 3 } }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
+              <Stack direction="row" alignItems="center" spacing={1.5}>
+                <BackButton />
+                <Stack direction="row" alignItems="center" spacing={1.25} sx={{ pl: 0.5 }}>
+                  <Box sx={{
+                    width: 38, height: 38, borderRadius: '11px',
+                    background: BRAND_GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 6px 16px rgba(14,165,233,0.32), 0 2px 4px rgba(37,99,235,0.18)',
+                  }}>
+                    <LocalHospitalIcon sx={{ color: '#FFFFFF', fontSize: 22 }} />
+                  </Box>
+                  <Box>
+                    <Typography sx={{
+                      fontSize: '1.05rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.01em',
+                      background: BRAND_GRADIENT, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                    }}>Healix</Typography>
+                    <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: 'text.secondary', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      Doctor Console
+                    </Typography>
+                  </Box>
+                </Stack>
               </Stack>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 2, md: 3 } }}>
-                {filteredFeatureItems.map((item) => (
-                  <motion.div key={item.label} variants={cardVariants} whileHover="hover">
-                    {(() => {
-                      const pendingCount = item.reviewFeature
-                        ? (pendingByFeature[item.reviewFeature] || 0)
-                        : item.label === 'My Appointment'
-                          ? dashboardData.appointments.pending
-                          : 0
-                      const hasPending = pendingCount > 0
-                      const pendingLabel = item.label === 'My Appointment'
-                        ? `${pendingCount} new appointment${pendingCount > 1 ? 's' : ''}`
-                        : `${pendingCount} new patient request${pendingCount > 1 ? 's' : ''}`
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Box sx={{
+                  display: { xs: 'none', md: 'flex' }, alignItems: 'center',
+                  width: 280, height: 40, px: 1.5, gap: 1,
+                  bgcolor: alpha('#FFFFFF', 0.7), backdropFilter: 'blur(8px)',
+                  border: SOFT_BORDER, borderRadius: 999,
+                  transition: 'all 0.2s ease',
+                  '&:hover, &:focus-within': { borderColor: alpha('#0EA5E9', 0.4), bgcolor: '#FFFFFF', boxShadow: '0 4px 12px rgba(14,165,233,0.10)' },
+                }}>
+                  <SearchIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                  <TextField
+                    value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search patients, reviews, tools…" variant="standard" fullWidth
+                    InputProps={{ disableUnderline: true, sx: { fontSize: '0.875rem' } }}
+                  />
+                  <Box sx={{ px: 0.75, py: 0.25, borderRadius: 1, fontSize: '0.7rem', fontWeight: 700, color: 'text.secondary', bgcolor: alpha('#0F172A', 0.04), border: SOFT_BORDER }}>⌘K</Box>
+                </Box>
 
-                      return (
-                    <Card
-                      onClick={() => {
-                        if (item.isSetReminder) {
-                          setReminderModalOpen(true)
-                          recordActivity('Opened reminder modal', 'Started preparing patient medication recommendations', { source: 'doctor-dashboard' })
-                          return
-                        }
+                <MuiTooltip title="Refresh dashboard" arrow>
+                  <IconButton
+                    onClick={handleManualRefresh}
+                    disabled={manualRefreshLoading}
+                    sx={{
+                      width: 40, height: 40, borderRadius: 2,
+                      bgcolor: alpha('#FFFFFF', 0.7), border: SOFT_BORDER, color: '#1D4ED8',
+                      '&:hover': { bgcolor: '#FFFFFF', borderColor: alpha('#0EA5E9', 0.4) },
+                    }}
+                  >
+                    <RefreshIcon sx={{ fontSize: 20, animation: manualRefreshLoading ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } } }} />
+                  </IconButton>
+                </MuiTooltip>
 
-                        if (item.href) {
-                          recordActivity('Opened assigned patients', `Navigated to ${item.href}`, { source: 'doctor-dashboard', path: item.href })
-                          navigate(item.href)
-                        }
-                      }}
+                <MuiTooltip title="Notifications" arrow>
+                  <Badge badgeContent={unreadCount + dashboardData.appointments.pending} max={9} sx={{ '& .MuiBadge-badge': { background: 'linear-gradient(135deg, #FB7185 0%, #F43F5E 100%)', color: '#FFFFFF', fontWeight: 700, fontSize: '0.65rem', minWidth: 18, height: 18 } }}>
+                    <IconButton
+                      component={Link} to="/tools/notifications"
+                      onClick={() => recordActivity('Opened notifications', 'Viewed doctor notifications', { source: 'doctor-header' })}
                       sx={{
-                        height: 200,
-                        borderRadius: 3,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        overflow: 'hidden',
-                        bgcolor: hasPending ? 'rgba(254, 243, 199, 0.75)' : '#FFFFFF',
-                        border: '1px solid',
-                        borderColor: hasPending ? '#F59E0B' : '#E2E8F0',
-                        boxShadow: hasPending ? '0 6px 18px rgba(245, 158, 11, 0.25)' : '0 2px 8px rgba(0,0,0,0.04)',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        cursor: item.isSetReminder || item.href ? 'pointer' : 'default',
-                        '&:hover': {
-                          transform: 'translateY(-6px)',
-                          borderColor: hasPending ? '#D97706' : '#00B4D8',
-                          boxShadow: hasPending ? '0 12px 32px rgba(245, 158, 11, 0.28)' : '0 12px 32px rgba(0, 180, 216, 0.2)',
-                        },
+                        width: 40, height: 40, borderRadius: 2,
+                        bgcolor: alpha('#FFFFFF', 0.7), border: SOFT_BORDER, color: 'text.primary',
+                        '&:hover': { bgcolor: '#FFFFFF', borderColor: alpha('#0EA5E9', 0.4), boxShadow: '0 4px 12px rgba(14,165,233,0.15)' },
                       }}
                     >
-                      <CardContent sx={{ p: { xs: 3, md: 3.5 }, flex: 1 }}>
-                        <Stack direction="row" spacing={2.5} alignItems="center" sx={{ mb: 2 }}>
-                          <Box sx={{ width: 52, height: 52, borderRadius: 2, background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.1) 0%, rgba(6, 214, 160, 0.1) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid', borderColor: 'rgba(0, 180, 216, 0.2)' }}>
-                            {item.icon}
-                          </Box>
-                          <Typography sx={{ fontSize: '1.0625rem', fontWeight: 700, color: '#1A1A2E', lineHeight: 1.3 }}>{item.label}</Typography>
-                        </Stack>
-                        <Typography sx={{ fontSize: '0.875rem', color: '#64748B', lineHeight: 1.6 }}>{item.description}</Typography>
+                      <NotificationsIcon sx={{ fontSize: 20 }} />
+                    </IconButton>
+                  </Badge>
+                </MuiTooltip>
 
-                        {hasPending && (
-                          <Chip
-                            label={pendingLabel}
-                            size="small"
-                            sx={{ mt: 1.5, fontWeight: 700, bgcolor: '#FEF3C7', color: '#92400E' }}
-                          />
-                        )}
-                      </CardContent>
-                      <Box sx={{ px: { xs: 3, md: 3.5 }, pb: 3, display: 'flex', justifyContent: 'flex-start' }}>
+                <Stack
+                  direction="row" alignItems="center" spacing={1} onClick={handleOpenProfileMenu}
+                  sx={{
+                    cursor: 'pointer', pl: 0.5, pr: 1.25, py: 0.5, borderRadius: 999,
+                    bgcolor: alpha('#FFFFFF', 0.7), border: SOFT_BORDER,
+                    transition: 'all 0.2s ease',
+                    '&:hover': { bgcolor: '#FFFFFF', borderColor: alpha('#0EA5E9', 0.4), boxShadow: '0 4px 12px rgba(14,165,233,0.12)' },
+                  }}
+                  role="button" aria-label="Open doctor profile menu"
+                >
+                  <Box sx={{
+                    position: 'relative',
+                    '&::before': {
+                      content: '""', position: 'absolute', inset: -2, borderRadius: '50%', padding: '2px',
+                      background: BRAND_GRADIENT,
+                      WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+                      mask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+                      WebkitMaskComposite: 'xor', maskComposite: 'exclude',
+                    },
+                  }}>
+                    <Avatar src={profileImage || undefined} sx={{ bgcolor: '#10B981', width: 32, height: 32, fontWeight: 700, fontSize: '0.85rem' }}>
+                      {doctorName.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </Box>
+                  <Box sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1 }}>
+                    <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: 'text.primary', lineHeight: 1.2 }}>Dr. {firstName}</Typography>
+                    <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', lineHeight: 1.2 }}>Physician</Typography>
+                  </Box>
+                  <ArrowDropDownIcon sx={{ color: 'text.secondary', fontSize: 18, display: { xs: 'none', sm: 'block' } }} />
+                </Stack>
+
+                <Menu
+                  anchorEl={profileMenuAnchor} open={Boolean(profileMenuAnchor)} onClose={handleCloseProfileMenu}
+                  PaperProps={{ sx: { mt: 1.25, minWidth: 240, borderRadius: 3, border: SOFT_BORDER, boxShadow: '0 16px 40px rgba(15,23,42,0.12)', overflow: 'hidden' } }}
+                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                >
+                  <Box sx={{ p: 2, background: alpha('#0EA5E9', 0.05), borderBottom: SOFT_BORDER }}>
+                    <Typography sx={{ fontSize: '0.92rem', fontWeight: 700, color: 'text.primary' }}>Dr. {doctorName}</Typography>
+                    <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>Signed in as Doctor</Typography>
+                  </Box>
+                  <MenuItem onClick={() => handleProfileMenuNavigate('/tools/notifications', 'Opened notifications')} sx={{ py: 1.25 }}>
+                    <ListItemIcon sx={{ color: 'text.secondary' }}><NotificationsIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Notifications" primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 600 }} />
+                  </MenuItem>
+                  <MenuItem onClick={() => handleProfileMenuNavigate('/doctor-profile', 'Opened doctor profile')} sx={{ py: 1.25 }}>
+                    <ListItemIcon sx={{ color: 'text.secondary' }}><PersonIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Profile" primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 600 }} />
+                  </MenuItem>
+                  <MenuItem onClick={handleOpenHistory} sx={{ py: 1.25 }}>
+                    <ListItemIcon sx={{ color: 'text.secondary' }}><HistoryIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="History" primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 600 }} />
+                  </MenuItem>
+                  <MenuItem onClick={() => handleProfileMenuNavigate('/settings', 'Opened settings')} sx={{ py: 1.25 }}>
+                    <ListItemIcon sx={{ color: 'text.secondary' }}><SettingsIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Settings" primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 600 }} />
+                  </MenuItem>
+                  <Divider />
+                  <MenuItem onClick={handleLogout} sx={{ py: 1.25, color: '#F43F5E' }}>
+                    <ListItemIcon sx={{ color: '#F43F5E' }}><LogoutIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Logout" primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 700 }} />
+                  </MenuItem>
+                </Menu>
+              </Stack>
+            </Stack>
+          </Container>
+        </Box>
+
+        {/* Body */}
+        <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 }, px: { xs: 2, md: 3 } }}>
+          <motion.div variants={containerVariants} initial="hidden" animate="visible">
+            <Stack spacing={{ xs: 3, md: 4 }}>
+
+              {/* HERO GREETING */}
+              <motion.div variants={cardVariants}>
+                <Card sx={{
+                  position: 'relative', overflow: 'hidden',
+                  borderRadius: 4, border: SOFT_BORDER,
+                  background: HERO_BG, boxShadow: PREMIUM_SHADOW,
+                }}>
+                  <Box sx={{
+                    position: 'absolute', top: -120, right: -100, width: 420, height: 420, borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(52,211,153,0.22) 0%, transparent 60%)',
+                    filter: 'blur(20px)', pointerEvents: 'none',
+                  }} />
+                  <Box sx={{
+                    position: 'absolute', bottom: -100, left: '40%', width: 360, height: 360, borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(37,99,235,0.18) 0%, transparent 60%)',
+                    filter: 'blur(20px)', pointerEvents: 'none',
+                  }} />
+
+                  <CardContent sx={{ position: 'relative', p: { xs: 3, md: 4.5 } }}>
+                    <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between" gap={3}>
+                      <Box sx={{ flex: 1 }}>
                         <Chip
-                          label={item.label === 'My Appointment' ? 'Open appointments' : item.reviewFeature ? 'Open requests' : 'Open tool'}
                           size="small"
-                          sx={{ fontWeight: 600, bgcolor: 'rgba(0, 180, 216, 0.1)', color: '#00B4D8', height: 28, fontSize: '0.8125rem' }}
+                          icon={<AutoAwesomeRoundedIcon sx={{ fontSize: 14 }} />}
+                          label="CLINICAL CONSOLE"
+                          sx={{
+                            bgcolor: alpha('#FFFFFF', 0.65), backdropFilter: 'blur(8px)',
+                            border: SOFT_BORDER, color: '#1D4ED8', fontWeight: 800, letterSpacing: '0.06em',
+                            fontSize: '0.65rem', height: 24, mb: 2,
+                            '& .MuiChip-icon': { color: '#06B6D4' },
+                          }}
                         />
-                      </Box>
-                    </Card>
-                      )
-                    })()}
-                  </motion.div>
-                ))}
-              </Box>
+                        <Typography sx={{
+                          fontSize: { xs: '1.75rem', sm: '2.15rem', md: '2.6rem' },
+                          fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.025em', color: '#0F172A',
+                        }}>
+                          {greeting},{' '}
+                          <Box component="span" sx={{
+                            background: BRAND_GRADIENT, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                          }}>Dr. {firstName}</Box>
+                        </Typography>
+                        <Typography sx={{ fontSize: { xs: '0.95rem', md: '1.05rem' }, color: 'text.secondary', mt: 1.25, maxWidth: 640, lineHeight: 1.6 }}>
+                          You&apos;re monitoring <strong>{dashboardData.monitoring.assignedPatients}</strong> assigned patients with <strong>{reviewMetrics.pending}</strong> pending review request{reviewMetrics.pending === 1 ? '' : 's'}.
+                        </Typography>
 
-              {filteredFeatureItems.length === 0 && (
-                <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: '#E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                  <CardContent>
-                    <Typography sx={{ color: '#1A1A2E', fontWeight: 700, mb: 0.5 }}>No tools found</Typography>
-                    <Typography sx={{ color: '#64748B', fontSize: '0.9rem' }}>Try a different search term.</Typography>
+                        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mt: 3, flexWrap: 'wrap', gap: 1 }}>
+                          <Chip
+                            size="small"
+                            icon={<FiberManualRecordRoundedIcon sx={{ fontSize: '0.6rem !important', color: loadingDashboard ? '#F59E0B' : '#10B981' }} />}
+                            label={loadingDashboard ? 'Syncing live data…' : `Live · ${lastSyncedAt ? lastSyncedAt.toLocaleTimeString() : 'pending'}`}
+                            sx={{ bgcolor: alpha('#FFFFFF', 0.75), backdropFilter: 'blur(6px)', border: SOFT_BORDER, fontWeight: 600, fontSize: '0.75rem', height: 28 }}
+                          />
+                          <Chip
+                            size="small"
+                            label={`${dashboardData.monitoring.trackedPatientActivities} tracked activities`}
+                            sx={{ bgcolor: alpha('#FFFFFF', 0.75), backdropFilter: 'blur(6px)', border: SOFT_BORDER, fontWeight: 600, fontSize: '0.75rem', height: 28 }}
+                          />
+                          <Button
+                            onClick={() => setReminderModalOpen(true)}
+                            startIcon={<AlarmIcon sx={{ fontSize: 16 }} />}
+                            size="small"
+                            sx={{
+                              textTransform: 'none', fontWeight: 700, fontSize: '0.8rem', color: '#FFFFFF',
+                              background: BRAND_GRADIENT, backgroundSize: '200% 200%', backgroundPosition: '0% 50%',
+                              borderRadius: 999, px: 2,
+                              boxShadow: '0 6px 16px rgba(14,165,233,0.28)',
+                              transition: 'all 0.3s ease',
+                              '&:hover': { backgroundPosition: '100% 50%', boxShadow: '0 10px 22px rgba(14,165,233,0.38)' },
+                            }}
+                          >
+                            New reminder
+                          </Button>
+                        </Stack>
+                      </Box>
+
+                      <Box sx={{
+                        flexShrink: 0, minWidth: { md: 280 },
+                        bgcolor: alpha('#FFFFFF', 0.7), backdropFilter: 'blur(12px)',
+                        border: SOFT_BORDER, borderRadius: 3, p: 2.5,
+                      }}>
+                        <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', letterSpacing: '0.06em', textTransform: 'uppercase', mb: 1 }}>
+                          Pending Reviews
+                        </Typography>
+                        <Typography sx={{ fontSize: '2.4rem', fontWeight: 800, color: '#0F172A', lineHeight: 1, letterSpacing: '-0.02em' }}>
+                          {reviewMetrics.pending}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary', mb: 1.5 }}>Awaiting your action</Typography>
+                        <Box sx={{ height: 56 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={dashboardData.trend7d} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+                              <Line type="monotone" dataKey="patientRequests" stroke="#0EA5E9" strokeWidth={2.5} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </Box>
+                        <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 1 }}>
+                          <ArrowUpwardRoundedIcon sx={{ fontSize: 14, color: '#10B981' }} />
+                          <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#10B981' }}>
+                            {reviewMetrics.actionsTaken} actions taken
+                          </Typography>
+                        </Stack>
+                      </Box>
+                    </Stack>
                   </CardContent>
                 </Card>
-              )}
+              </motion.div>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: { xs: 2, md: 3 } }}>
-                {summaryCards.map((card) => (
-                  <motion.div key={card.title} variants={cardVariants}>
-                    <Card sx={{ borderRadius: 2, boxShadow: 2, bgcolor: '#ffffff' }}>
-                      <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-                        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
-                          <Box sx={{ width: 40, height: 40, borderRadius: 1.5, bgcolor: '#F3F4F6', color: card.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {/* AT A GLANCE — Premium summary cards */}
+              <Box>
+                <Stack direction="row" alignItems="flex-end" justifyContent="space-between" sx={{ mb: 2 }}>
+                  <Box>
+                    <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' }, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>
+                      Review pipeline
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>Live request status across all features</Typography>
+                  </Box>
+                </Stack>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: { xs: 2, md: 2.5 } }}>
+                  {loadingDashboard
+                    ? Array.from({ length: 4 }).map((_, i) => (
+                        <Card key={i} sx={{ borderRadius: 3, border: SOFT_BORDER, p: 2.5 }}>
+                          <Skeleton variant="rounded" width={48} height={48} sx={{ borderRadius: 2 }} />
+                          <Skeleton variant="text" width="40%" sx={{ fontSize: '2rem', mt: 1 }} />
+                          <Skeleton variant="text" width="70%" />
+                        </Card>
+                      ))
+                    : summaryCards.map((card) => (
+                    <motion.div key={card.title} variants={cardVariants} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+                      <Card sx={{
+                        position: 'relative', overflow: 'hidden', height: '100%',
+                        borderRadius: 3, border: SOFT_BORDER,
+                        bgcolor: alpha('#FFFFFF', 0.85), backdropFilter: 'blur(8px)',
+                        boxShadow: PREMIUM_SHADOW,
+                        transition: 'border-color 0.25s ease, box-shadow 0.25s ease',
+                        '&:hover': { borderColor: alpha(card.color, 0.4), boxShadow: `0 12px 32px ${alpha(card.color, 0.18)}` },
+                      }}>
+                        <Box sx={{
+                          position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%',
+                          background: `radial-gradient(circle, ${alpha(card.color, 0.18)} 0%, transparent 65%)`,
+                          pointerEvents: 'none',
+                        }} />
+                        <CardContent sx={{ position: 'relative', p: { xs: 2.5, md: 3 } }}>
+                          <Box sx={{
+                            width: 44, height: 44, borderRadius: 2,
+                            background: `linear-gradient(135deg, ${alpha(card.color, 0.18)} 0%, ${alpha(card.color, 0.06)} 100%)`,
+                            border: `1px solid ${alpha(card.color, 0.25)}`,
+                            color: card.color,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            mb: 1.5,
+                          }}>
                             {card.icon}
                           </Box>
-                          <Typography sx={{ fontWeight: 700, color: '#1F2937' }}>{card.title}</Typography>
+                          <Typography sx={{ fontSize: '0.78rem', fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 0.5 }}>
+                            {card.title}
+                          </Typography>
+                          <Typography sx={{ fontSize: { xs: '1.85rem', md: '2.25rem' }, fontWeight: 800, color: '#0F172A', lineHeight: 1, letterSpacing: '-0.02em', mb: 1 }}>
+                            {card.value}
+                          </Typography>
+                          <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>{card.hint}</Typography>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </Box>
+              </Box>
+
+              {/* DOCTOR TOOLS */}
+              <Box>
+                <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'flex-end' }} justifyContent="space-between" gap={2} sx={{ mb: 2 }}>
+                  <Box>
+                    <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' }, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>
+                      Clinical tools
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>Manage reviews, patients, and recommendations</Typography>
+                  </Box>
+                  <Box sx={{
+                    display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1,
+                    width: '100%', height: 40, px: 1.5,
+                    bgcolor: alpha('#FFFFFF', 0.7), border: SOFT_BORDER, borderRadius: 999,
+                  }}>
+                    <SearchIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                    <TextField
+                      value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search tools…" variant="standard" fullWidth
+                      InputProps={{ disableUnderline: true, sx: { fontSize: '0.875rem' } }}
+                    />
+                  </Box>
+                </Stack>
+
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', xl: 'repeat(4, 1fr)' }, gap: { xs: 2, md: 2.5 } }}>
+                  {filteredFeatureItems.map((item) => {
+                    const pendingCount = item.reviewFeature
+                      ? (pendingByFeature[item.reviewFeature] || 0)
+                      : item.label === 'My Appointment'
+                        ? dashboardData.appointments.pending
+                        : 0
+                    const hasPending = pendingCount > 0
+                    const pendingLabel = item.label === 'My Appointment'
+                      ? `${pendingCount} new appointment${pendingCount > 1 ? 's' : ''}`
+                      : `${pendingCount} new request${pendingCount > 1 ? 's' : ''}`
+                    const ItemIcon = item.Icon
+
+                    return (
+                      <motion.div key={item.label} variants={cardVariants} whileHover={{ y: -6 }} transition={{ duration: 0.25, ease: 'easeOut' }}>
+                        <Card
+                          onClick={() => {
+                            if (item.isSetReminder) {
+                              setReminderModalOpen(true)
+                              recordActivity('Opened reminder modal', 'Started preparing patient medication recommendations', { source: 'doctor-dashboard' })
+                              return
+                            }
+                            if (item.href) {
+                              recordActivity('Opened doctor tool', `Navigated to ${item.href}`, { source: 'doctor-dashboard', path: item.href })
+                              navigate(item.href)
+                            }
+                          }}
+                          sx={{
+                            position: 'relative', overflow: 'hidden',
+                            display: 'flex', flexDirection: 'column',
+                            height: 220, borderRadius: 3,
+                            border: hasPending ? `1px solid ${alpha('#F59E0B', 0.5)}` : SOFT_BORDER,
+                            bgcolor: alpha('#FFFFFF', 0.88), backdropFilter: 'blur(8px)',
+                            boxShadow: hasPending ? `0 8px 24px ${alpha('#F59E0B', 0.18)}` : PREMIUM_SHADOW,
+                            cursor: item.isSetReminder || item.href ? 'pointer' : 'default',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            '&:hover': {
+                              borderColor: hasPending ? alpha('#F59E0B', 0.7) : alpha(item.accent, 0.4),
+                              boxShadow: hasPending ? `0 16px 40px ${alpha('#F59E0B', 0.28)}` : `0 16px 40px ${alpha(item.accent, 0.22)}`,
+                            },
+                            '&:hover .tool-arrow': { transform: 'translate(2px, -2px)' },
+                            '&:hover .tool-mesh': { opacity: 1 },
+                          }}
+                        >
+                          <Box className="tool-mesh" sx={{
+                            position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%',
+                            background: `radial-gradient(circle, ${alpha(hasPending ? '#F59E0B' : item.accent, 0.22)} 0%, transparent 65%)`,
+                            opacity: 0.6, transition: 'opacity 0.3s ease', pointerEvents: 'none',
+                          }} />
+
+                          <CardContent sx={{ position: 'relative', flex: 1, p: { xs: 2.5, md: 3 } }}>
+                            <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 2 }}>
+                              <Box sx={{
+                                width: 48, height: 48, borderRadius: 2,
+                                background: `linear-gradient(135deg, ${alpha(item.accent, 0.18)} 0%, ${alpha(item.accent, 0.06)} 100%)`,
+                                border: `1px solid ${alpha(item.accent, 0.25)}`,
+                                color: item.accent,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                <ItemIcon sx={{ fontSize: 24 }} />
+                              </Box>
+                              {hasPending && (
+                                <Chip
+                                  size="small" label={pendingLabel}
+                                  sx={{ bgcolor: alpha('#F59E0B', 0.14), color: '#92400E', fontWeight: 700, height: 22, fontSize: '0.7rem', border: `1px solid ${alpha('#F59E0B', 0.3)}` }}
+                                />
+                              )}
+                            </Stack>
+                            <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', lineHeight: 1.3, mb: 0.75 }}>{item.label}</Typography>
+                            <Typography sx={{ fontSize: '0.82rem', color: 'text.secondary', lineHeight: 1.55 }}>{item.description}</Typography>
+                          </CardContent>
+
+                          <Box sx={{ position: 'relative', px: { xs: 2.5, md: 3 }, pb: 2.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: hasPending ? '#92400E' : item.accent, letterSpacing: '0.02em' }}>
+                              {item.label === 'My Appointment' ? 'Open appointments' : item.reviewFeature ? 'Open requests' : item.isSetReminder ? 'Create reminder' : 'Open tool'}
+                            </Typography>
+                            <Box className="tool-arrow" sx={{
+                              width: 28, height: 28, borderRadius: '50%',
+                              background: alpha(hasPending ? '#F59E0B' : item.accent, 0.12),
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: hasPending ? '#92400E' : item.accent,
+                              transition: 'transform 0.25s ease',
+                            }}>
+                              <ArrowOutwardRoundedIcon sx={{ fontSize: 16 }} />
+                            </Box>
+                          </Box>
+                        </Card>
+                      </motion.div>
+                    )
+                  })}
+                </Box>
+
+                {filteredFeatureItems.length === 0 && (
+                  <Card sx={{ borderRadius: 3, border: SOFT_BORDER, p: 4, textAlign: 'center', bgcolor: alpha('#FFFFFF', 0.7) }}>
+                    <Typography sx={{ color: '#0F172A', fontWeight: 700, mb: 0.5 }}>No tools found</Typography>
+                    <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>Try a different search term.</Typography>
+                  </Card>
+                )}
+              </Box>
+
+              {/* INSIGHTS */}
+              <Box>
+                <Typography sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' }, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em', mb: 0.5 }}>
+                  Insights
+                </Typography>
+                <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary', mb: 2.5 }}>Patient module activity and your action trends</Typography>
+
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.2fr 1fr' }, gap: { xs: 2, md: 2.5 } }}>
+                  <motion.div variants={cardVariants}>
+                    <Card sx={{ borderRadius: 3, border: SOFT_BORDER, bgcolor: alpha('#FFFFFF', 0.85), backdropFilter: 'blur(8px)', boxShadow: PREMIUM_SHADOW }}>
+                      <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
+                        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2.5 }}>
+                          <Box>
+                            <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>Patient Module Monitoring</Typography>
+                            <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>Live request volume per module</Typography>
+                          </Box>
+                          <Chip size="small" label="LIVE" sx={{ bgcolor: alpha('#10B981', 0.10), color: '#059669', fontWeight: 800, height: 24, letterSpacing: '0.06em' }} />
                         </Stack>
-                        <Typography sx={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1, color: '#111827', mb: 0.5 }}>{card.value}</Typography>
-                        <Typography sx={{ fontSize: '0.84rem', color: '#64748B' }}>{card.hint}</Typography>
+                        <Box sx={{ height: { xs: 280, md: 320 } }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={moduleChartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="22%">
+                              <defs>
+                                <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#34D399" stopOpacity={1} />
+                                  <stop offset="60%" stopColor="#06B6D4" stopOpacity={1} />
+                                  <stop offset="100%" stopColor="#2563EB" stopOpacity={1} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 6" stroke={alpha('#0F172A', 0.06)} vertical={false} />
+                              <XAxis dataKey="module" tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                              <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                              <Tooltip content={<ChartTooltip />} cursor={{ fill: alpha('#0EA5E9', 0.06) }} />
+                              <Bar dataKey="value" name="Observed Requests" fill="url(#barGrad)" radius={[8, 8, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </Box>
                       </CardContent>
                     </Card>
                   </motion.div>
-                ))}
+
+                  <motion.div variants={cardVariants}>
+                    <Card sx={{ borderRadius: 3, border: SOFT_BORDER, bgcolor: alpha('#FFFFFF', 0.85), backdropFilter: 'blur(8px)', boxShadow: PREMIUM_SHADOW }}>
+                      <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
+                        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2.5 }}>
+                          <Box>
+                            <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>Action trends</Typography>
+                            <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>Last 7 days</Typography>
+                          </Box>
+                          <Chip size="small" label="7D" sx={{ bgcolor: alpha('#0EA5E9', 0.10), color: '#1D4ED8', fontWeight: 700, height: 24 }} />
+                        </Stack>
+                        <Box sx={{ height: { xs: 280, md: 320 } }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={dashboardData.trend7d} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 6" stroke={alpha('#0F172A', 0.06)} vertical={false} />
+                              <XAxis dataKey="day" tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                              <YAxis allowDecimals={false} tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }} axisLine={false} tickLine={false} />
+                              <Tooltip content={<ChartTooltip />} cursor={{ stroke: alpha('#0EA5E9', 0.18), strokeWidth: 24 }} />
+                              <Legend iconType="circle" wrapperStyle={{ fontSize: 12, fontWeight: 600 }} />
+                              <Line type="monotone" dataKey="doctorActions" stroke="#06B6D4" strokeWidth={2.5} name="Doctor Actions" dot={{ r: 3, strokeWidth: 0 }} />
+                              <Line type="monotone" dataKey="patientRequests" stroke="#10B981" strokeWidth={2.5} name="Patient Requests" dot={{ r: 3, strokeWidth: 0 }} />
+                              <Line type="monotone" dataKey="approvals" stroke="#2563EB" strokeWidth={2} name="Approvals" dot={{ r: 3, strokeWidth: 0 }} />
+                              <Line type="monotone" dataKey="rejections" stroke="#F43F5E" strokeWidth={2} name="Rejections" dot={{ r: 3, strokeWidth: 0 }} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </Box>
               </Box>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.2fr 1fr' }, gap: { xs: 2, md: 3 } }}>
-                <motion.div variants={cardVariants}>
-                  <Card sx={{ boxShadow: 2, borderRadius: 2, bgcolor: '#ffffff' }}>
-                    <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
-                      <Typography sx={{ fontSize: { xs: '1.3rem', md: '1.6rem' }, fontWeight: 800, color: '#1A1A2E', mb: 2.5 }}>
-                        Patient Module Monitoring (Live)
-                      </Typography>
-                      <Box sx={{ height: { xs: 260, md: 320 } }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={moduleChartData} margin={{ top: 15, right: 20, left: 0, bottom: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                            <XAxis dataKey="module" tick={{ fill: '#6B7280', fontSize: 12 }} />
-                            <YAxis allowDecimals={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="value" name="Observed Requests" fill="#06B6D4" radius={[8, 8, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
+              {/* RECENT PATIENT SIGNALS — timeline */}
+              <motion.div variants={cardVariants}>
+                <Card sx={{ borderRadius: 3, border: SOFT_BORDER, bgcolor: alpha('#FFFFFF', 0.85), backdropFilter: 'blur(8px)', boxShadow: PREMIUM_SHADOW }}>
+                  <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
+                    <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 2.5 }}>
+                      <Box sx={{
+                        width: 36, height: 36, borderRadius: 2,
+                        background: `linear-gradient(135deg, ${alpha('#10B981', 0.18)} 0%, ${alpha('#10B981', 0.06)} 100%)`,
+                        border: `1px solid ${alpha('#10B981', 0.25)}`, color: '#10B981',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <GroupIcon sx={{ fontSize: 20 }} />
                       </Box>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                <motion.div variants={cardVariants}>
-                  <Card sx={{ boxShadow: 2, borderRadius: 2, bgcolor: '#ffffff' }}>
-                    <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
-                      <Typography sx={{ fontSize: { xs: '1.3rem', md: '1.6rem' }, fontWeight: 800, color: '#1A1A2E', mb: 2.5 }}>
-                        Doctor Actions Trend (7 Days)
-                      </Typography>
-                      <Box sx={{ height: { xs: 260, md: 320 } }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={dashboardData.trend7d} margin={{ top: 15, right: 20, left: 0, bottom: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                            <XAxis dataKey="day" tick={{ fill: '#6B7280', fontSize: 12 }} />
-                            <YAxis allowDecimals={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
-                            <Tooltip />
-                            <Legend />
-                            <Line type="monotone" dataKey="doctorActions" stroke="#06B6D4" strokeWidth={3} name="Doctor Actions" />
-                            <Line type="monotone" dataKey="patientRequests" stroke="#10B981" strokeWidth={3} name="Patient Requests" />
-                            <Line type="monotone" dataKey="approvals" stroke="#2563EB" strokeWidth={2} name="Approvals" />
-                            <Line type="monotone" dataKey="rejections" stroke="#EF4444" strokeWidth={2} name="Rejections" />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </Box>
-
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: { xs: 2, md: 3 } }}>
-                <motion.div variants={cardVariants}>
-                  <Card sx={{ boxShadow: 2, borderRadius: 2, bgcolor: '#ffffff' }}>
-                    <CardContent sx={{ p: { xs: 2.5, md: 3.25 } }}>
-                      <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 2.25 }}>
-                        <GroupIcon sx={{ color: '#06D6A0' }} />
-                        <Typography sx={{ fontSize: { xs: '1.2rem', md: '1.45rem' }, fontWeight: 800, color: '#1A1A2E' }}>
-                          Recent Patient Signals
+                      <Box sx={{ flex: 1 }}>
+                        <Typography sx={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>Recent Patient Signals</Typography>
+                        <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>
+                          {dashboardData.recentPatientSignals.length === 0 ? 'No signals yet' : `${dashboardData.recentPatientSignals.length} latest patient activities`}
                         </Typography>
-                      </Stack>
+                      </Box>
+                    </Stack>
 
-                      {dashboardData.recentPatientSignals.length === 0 ? (
-                        <Typography variant="body2" color="text.secondary">No patient activity signals yet.</Typography>
-                      ) : (
-                        <Stack spacing={1.25}>
-                          {dashboardData.recentPatientSignals.map((item, index) => (
-                            <Box key={item.id || index}>
-                              <Stack direction="row" justifyContent="space-between" alignItems="start" gap={1.5}>
-                                <Box>
-                                  <Typography sx={{ fontWeight: 700, color: '#1A1A2E' }}>{item.title || 'Patient activity'}</Typography>
-                                  <Typography variant="caption" sx={{ color: '#64748B' }}>
-                                    {item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
+                    {dashboardData.recentPatientSignals.length === 0 ? (
+                      <Box sx={{ py: 4, textAlign: 'center' }}>
+                        <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>No patient activity signals yet.</Typography>
+                      </Box>
+                    ) : (
+                      <Box sx={{ position: 'relative' }}>
+                        <Box sx={{ position: 'absolute', left: 11, top: 6, bottom: 6, width: 2, background: `linear-gradient(180deg, ${alpha('#0EA5E9', 0.45)} 0%, ${alpha('#10B981', 0.15)} 100%)`, borderRadius: 1 }} />
+                        <Stack spacing={2}>
+                          {dashboardData.recentPatientSignals.map((item: any, idx: number) => (
+                            <Stack key={item.id || idx} direction="row" spacing={1.75} alignItems="flex-start">
+                              <Box sx={{
+                                width: 24, height: 24, mt: 0.25, flexShrink: 0,
+                                borderRadius: '50%', background: BRAND_GRADIENT,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                boxShadow: '0 2px 6px rgba(14,165,233,0.30)',
+                                position: 'relative', zIndex: 1,
+                              }}>
+                                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#FFFFFF' }} />
+                              </Box>
+                              <Box sx={{ flex: 1, minWidth: 0, pt: 0.25 }}>
+                                <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, color: '#0F172A', lineHeight: 1.35 }}>{item.title || 'Patient activity'}</Typography>
+                                {item.details && (
+                                  <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', mt: 0.25, lineHeight: 1.4 }}>{item.details}</Typography>
+                                )}
+                                {item.createdAt && (
+                                  <Typography sx={{ fontSize: '0.7rem', color: 'text.disabled', fontWeight: 600, mt: 0.5 }}>
+                                    {new Date(item.createdAt).toLocaleString()}
                                   </Typography>
-                                </Box>
-                              </Stack>
-                              {item.details && <Typography variant="body2" sx={{ mt: 0.6, color: 'text.secondary' }}>{item.details}</Typography>}
-                              {index < dashboardData.recentPatientSignals.length - 1 && <Divider sx={{ mt: 1.1 }} />}
-                            </Box>
+                                )}
+                              </Box>
+                            </Stack>
                           ))}
                         </Stack>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </Box>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+
             </Stack>
           </motion.div>
-        </Box>
+        </Container>
       </Box>
 
       <SetReminderModal
@@ -810,7 +1053,7 @@ export default function DoctorDashboard() {
           loadLiveDashboard()
         }}
       />
-    </Box>
+    </>
   )
 }
 
@@ -1000,13 +1243,13 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#06D6A0', color: 'white', fontWeight: 700 }}>
+        <DialogTitle sx={{ background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)', color: 'white', fontWeight: 700 }}>
           Set Medicine Reminders
         </DialogTitle>
         <DialogContent sx={{ mt: 3 }}>
           <Stack spacing={4}>
             <Box>
-              <Typography variant="h6" gutterBottom sx={{ color: '#06D6A0', fontWeight: 700 }}>
+              <Typography variant="h6" gutterBottom sx={{ color: '#10B981', fontWeight: 700 }}>
                 1. Select Patient
               </Typography>
               <Autocomplete
@@ -1020,7 +1263,7 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
             </Box>
 
             <Box>
-              <Typography variant="h6" gutterBottom sx={{ color: '#06D6A0', fontWeight: 700 }}>
+              <Typography variant="h6" gutterBottom sx={{ color: '#10B981', fontWeight: 700 }}>
                 2. Medicine Details
               </Typography>
               <Stack spacing={2} sx={{ mt: 1 }}>
@@ -1053,7 +1296,7 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
             </Box>
 
             <Box>
-              <Typography variant="h6" gutterBottom sx={{ color: '#06D6A0', fontWeight: 700 }}>
+              <Typography variant="h6" gutterBottom sx={{ color: '#10B981', fontWeight: 700 }}>
                 3. Set Reminder Times
               </Typography>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -1076,7 +1319,7 @@ function SetReminderModal({ open, onClose, onReminderCreated }: SetReminderModal
             </Box>
 
             <Box>
-              <Typography variant="h6" gutterBottom sx={{ color: '#06D6A0', fontWeight: 700 }}>
+              <Typography variant="h6" gutterBottom sx={{ color: '#10B981', fontWeight: 700 }}>
                 4. Set Duration
               </Typography>
               <LocalizationProvider dateAdapter={AdapterDateFns}>

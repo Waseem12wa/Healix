@@ -355,12 +355,12 @@ export default function DrugFoodInteractionChecker() {
                   borderRadius: 3,
                   px: 4,
                   py: 1.5,
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
-                  boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+                  boxShadow: '0 4px 12px rgba(14,165,233, 0.3)',
                   alignSelf: 'flex-start',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #0096C7 0%, #05B586 100%)',
-                    boxShadow: '0 6px 16px rgba(0, 180, 216, 0.4)'
+                    background: 'linear-gradient(135deg, #2563EB 0%, #06B6D4 50%, #34D399 100%)',
+                    boxShadow: '0 6px 16px rgba(14,165,233, 0.4)'
                   },
                   '&:disabled': {
                     background: alpha(theme.palette.action.disabled, 0.12),
@@ -383,11 +383,11 @@ export default function DrugFoodInteractionChecker() {
                 sx={{
                   borderRadius: 3,
                   px: 2.25,
-                  borderColor: '#00B4D8',
-                  color: '#00B4D8',
+                  borderColor: '#0EA5E9',
+                  color: '#0EA5E9',
                   '&:hover': {
-                    borderColor: '#0096C7',
-                    bgcolor: alpha('#00B4D8', 0.05)
+                    borderColor: '#1D4ED8',
+                    bgcolor: alpha('#0EA5E9', 0.05)
                   },
                   '&:disabled': {
                     borderColor: theme.palette.action.disabled,

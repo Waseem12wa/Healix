@@ -15,9 +15,9 @@ export default function PatientGuidePage() {
           clickable
           icon={<ArrowBackIcon />}
           label="Back to Guide Page"
-          sx={{ alignSelf: 'flex-start', bgcolor: 'rgba(0, 180, 216, 0.1)', color: '#00B4D8', fontWeight: 600, mb: 1 }}
+          sx={{ alignSelf: 'flex-start', bgcolor: 'rgba(14,165,233, 0.1)', color: '#0EA5E9', fontWeight: 600, mb: 1 }}
         />
-        <Typography sx={{ fontSize: { xs: '2rem', md: '2.4rem' }, fontWeight: 700, color: '#1A1A2E' }}>
+        <Typography sx={{ fontSize: { xs: '2rem', md: '2.4rem' }, fontWeight: 700, color: '#0F172A' }}>
           Patient Guide
         </Typography>
         <Typography sx={{ color: '#64748B', fontSize: '1rem', maxWidth: 850 }}>
@@ -47,15 +47,15 @@ export default function PatientGuidePage() {
               transition: 'all 0.25s ease',
               '&:hover': {
                 transform: 'translateY(-4px)',
-                borderColor: '#00B4D8',
-                boxShadow: '0 12px 28px rgba(0, 180, 216, 0.16)',
+                borderColor: '#0EA5E9',
+                boxShadow: '0 12px 28px rgba(14,165,233, 0.16)',
               },
             }}
           >
             <CardContent sx={{ p: 3, minHeight: 190, display: 'flex', flexDirection: 'column' }}>
               <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 1.5 }}>
-                <AutoStoriesIcon sx={{ color: '#00B4D8' }} />
-                <Typography sx={{ fontWeight: 700, color: '#1A1A2E', fontSize: '1.02rem' }}>{feature.title}</Typography>
+                <AutoStoriesIcon sx={{ color: '#0EA5E9' }} />
+                <Typography sx={{ fontWeight: 700, color: '#0F172A', fontSize: '1.02rem' }}>{feature.title}</Typography>
               </Stack>
 
               <Typography sx={{ color: '#64748B', lineHeight: 1.6, flex: 1 }}>{feature.shortDescription}</Typography>
@@ -64,9 +64,9 @@ export default function PatientGuidePage() {
                 <Chip
                   label="View guide"
                   size="small"
-                  sx={{ bgcolor: 'rgba(0, 180, 216, 0.1)', color: '#00B4D8', fontWeight: 600 }}
+                  sx={{ bgcolor: 'rgba(14,165,233, 0.1)', color: '#0EA5E9', fontWeight: 600 }}
                 />
-                <ArrowForwardIcon sx={{ color: '#00B4D8' }} />
+                <ArrowForwardIcon sx={{ color: '#0EA5E9' }} />
               </Stack>
             </CardContent>
           </Card>

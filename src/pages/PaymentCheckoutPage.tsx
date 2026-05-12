@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Box,
@@ -10,7 +10,6 @@ import {
   Divider,
   FormControlLabel,
   Grid,
-  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -19,88 +18,391 @@ import {
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import CreditCardIcon from '@mui/icons-material/CreditCard'
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
-import PaymentsIcon from '@mui/icons-material/Payments'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
+import LockIcon from '@mui/icons-material/Lock'
+import PaymentsIcon from '@mui/icons-material/Payments'
+import { loadStripe } from '@stripe/stripe-js'
+import {
+  CardElement,
+  Elements,
+  useElements,
+  useStripe,
+} from '@stripe/react-stripe-js'
 import BackButton from '../ui/BackButton'
-import DoctorReviewPrompt from '../components/DoctorReviewPrompt'
 import { clearCart, getCart, syncCartFromServer } from '../services/cartService'
 import {
+  confirmStripePayment,
   createPaymentIntent,
   savePaymentMethod,
   type Medicine,
 } from '../services/paymentService'
+
+const stripePublishableKey = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '').trim()
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null
 
 const pkrFormatter = new Intl.NumberFormat('en-PK', {
   style: 'currency',
   currency: 'PKR',
   maximumFractionDigits: 0,
 })
-
 const formatPkr = (value: number) => pkrFormatter.format(value || 0)
 
-type CheckoutMethod = 'card' | 'paypal' | 'nayapay'
+type CartItem = {
+  medicine: Medicine
+  quantity: number
+  subtotal: number
+}
 
-const methodConfig: Array<{
-  value: CheckoutMethod
-  title: string
-  subtitle: string
-  icon: ReactNode
-}> = [
-  {
-    value: 'card',
-    title: 'Card Payment',
-    subtitle: 'Visa, Mastercard, Amex and other major cards',
-    icon: <CreditCardIcon />,
-  },
-  {
-    value: 'paypal',
-    title: 'PayPal',
-    subtitle: 'Pay securely with your PayPal account',
-    icon: <PaymentsIcon />,
-  },
-  {
-    value: 'nayapay',
-    title: 'NayaPay',
-    subtitle: 'Pay using NayaPay digital wallet',
-    icon: <AccountBalanceWalletIcon />,
-  },
-]
+interface CheckoutFormProps {
+  items: CartItem[]
+  total: number
+  cartLoaded: boolean
+}
 
-export default function PaymentCheckoutPage() {
+function CheckoutForm({ items, total, cartLoaded }: CheckoutFormProps) {
   const theme = useTheme()
   const navigate = useNavigate()
+  const stripe = useStripe()
+  const elements = useElements()
 
-  const [method, setMethod] = useState<CheckoutMethod>('card')
+  const [cardHolderName, setCardHolderName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [saveMethod, setSaveMethod] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [saveMethod, setSaveMethod] = useState(true)
+  const [cardComplete, setCardComplete] = useState(false)
 
-  const [cardHolderName, setCardHolderName] = useState('')
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiryMonth, setExpiryMonth] = useState('')
-  const [expiryYear, setExpiryYear] = useState('')
-  const [cvc, setCvc] = useState('')
+  const handlePay = async () => {
+    setError(null)
+    setSuccess(null)
 
-  const [paypalEmail, setPaypalEmail] = useState('')
-  const [nayaPayId, setNayaPayId] = useState('')
-  const [phone, setPhone] = useState('')
+    if (!stripePromise) {
+      setError(
+        'Stripe is not configured. Set VITE_STRIPE_PUBLISHABLE_KEY in your frontend env (use a Stripe TEST publishable key).'
+      )
+      return
+    }
+    if (!stripe || !elements) {
+      setError('Payment form is still loading. Please wait a moment and try again.')
+      return
+    }
+
+    if (items.length === 0) {
+      setError('Your cart is empty. Add medicines before proceeding to payment.')
+      return
+    }
+    if (!cardHolderName.trim()) {
+      setError('Card holder name is required.')
+      return
+    }
+    if (!cardComplete) {
+      setError('Please enter complete card details.')
+      return
+    }
+
+    const userEmail = localStorage.getItem('userEmail') || ''
+    const userId = localStorage.getItem('userId') || ''
+    if (!userEmail || !userId) {
+      setError('Session expired. Please log in again before checkout.')
+      return
+    }
+
+    const cardElement = elements.getElement(CardElement)
+    if (!cardElement) {
+      setError('Card input not ready. Please refresh and try again.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const medicinesPayload = items.map((item) => ({
+        medicineId: item.medicine._id,
+        quantity: item.quantity,
+        price: item.medicine.sellingPrice,
+      }))
+
+      // 1. Create the payment intent on the server (also creates the Order if needed).
+      const intent = await createPaymentIntent({
+        userId,
+        userEmail,
+        amount: total,
+        currency: 'PKR',
+        paymentGateway: 'stripe',
+        medicines: medicinesPayload,
+        customerEmail: userEmail,
+        customerPhone: phone || undefined,
+        description: `Medicine checkout (${items.length} items)`,
+      })
+
+      if (!intent.clientSecret || !intent.paymentIntentId || !intent.transactionId) {
+        throw new Error('Server did not return a valid payment intent. Please try again.')
+      }
+
+      // 2. Confirm card payment with Stripe (test mode).
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+        intent.clientSecret,
+        {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: cardHolderName.trim(),
+              email: userEmail,
+              phone: phone || undefined,
+            },
+          },
+        }
+      )
+
+      if (stripeError) {
+        throw new Error(stripeError.message || 'Card was declined.')
+      }
+      if (paymentIntent?.status !== 'succeeded') {
+        throw new Error(`Payment did not complete (status: ${paymentIntent?.status || 'unknown'}).`)
+      }
+
+      // 3. Tell the server to finalise: marks the order paid, decrements stock, sends email.
+      const confirmation = await confirmStripePayment({
+        paymentIntentId: intent.paymentIntentId,
+        transactionId: intent.transactionId,
+      })
+
+      if (!confirmation.success) {
+        throw new Error(confirmation.message || 'Server failed to confirm the payment.')
+      }
+
+      // 4. Optional: persist masked card to user's saved methods.
+      if (saveMethod && paymentIntent?.payment_method) {
+        const last4 = confirmation.transaction?.cardDetails?.last4 ?? ''
+        const brand = confirmation.transaction?.cardDetails?.brand ?? 'Card'
+        if (last4) {
+          try {
+            await savePaymentMethod({
+              userId,
+              userEmail,
+              type: 'card',
+              provider: brand,
+              holderName: cardHolderName.trim(),
+              last4,
+              expiryMonth: confirmation.transaction?.cardDetails?.expiryMonth,
+              expiryYear: confirmation.transaction?.cardDetails?.expiryYear,
+              setDefault: true,
+            })
+          } catch {
+            // Non-blocking: payment already succeeded.
+          }
+        }
+      }
+
+      // 5. Done — clear cart and route to the confirmation page.
+      clearCart()
+      const orderId = confirmation.orderId || confirmation.order?._id
+      setSuccess('Payment successful! Redirecting to confirmation...')
+      if (orderId) {
+        navigate(`/shop/orders/${orderId}/confirmation`, { replace: true })
+      } else {
+        navigate('/shop/orders', { replace: true })
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Unable to complete payment. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Stack spacing={3}>
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Secure Checkout
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Enter your card details and click Proceed to Pay. Payments run on Stripe test mode.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: { xs: 1, md: 0 } }}>
+          <VerifiedUserIcon sx={{ color: 'primary.main' }} />
+          <Typography variant="body2" color="text.secondary">
+            Card details are tokenised by Stripe. Healix never stores full card numbers or CVCs.
+          </Typography>
+        </Stack>
+      </Stack>
+
+      {error && <Alert severity="error">{error}</Alert>}
+      {success && <Alert severity="success">{success}</Alert>}
+
+      {!stripePromise && (
+        <Alert severity="warning">
+          Stripe publishable key is missing. Set <code>VITE_STRIPE_PUBLISHABLE_KEY</code> in your frontend
+          <code>.env.local</code> with a Stripe <strong>test</strong> publishable key (starts with
+          <code> pk_test_</code>).
+        </Alert>
+      )}
+
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, md: 7 }}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent>
+              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+                <CreditCardIcon color="primary" />
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Card Payment
+                </Typography>
+              </Stack>
+
+              <Stack spacing={2}>
+                <TextField
+                  label="Card Holder Name"
+                  value={cardHolderName}
+                  onChange={(e) => setCardHolderName(e.target.value)}
+                  fullWidth
+                  autoComplete="cc-name"
+                />
+
+                <Box
+                  sx={{
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                    Card details (Stripe Elements)
+                  </Typography>
+                  <CardElement
+                    onChange={(event) => setCardComplete(event.complete)}
+                    options={{
+                      hidePostalCode: true,
+                      style: {
+                        base: {
+                          fontSize: '16px',
+                          color: theme.palette.text.primary,
+                          '::placeholder': { color: theme.palette.text.secondary },
+                        },
+                        invalid: { color: theme.palette.error.main },
+                      },
+                    }}
+                  />
+                </Box>
+
+                <Typography variant="caption" color="text.secondary">
+                  Test card: <code>4242 4242 4242 4242</code> &middot; any future expiry &middot; any 3-digit CVC.
+                </Typography>
+
+                <TextField
+                  label="Contact Phone (optional)"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  fullWidth
+                  autoComplete="tel"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={saveMethod}
+                      onChange={(e) => setSaveMethod(e.target.checked)}
+                    />
+                  }
+                  label="Save this card (masked) to my account for next time"
+                />
+
+                <Divider sx={{ my: 1 }} />
+
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={handlePay}
+                  disabled={loading || !stripe || !cartLoaded || items.length === 0 || !stripePromise}
+                  startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <LockIcon />}
+                  sx={{ py: 1.4, fontWeight: 700 }}
+                >
+                  {loading ? 'Processing...' : `Proceed to Pay ${formatPkr(total)}`}
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 5 }}>
+          <Card sx={{ borderRadius: 3, position: 'sticky', top: 16 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                Order Summary
+              </Typography>
+              {!cartLoaded && (
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                  <CircularProgress size={16} />
+                  <Typography variant="body2" color="text.secondary">
+                    Syncing your cart...
+                  </Typography>
+                </Stack>
+              )}
+              <Stack spacing={1.2}>
+                {items.length === 0 && cartLoaded && (
+                  <Typography variant="body2" color="text.secondary">
+                    Your cart is empty. Add medicines from the shop to checkout.
+                  </Typography>
+                )}
+                {items.map((item) => (
+                  <Stack
+                    key={item.medicine._id}
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {item.medicine.medicineName}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Qty {item.quantity} x {formatPkr(item.medicine.sellingPrice)}
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {formatPkr(item.subtotal)}
+                    </Typography>
+                  </Stack>
+                ))}
+              </Stack>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  Total
+                </Typography>
+                <Typography variant="h5" color="primary" sx={{ fontWeight: 800 }}>
+                  {formatPkr(total)}
+                </Typography>
+              </Stack>
+
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2 }}>
+                <PaymentsIcon fontSize="small" color="primary" />
+                <Typography variant="caption" color="text.secondary">
+                  Powered by Stripe (test mode)
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Stack>
+  )
+}
+
+export default function PaymentCheckoutPage() {
   const [cartLoaded, setCartLoaded] = useState(false)
-  const [doctorApprovalStatus, setDoctorApprovalStatus] = useState<'not-requested' | 'pending' | 'approved' | 'rejected' | 'modified'>('not-requested')
-
   const cartData = getCart()
 
   useEffect(() => {
-    const hydrateCart = async () => {
-      await syncCartFromServer()
-      setCartLoaded(true)
-    }
-
-    hydrateCart()
+    syncCartFromServer().finally(() => setCartLoaded(true))
   }, [])
 
-  const items = useMemo(() => {
+  const items = useMemo<CartItem[]>(() => {
     return Object.values(cartData)
       .map((entry) => ({
         medicine: entry.medicine as Medicine,
@@ -110,350 +412,42 @@ export default function PaymentCheckoutPage() {
       .filter((item) => item.quantity > 0)
   }, [cartData])
 
-  const total = useMemo(() => items.reduce((sum, item) => sum + item.subtotal, 0), [items])
+  const total = useMemo(
+    () => items.reduce((sum, item) => sum + item.subtotal, 0),
+    [items]
+  )
 
-  useEffect(() => {
-    const userEmail = localStorage.getItem('userEmail') || ''
-    setPaypalEmail(userEmail)
-  }, [])
-
-  const validateForm = () => {
-    if (items.length === 0) {
-      setError('Your cart is empty. Add medicines before proceeding to payment.')
-      return false
-    }
-
-    if (doctorApprovalStatus !== 'approved') {
-      setError('Please confirm with your assigned doctor and get approval before proceeding to payment.')
-      return false
-    }
-
-    if (method === 'card') {
-      const normalizedCard = cardNumber.replace(/\s+/g, '')
-      if (!cardHolderName.trim()) {
-        setError('Card holder name is required.')
-        return false
-      }
-      if (!/^\d{13,19}$/.test(normalizedCard)) {
-        setError('Please enter a valid card number.')
-        return false
-      }
-      if (!/^\d{2}$/.test(expiryMonth) || Number(expiryMonth) < 1 || Number(expiryMonth) > 12) {
-        setError('Please enter a valid expiry month (MM).')
-        return false
-      }
-      if (!/^\d{2,4}$/.test(expiryYear)) {
-        setError('Please enter a valid expiry year (YY or YYYY).')
-        return false
-      }
-      if (!/^\d{3,4}$/.test(cvc)) {
-        setError('Please enter a valid CVC code.')
-        return false
-      }
-    }
-
-    if (method === 'paypal' && !/^\S+@\S+\.\S+$/.test(paypalEmail.trim())) {
-      setError('Please enter a valid PayPal email.')
-      return false
-    }
-
-    if (method === 'nayapay' && !nayaPayId.trim()) {
-      setError('Please enter your NayaPay wallet ID.')
-      return false
-    }
-
-    setError(null)
-    return true
-  }
-
-  const handleProceedPayment = async () => {
-    if (!validateForm()) return
-
-    const userEmail = localStorage.getItem('userEmail') || ''
-    const userId = localStorage.getItem('userId') || ''
-    if (!userEmail) {
-      setError('User email not found. Please login again before checkout.')
-      return
-    }
-    if (!userId) {
-      setError('User identity not found. Please login again before checkout.')
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
-
-    try {
-      const medicinesPayload = items.map((item) => ({
-        medicineId: item.medicine._id,
-        quantity: item.quantity,
-        price: item.medicine.sellingPrice,
-      }))
-
-      const gateway = method === 'card' ? 'stripe' : method
-      const paymentIntent = await createPaymentIntent({
-        userId,
-        userEmail,
-        amount: total,
-        currency: 'PKR',
-        paymentGateway: gateway,
-        medicines: medicinesPayload,
-        customerEmail: userEmail,
-        customerPhone: phone || undefined,
-        description: `Medicine checkout (${items.length} items)`,
-      })
-
-      if (saveMethod) {
-        if (method === 'card') {
-          const normalized = cardNumber.replace(/\s+/g, '')
-          const last4 = normalized.slice(-4)
-          const brand = normalized.startsWith('4')
-            ? 'Visa'
-            : normalized.startsWith('5')
-              ? 'Mastercard'
-              : 'Card'
-
-          await savePaymentMethod({
-            userId,
-            userEmail,
-            type: 'card',
-            provider: brand,
-            holderName: cardHolderName,
-            last4,
-            expiryMonth: Number(expiryMonth),
-            expiryYear: Number(expiryYear.length === 2 ? `20${expiryYear}` : expiryYear),
-            setDefault: true,
-          })
-        }
-
-        if (method === 'paypal') {
-          await savePaymentMethod({
-            userId,
-            userEmail,
-            type: 'paypal',
-            provider: 'PayPal',
-            holderName: paypalEmail,
-            walletIdMasked: paypalEmail.replace(/(.{2}).*(@.*)/, '$1***$2'),
-            setDefault: true,
-          })
-        }
-
-        if (method === 'nayapay') {
-          await savePaymentMethod({
-            userId,
-            userEmail,
-            type: 'nayapay',
-            provider: 'NayaPay',
-            holderName: nayaPayId,
-            walletIdMasked: `${nayaPayId.slice(0, 2)}***${nayaPayId.slice(-2)}`,
-            setDefault: true,
-          })
-        }
-      }
-
-      if (paymentIntent.redirectUrl) {
-        window.location.href = paymentIntent.redirectUrl
-        return
-      }
-
-      setSuccess('Payment processed successfully. Your order has been placed.')
-      clearCart()
-      setTimeout(() => {
-        navigate('/shop/orders')
-      }, 1000)
-    } catch (err: any) {
-      setError(err.message || 'Unable to complete payment. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+  // CheckoutForm calls useStripe()/useElements(), which require an <Elements> ancestor.
+  // If the publishable key is missing we render a clear warning instead of mounting the
+  // form (otherwise React throws "Could not find Elements context").
+  if (!stripePromise) {
+    return (
+      <Box sx={{ minHeight: '100vh', py: 4, px: 2 }}>
+        <Box sx={{ maxWidth: 1100, mx: 'auto' }}>
+          <BackButton />
+          <Box sx={{ mt: 2 }}>
+            <Alert severity="warning" sx={{ borderRadius: 2 }}>
+              Stripe is not configured. Set <code>VITE_STRIPE_PUBLISHABLE_KEY</code> in your
+              frontend <code>.env.local</code> with a Stripe <strong>test</strong> publishable
+              key (starts with <code>pk_test_</code>), then restart the dev server and reload
+              this page.
+            </Alert>
+          </Box>
+        </Box>
+      </Box>
+    )
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', py: 4, px: 2 }}>
-      <Box sx={{ maxWidth: 1100, mx: 'auto' }}>
-        <BackButton />
-
-        <Stack spacing={3} sx={{ mt: 2 }}>
-          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }}>
-            <Box>
-              <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                Secure Checkout
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Complete your payment using NayaPay, PayPal, or card methods.
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: { xs: 1, md: 0 } }}>
-              <VerifiedUserIcon color="success" />
-              <Typography variant="body2" color="text.secondary">
-                We store only masked payment details. Full card number and CVC are never stored.
-              </Typography>
-            </Stack>
-          </Stack>
-
-          {error && <Alert severity="error">{error}</Alert>}
-          {success && <Alert severity="success">{success}</Alert>}
-
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 7 }}>
-              <Card sx={{ borderRadius: 3 }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                    Payment Method
-                  </Typography>
-
-                  <Stack spacing={1.5} sx={{ mb: 3 }}>
-                    {methodConfig.map((entry) => (
-                      <Card
-                        key={entry.value}
-                        variant="outlined"
-                        onClick={() => setMethod(entry.value)}
-                        sx={{
-                          cursor: 'pointer',
-                          borderRadius: 2,
-                          borderColor: method === entry.value ? 'primary.main' : 'divider',
-                          bgcolor: method === entry.value ? alpha(theme.palette.primary.main, 0.08) : 'background.paper',
-                        }}
-                      >
-                        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                          <Stack direction="row" spacing={1.5} alignItems="center">
-                            {entry.icon}
-                            <Box>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                                {entry.title}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {entry.subtitle}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </Stack>
-
-                  {method === 'card' && (
-                    <Stack spacing={2}>
-                      <TextField label="Card Holder Name" value={cardHolderName} onChange={(e) => setCardHolderName(e.target.value)} fullWidth />
-                      <TextField label="Card Number" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} fullWidth placeholder="4111 1111 1111 1111" />
-                      <Grid container spacing={2}>
-                        <Grid size={{ xs: 4 }}>
-                          <TextField label="MM" value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value.replace(/\D/g, '').slice(0, 2))} fullWidth />
-                        </Grid>
-                        <Grid size={{ xs: 4 }}>
-                          <TextField label="YY" value={expiryYear} onChange={(e) => setExpiryYear(e.target.value.replace(/\D/g, '').slice(0, 4))} fullWidth />
-                        </Grid>
-                        <Grid size={{ xs: 4 }}>
-                          <TextField label="CVC" value={cvc} onChange={(e) => setCvc(e.target.value.replace(/\D/g, '').slice(0, 4))} fullWidth />
-                        </Grid>
-                      </Grid>
-                    </Stack>
-                  )}
-
-                  {method === 'paypal' && (
-                    <Stack spacing={2}>
-                      <TextField label="PayPal Email" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)} fullWidth />
-                    </Stack>
-                  )}
-
-                  {method === 'nayapay' && (
-                    <Stack spacing={2}>
-                      <TextField label="NayaPay Wallet ID" value={nayaPayId} onChange={(e) => setNayaPayId(e.target.value)} fullWidth />
-                    </Stack>
-                  )}
-
-                  <Divider sx={{ my: 2 }} />
-
-                  <Stack spacing={1.5}>
-                    <TextField label="Contact Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)} fullWidth />
-                    <FormControlLabel
-                      control={<Checkbox checked={saveMethod} onChange={(e) => setSaveMethod(e.target.checked)} />}
-                      label="Save this payment method securely to my account"
-                    />
-                    <Button
-                      variant="contained"
-                      size="large"
-                      onClick={handleProceedPayment}
-                      disabled={loading || doctorApprovalStatus !== 'approved'}
-                      startIcon={loading ? <CircularProgress size={18} /> : <PaymentsIcon />}
-                    >
-                      {doctorApprovalStatus !== 'approved' ? 'Awaiting Doctor Approval' : `Proceed to Pay ${formatPkr(total)}`}
-                    </Button>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 5 }}>
-              <Card sx={{ borderRadius: 3, position: 'sticky', top: 16 }}>
-                <CardContent>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-                    Order Summary
-                  </Typography>
-                  {!cartLoaded && (
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-                      <CircularProgress size={16} />
-                      <Typography variant="body2" color="text.secondary">Syncing your cart...</Typography>
-                    </Stack>
-                  )}
-                  <Stack spacing={1.2}>
-                    {items.map((item) => (
-                      <Stack key={item.medicine._id} direction="row" justifyContent="space-between" alignItems="center">
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {item.medicine.medicineName}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Qty {item.quantity} x {formatPkr(item.medicine.sellingPrice)}
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {formatPkr(item.subtotal)}
-                        </Typography>
-                      </Stack>
-                    ))}
-                  </Stack>
-
-                  <Divider sx={{ my: 2 }} />
-
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                      Total
-                    </Typography>
-                    <Typography variant="h5" color="primary" sx={{ fontWeight: 800 }}>
-                      {formatPkr(total)}
-                    </Typography>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          {/* Doctor Review Section */}
+    <Elements stripe={stripePromise}>
+      <Box sx={{ minHeight: '100vh', py: 4, px: 2 }}>
+        <Box sx={{ maxWidth: 1100, mx: 'auto' }}>
+          <BackButton />
           <Box sx={{ mt: 2 }}>
-            <DoctorReviewPrompt
-              feature="medication-pharmacy"
-              patientQuery={`Checkout Purchase - ${items.length} item(s)`}
-              aiResultText={items.length > 0 ? items
-                .map((item) => `${item.medicine.medicineName} - Qty ${item.quantity} - ${formatPkr(item.medicine.sellingPrice)} each - Subtotal ${formatPkr(item.subtotal)}`)
-                .join('\n') : ''}
-              aiResultData={items.length > 0 ? {
-                medicines: items.map((item) => ({
-                  medicineId: item.medicine._id,
-                  medicineName: item.medicine.medicineName,
-                  quantity: item.quantity,
-                  price: item.medicine.sellingPrice,
-                  subtotal: item.subtotal,
-                })),
-                totalAmount: total,
-                cartSize: items.length,
-              } : undefined}
-              onStatusChange={(status) => setDoctorApprovalStatus(status)}
-            />
+            <CheckoutForm items={items} total={total} cartLoaded={cartLoaded} />
           </Box>
-        </Stack>
+        </Box>
       </Box>
-    </Box>
+    </Elements>
   )
 }

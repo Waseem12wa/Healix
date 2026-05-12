@@ -7,6 +7,13 @@ Summarizes patient medical records and clinical notes using:
 Runs on port 5005
 """
 
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import logging

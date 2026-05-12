@@ -19,6 +19,7 @@ import { getAppSettings, saveAppSettings } from '../utils/settings';
 import { clearAuthData } from '../utils/auth';
 import { deleteMyAccount } from '../services/patientService';
 import { useNavigate } from 'react-router-dom';
+import { BRAND_GRADIENT, HERO_BG, colors } from '../ui/premium';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -67,17 +68,17 @@ export default function SettingsPage() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #F5F5F7 0%, #E8F4F8 100%)', py: 4, px: 2 }}>
+    <Box sx={{ minHeight: '100vh', background: HERO_BG, py: 4, px: 2 }}>
       <Box sx={{ maxWidth: 960, mx: 'auto' }}>
         <BackButton />
 
         <Stack spacing={3} sx={{ mt: 2 }}>
           <Stack direction="row" spacing={2} alignItems="center">
-            <Box sx={{ width: 56, height: 56, borderRadius: 2, bgcolor: '#00B4D8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <SettingsIcon sx={{ color: '#fff', fontSize: 32 }} />
+            <Box sx={{ width: 56, height: 56, borderRadius: 2, background: BRAND_GRADIENT, boxShadow: '0 8px 20px rgba(14,165,233,0.28), 0 2px 6px rgba(37,99,235,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <SettingsIcon sx={{ color: colors.surface, fontSize: 32 }} />
             </Box>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, color: '#1A1A2E' }}>Settings</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: colors.ink }}>Settings</Typography>
               <Typography variant="body2" sx={{ color: '#64748B' }}>
                 Manage your account preferences as {role}.
               </Typography>
@@ -134,10 +135,10 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(239, 71, 111, 0.25)' }}>
+          <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(244,63,94, 0.25)' }}>
             <CardContent sx={{ p: { xs: 3, md: 4 } }}>
               <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
-                <DeleteForeverIcon sx={{ color: '#EF476F' }} />
+                <DeleteForeverIcon sx={{ color: '#F43F5E' }} />
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#B42318' }}>Delete Account</Typography>
               </Stack>
 

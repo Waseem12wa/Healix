@@ -19,8 +19,9 @@ import {
 
 const router = express.Router();
 
-// Check service health on startup
-checkSideEffectServiceHealth().catch(e => console.error('Side Effect Service not available at startup'));
+// Note: do NOT run a health check at module import time.
+// The generic microservice-readiness system in server.js handles this
+// and logs a proper status once the SIDE service has actually booted.
 
 // ============================================
 // PREDICT SIDE EFFECTS FOR SINGLE MEDICINE

@@ -23,21 +23,21 @@ export default function ContactPage() {
       title: 'Email',
       content: 'support@healix.app',
       link: 'mailto:support@healix.app',
-      color: '#06D6A0'
+      color: '#10B981'
     },
     {
       icon: PhoneIcon,
       title: 'Phone',
       content: '+92 307 8932652',
       link: 'tel:+923078932652',
-      color: '#EF476F'
+      color: '#F43F5E'
     },
     {
       icon: AccessTimeIcon,
       title: 'Support Hours',
       content: '24/7 Availability',
       link: null,
-      color: '#FFD166'
+      color: '#FCD34D'
     }
   ]
 
@@ -250,7 +250,7 @@ export default function ContactPage() {
                   sx={{
                     fontWeight: 800,
                     mb: 4,
-                    background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                    background: `linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)`,
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent'
                   }}
@@ -262,7 +262,7 @@ export default function ContactPage() {
                   {submitMessage && (
                     <Typography
                       sx={{
-                        color: submitMessage.type === 'success' ? '#06D6A0' : '#EF476F',
+                        color: submitMessage.type === 'success' ? '#10B981' : '#F43F5E',
                         fontWeight: 600,
                         fontSize: '0.95rem'
                       }}

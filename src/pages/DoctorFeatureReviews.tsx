@@ -325,14 +325,14 @@ export default function DoctorFeatureReviews({ feature }: Props) {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #F5F7FA 0%, #E8F4F8 100%)', py: 4, px: 2 }}>
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(140deg, #ECFEFF 0%, #F0FDFA 35%, #EFF6FF 100%)', py: 4, px: 2 }}>
       <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
         <BackButton />
 
         <Stack spacing={3} sx={{ mt: 2 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2}>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, color: '#1A1A2E' }}>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: '#0F172A' }}>
                 {title} Reviews
               </Typography>
               <Typography variant="body2" sx={{ color: '#64748B' }}>
@@ -362,7 +362,7 @@ export default function DoctorFeatureReviews({ feature }: Props) {
           ) : filteredItems.length === 0 ? (
             <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #E2E8F0' }}>
               <CardContent>
-                <Typography sx={{ fontSize: '1rem', color: '#1A1A2E', fontWeight: 700 }}>
+                <Typography sx={{ fontSize: '1rem', color: '#0F172A', fontWeight: 700 }}>
                   No requests found for selected filter
                 </Typography>
                 <Typography sx={{ fontSize: '0.9rem', color: '#64748B', mt: 0.5 }}>
@@ -383,7 +383,7 @@ export default function DoctorFeatureReviews({ feature }: Props) {
                       <Stack spacing={1.5}>
                         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={1}>
                           <Box>
-                            <Typography sx={{ fontWeight: 800, color: '#1A1A2E' }}>
+                            <Typography sx={{ fontWeight: 800, color: '#0F172A' }}>
                               Patient: {item.patientName}
                             </Typography>
                             <Typography sx={{ fontSize: '0.85rem', color: '#64748B' }}>{item.patientEmail}</Typography>

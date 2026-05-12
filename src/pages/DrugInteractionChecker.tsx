@@ -250,22 +250,22 @@ export default function DrugInteractionChecker() {
               width: 60,
               height: 60,
               borderRadius: '20px',
-              background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.1) 0%, rgba(6, 214, 160, 0.1) 100%)',
+              background: 'linear-gradient(135deg, rgba(52,211,153,0.14) 0%, rgba(6,182,212,0.14) 50%, rgba(37,99,235,0.14) 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               border: '1px solid',
-              borderColor: 'rgba(0, 180, 216, 0.2)',
-              boxShadow: '0 8px 32px rgba(0, 180, 216, 0.1)'
+              borderColor: 'rgba(14,165,233, 0.2)',
+              boxShadow: '0 8px 32px rgba(14,165,233, 0.1)'
             }}>
-              <ScienceIcon sx={{ fontSize: 32, color: '#00B4D8' }} />
+              <ScienceIcon sx={{ fontSize: 32, color: '#0EA5E9' }} />
             </Box>
             <Box>
               <Typography
                 variant="h4"
                 fontWeight={800}
                 sx={{
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   fontSize: { xs: '1.75rem', md: '2.25rem' },
@@ -292,7 +292,7 @@ export default function DrugInteractionChecker() {
             <CardContent sx={{ p: { xs: 3, md: 4 } }}>
               <Stack spacing={3}>
                 <Typography variant="h6" fontWeight={700} sx={{
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
@@ -326,9 +326,9 @@ export default function DrugInteractionChecker() {
                       sx={{
                         borderRadius: 3,
                         px: 3,
-                        background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                        background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                         '&:hover': {
-                          background: 'linear-gradient(135deg, #0096C7 0%, #05B586 100%)',
+                          background: 'linear-gradient(135deg, #2563EB 0%, #06B6D4 50%, #34D399 100%)',
                         },
                         '&:disabled': {
                           background: alpha(theme.palette.action.disabled, 0.12),
@@ -348,11 +348,11 @@ export default function DrugInteractionChecker() {
                       sx={{
                         borderRadius: 3,
                         px: 3,
-                        borderColor: '#00B4D8',
-                        color: '#00B4D8',
+                        borderColor: '#0EA5E9',
+                        color: '#0EA5E9',
                         '&:hover': {
-                          borderColor: '#0096C7',
-                          bgcolor: alpha('#00B4D8', 0.05)
+                          borderColor: '#1D4ED8',
+                          bgcolor: alpha('#0EA5E9', 0.05)
                         },
                         '&:disabled': {
                           borderColor: theme.palette.action.disabled,
@@ -384,13 +384,13 @@ export default function DrugInteractionChecker() {
                             onDelete={() => removeDrug(d)}
                             sx={{
                               borderRadius: '8px',
-                              bgcolor: alpha('#00B4D8', 0.1),
-                              color: '#00B4D8',
+                              bgcolor: alpha('#0EA5E9', 0.1),
+                              color: '#0EA5E9',
                               fontWeight: 600,
                               '& .MuiChip-deleteIcon': {
-                                color: '#00B4D8',
+                                color: '#0EA5E9',
                                 '&:hover': {
-                                  color: '#0096C7'
+                                  color: '#1D4ED8'
                                 }
                               }
                             }}
@@ -413,12 +413,12 @@ export default function DrugInteractionChecker() {
                     borderRadius: 3,
                     px: 4,
                     py: 1.5,
-                    background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
-                    boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)',
+                    background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+                    boxShadow: '0 4px 12px rgba(14,165,233, 0.3)',
                     alignSelf: 'flex-start',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #0096C7 0%, #05B586 100%)',
-                      boxShadow: '0 6px 16px rgba(0, 180, 216, 0.4)'
+                      background: 'linear-gradient(135deg, #2563EB 0%, #06B6D4 50%, #34D399 100%)',
+                      boxShadow: '0 6px 16px rgba(14,165,233, 0.4)'
                     },
                     '&:disabled': {
                       background: alpha(theme.palette.action.disabled, 0.12),
@@ -451,7 +451,7 @@ export default function DrugInteractionChecker() {
               <CardContent sx={{ p: { xs: 3, md: 4 } }}>
                 <Typography variant="h6" fontWeight={700} sx={{
                   mb: 2,
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
@@ -522,7 +522,7 @@ export default function DrugInteractionChecker() {
               <CardContent sx={{ p: { xs: 3, md: 4 } }}>
                 <Typography variant="h6" fontWeight={700} sx={{
                   mb: 3,
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
@@ -577,7 +577,7 @@ export default function DrugInteractionChecker() {
                               fontWeight={700}
                               sx={{
                                 fontSize: '1rem',
-                                background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                                background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                                 WebkitBackgroundClip: 'text',
                                 WebkitTextFillColor: 'transparent'
                               }}
@@ -638,7 +638,7 @@ export default function DrugInteractionChecker() {
                                     }}
                                   >
                                     <Typography variant="subtitle2" fontWeight={700} sx={{
-                                      background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                                      background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                                       WebkitBackgroundClip: 'text',
                                       WebkitTextFillColor: 'transparent'
                                     }}>
@@ -650,7 +650,7 @@ export default function DrugInteractionChecker() {
                                       {/* Mechanism */}
                                       <Box>
                                         <Typography variant="subtitle2" fontWeight={700} sx={{
-                                          color: '#00B4D8',
+                                          color: '#0EA5E9',
                                           mb: 1,
                                           display: 'flex',
                                           alignItems: 'center',

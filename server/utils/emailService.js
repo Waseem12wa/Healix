@@ -818,3 +818,196 @@ export const sendContactMessageEmail = async ({ firstName, lastName, email, subj
   return { success: true, messageId: info?.messageId };
 };
 
+/**
+ * Send order confirmation email after a successful Stripe payment.
+ *
+ * @param {Object} params
+ * @param {string} params.email          - Recipient (logged-in patient's email)
+ * @param {string} params.userName       - Recipient display name
+ * @param {Object} params.order          - Order document (plain object or hydrated mongoose doc)
+ * @param {Object} [params.transaction]  - Optional PaymentTransaction (for card last4 / brand)
+ */
+export const sendOrderConfirmationEmail = async ({ email, userName = 'Customer', order, transaction }) => {
+  if (!email) {
+    return { success: false, error: 'Recipient email missing' };
+  }
+
+  const safeOrder = typeof order?.toObject === 'function' ? order.toObject() : (order || {});
+  const safeTxn = typeof transaction?.toObject === 'function' ? transaction.toObject() : (transaction || {});
+  const currency = safeOrder.currency || 'PKR';
+  const orderNumber = safeOrder.orderNumber || String(safeOrder._id || '');
+  const items = Array.isArray(safeOrder.medicines) ? safeOrder.medicines : [];
+  const placedAt = safeOrder.paymentCompletedAt || safeOrder.createdAt || new Date();
+  const total = Number(safeOrder.finalAmount ?? safeOrder.totalAmount ?? 0);
+
+  const fmt = (n) => `${currency} ${Number(n || 0).toLocaleString('en-PK')}`;
+  const subject = `Healix - Order ${orderNumber} confirmed`;
+
+  const itemsRowsHtml = items.map((it) => `
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid #E0EEF3;color:#1A1A2E;">
+        ${it.medicineName || 'Medicine'}
+      </td>
+      <td style="padding:10px;border-bottom:1px solid #E0EEF3;color:#64748B;text-align:center;">
+        ${it.quantity || 1}
+      </td>
+      <td style="padding:10px;border-bottom:1px solid #E0EEF3;color:#64748B;text-align:right;">
+        ${fmt(it.unitPrice)}
+      </td>
+      <td style="padding:10px;border-bottom:1px solid #E0EEF3;color:#1A1A2E;font-weight:600;text-align:right;">
+        ${fmt(it.subtotal ?? (Number(it.unitPrice || 0) * Number(it.quantity || 1)))}
+      </td>
+    </tr>
+  `).join('');
+
+  const itemsRowsText = items.map((it) =>
+    `  - ${it.medicineName} x${it.quantity}  ${fmt(it.subtotal ?? (Number(it.unitPrice || 0) * Number(it.quantity || 1)))}`
+  ).join('\n');
+
+  const cardInfo = safeTxn?.cardDetails?.last4Digits
+    ? `${safeTxn.cardDetails.cardBrand || 'Card'} ending in ${safeTxn.cardDetails.last4Digits}`
+    : (safeOrder.paymentGateway ? `Paid via ${safeOrder.paymentGateway}` : 'Card payment');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <title>${subject}</title>
+    </head>
+    <body style="margin:0;padding:0;background:#F5F9FB;font-family:Segoe UI,Arial,sans-serif;color:#1A1A2E;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:24px 0;">
+        <tr><td align="center">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,119,182,0.08);">
+            <tr>
+              <td style="background:linear-gradient(135deg,#00B4D8 0%,#0096C7 100%);padding:28px 32px;color:#FFFFFF;">
+                <div style="font-size:13px;letter-spacing:1px;opacity:0.85;text-transform:uppercase;">Healix Healthcare</div>
+                <div style="font-size:24px;font-weight:700;margin-top:6px;">Payment received - thank you!</div>
+                <div style="font-size:14px;margin-top:6px;opacity:0.92;">
+                  Order <strong>${orderNumber}</strong> &middot; ${new Date(placedAt).toLocaleString('en-PK')}
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px 32px 8px 32px;">
+                <p style="margin:0 0 12px 0;font-size:15px;">Hi ${userName},</p>
+                <p style="margin:0 0 16px 0;font-size:15px;line-height:1.55;">
+                  We have successfully received your payment of
+                  <strong style="color:#0077B6;">${fmt(total)}</strong>
+                  for the items below. Your order is now confirmed and being prepared.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:14px;">
+                  <thead>
+                    <tr style="background:#E0F4FA;">
+                      <th align="left"   style="padding:10px;color:#0077B6;font-weight:700;">Item</th>
+                      <th align="center" style="padding:10px;color:#0077B6;font-weight:700;">Qty</th>
+                      <th align="right"  style="padding:10px;color:#0077B6;font-weight:700;">Unit</th>
+                      <th align="right"  style="padding:10px;color:#0077B6;font-weight:700;">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>${itemsRowsHtml}</tbody>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 32px 0 32px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="font-size:14px;color:#64748B;">Payment method</td>
+                    <td align="right" style="font-size:14px;color:#1A1A2E;font-weight:600;">${cardInfo}</td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:14px;color:#64748B;padding-top:6px;">Order total</td>
+                    <td align="right" style="font-size:18px;color:#0077B6;font-weight:800;padding-top:6px;">${fmt(total)}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px 32px 32px;">
+                <div style="background:#F5F9FB;border:1px solid #DDE7EC;border-radius:10px;padding:14px 16px;font-size:13px;color:#475569;line-height:1.55;">
+                  This is an automated confirmation email. If you did not make this purchase, please contact Healix support immediately.
+                </div>
+                <p style="margin:18px 0 0 0;font-size:13px;color:#94A3B8;text-align:center;">
+                  &copy; ${new Date().getFullYear()} Healix Healthcare. All rights reserved.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const text = [
+    `Healix - Order Confirmation`,
+    ``,
+    `Hi ${userName},`,
+    `We have received your payment of ${fmt(total)} for order ${orderNumber}.`,
+    ``,
+    `Items:`,
+    itemsRowsText,
+    ``,
+    `Total: ${fmt(total)}`,
+    `Payment: ${cardInfo}`,
+    `Placed at: ${new Date(placedAt).toLocaleString('en-PK')}`,
+    ``,
+    `Thank you for shopping with Healix.`,
+  ].join('\n');
+
+  // Dev mode: log to console only (matches the rest of the file's behaviour).
+  if (DEVELOPMENT_MODE) {
+    console.log('============================================');
+    console.log('📧 [DEV MODE] Order confirmation email');
+    console.log(`   To: ${email}`);
+    console.log(`   Subject: ${subject}`);
+    console.log(text);
+    console.log('============================================');
+    return { success: true, dev: true };
+  }
+
+  // Resend path
+  if (USE_RESEND && resend) {
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'Healix <onboarding@resend.dev>',
+        to: email,
+        subject,
+        html,
+        text,
+      });
+      if (error) throw error;
+      console.log('✅ Order confirmation email sent via Resend:', data?.id);
+      return { success: true, messageId: data?.id };
+    } catch (error) {
+      console.error('❌ Resend order confirmation error:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // SMTP / Gmail path (uses the same transporter as reminders).
+  try {
+    const transporter = createTransporter();
+    if (!transporter) {
+      return { success: false, error: 'No email transport configured' };
+    }
+    const info = await transporter.sendMail({
+      from: `"Healix Healthcare" <${EMAIL_USER}>`,
+      to: email,
+      subject,
+      html,
+      text,
+    });
+    console.log('✅ Order confirmation email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Order confirmation email error:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+

@@ -31,8 +31,8 @@ const roles = [
     label: 'Patient', 
     value: 'patient',
     icon: PersonIcon,
-    color: '#06D6A0', // Success green for Patient
-    iconColor: '#1A1A2E' // Dark gray icon when selected
+    color: '#10B981', // Success green for Patient
+    iconColor: '#0F172A' // Dark gray icon when selected
   },
   { 
     label: 'Doctor', 
@@ -45,15 +45,15 @@ const roles = [
     label: 'Admin', 
     value: 'admin',
     icon: BuildIcon, // Wrench icon
-    color: '#1A1A2E', // Dark gray for Admin
-    iconColor: '#1A1A2E' // Dark gray icon
+    color: '#0F172A', // Dark gray for Admin
+    iconColor: '#0F172A' // Dark gray icon
   },
   { 
     label: 'Provider', 
     value: 'provider',
     icon: LocalHospitalIcon, // Hospital building icon
-    color: '#EF476F', // Red for Provider
-    iconColor: '#EF476F' // Red icon (with cross)
+    color: '#F43F5E', // Red for Provider
+    iconColor: '#F43F5E' // Red icon (with cross)
   },
 ]
 
@@ -146,7 +146,7 @@ export default function SignupPage() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F5F5F7 0%, #E8F4F8 100%)',
+        background: 'linear-gradient(140deg, #ECFEFF 0%, #F0FDFA 35%, #EFF6FF 100%)',
         py: { xs: 4, md: 6 },
         px: { xs: 2, sm: 2, md: 3 },
         animation: 'fadeIn 0.3s ease-in'
@@ -168,11 +168,11 @@ export default function SignupPage() {
             width: 48,
             height: 48,
             borderRadius: 2,
-            bgcolor: '#06D6A0',
+            background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(6, 214, 160, 0.3)'
+            boxShadow: '0 8px 20px rgba(14,165,233,0.28), 0 2px 6px rgba(37,99,235,0.18)'
           }}
         >
           <LockOutlinedIcon sx={{ color: '#FFFFFF', fontSize: 28 }} />
@@ -181,7 +181,7 @@ export default function SignupPage() {
           variant="h5"
           sx={{
             fontWeight: 700,
-            color: '#1A1A2E',
+            color: '#0F172A',
             fontSize: { xs: '1.5rem', md: '1.75rem' }
           }}
         >
@@ -212,7 +212,7 @@ export default function SignupPage() {
               variant="h4"
               sx={{
                 fontWeight: 700,
-                color: '#1A1A2E',
+                color: '#0F172A',
                 mb: 1,
                 fontSize: { xs: '1.75rem', md: '2rem' }
               }}
@@ -236,7 +236,7 @@ export default function SignupPage() {
               variant="h6"
               sx={{
                 fontWeight: 600,
-                color: '#1A1A2E',
+                color: '#0F172A',
                 mb: 2,
                 fontSize: '16px'
               }}
@@ -287,7 +287,7 @@ export default function SignupPage() {
                           variant="body2"
                           sx={{
                             fontWeight: 600,
-                            color: isSelected ? roleItem.color : '#1A1A2E',
+                            color: isSelected ? roleItem.color : '#0F172A',
                             fontSize: '14px'
                           }}
                         >
@@ -310,9 +310,9 @@ export default function SignupPage() {
                   mb: 3,
                   borderRadius: 2,
                   bgcolor: '#FEF2F2',
-                  color: '#EF476F',
+                  color: '#F43F5E',
                   '& .MuiAlert-icon': {
-                    color: '#EF476F'
+                    color: '#F43F5E'
                   }
                 }}
               >
@@ -326,7 +326,7 @@ export default function SignupPage() {
                 variant="body2"
                 sx={{
                   fontWeight: 500,
-                  color: '#1A1A2E',
+                  color: '#0F172A',
                   mb: 1,
                   fontSize: '14px'
                 }}
@@ -355,10 +355,10 @@ export default function SignupPage() {
                       borderColor: '#E2E8F0'
                     },
                     '&:hover fieldset': {
-                      borderColor: '#00B4D8'
+                      borderColor: '#0EA5E9'
                     },
                     '&.Mui-focused fieldset': {
-                      borderColor: '#00B4D8',
+                      borderColor: '#0EA5E9',
                       borderWidth: '2px'
                     }
                   }
@@ -372,7 +372,7 @@ export default function SignupPage() {
                 variant="body2"
                 sx={{
                   fontWeight: 500,
-                  color: '#1A1A2E',
+                  color: '#0F172A',
                   mb: 1,
                   fontSize: '14px'
                 }}
@@ -402,10 +402,10 @@ export default function SignupPage() {
                       borderColor: '#E2E8F0'
                     },
                     '&:hover fieldset': {
-                      borderColor: '#00B4D8'
+                      borderColor: '#0EA5E9'
                     },
                     '&.Mui-focused fieldset': {
-                      borderColor: '#00B4D8',
+                      borderColor: '#0EA5E9',
                       borderWidth: '2px'
                     }
                   }
@@ -419,7 +419,7 @@ export default function SignupPage() {
                 variant="body2"
                 sx={{
                   fontWeight: 500,
-                  color: '#1A1A2E',
+                  color: '#0F172A',
                   mb: 1,
                   fontSize: '14px'
                 }}
@@ -465,10 +465,10 @@ export default function SignupPage() {
                       borderColor: '#E2E8F0'
                     },
                     '&:hover fieldset': {
-                      borderColor: '#00B4D8'
+                      borderColor: '#0EA5E9'
                     },
                     '&.Mui-focused fieldset': {
-                      borderColor: '#00B4D8',
+                      borderColor: '#0EA5E9',
                       borderWidth: '2px'
                     }
                   },
@@ -487,7 +487,7 @@ export default function SignupPage() {
                 variant="body2"
                 sx={{
                   fontWeight: 500,
-                  color: '#1A1A2E',
+                  color: '#0F172A',
                   mb: 1,
                   fontSize: '14px'
                 }}
@@ -532,10 +532,10 @@ export default function SignupPage() {
                       borderColor: '#E2E8F0'
                     },
                     '&:hover fieldset': {
-                      borderColor: '#00B4D8'
+                      borderColor: '#0EA5E9'
                     },
                     '&.Mui-focused fieldset': {
-                      borderColor: '#00B4D8',
+                      borderColor: '#0EA5E9',
                       borderWidth: '2px'
                     }
                   }
@@ -551,23 +551,27 @@ export default function SignupPage() {
               disabled={loading}
               endIcon={loading ? <CircularProgress size={16} color="inherit" /> : <ArrowForwardIcon />}
               sx={{
-                bgcolor: '#06D6A0',
                 color: '#FFFFFF',
-                py: 1.5,
-                borderRadius: 2,
+                py: 1.6,
+                borderRadius: 2.5,
                 fontSize: '16px',
-                fontWeight: 600,
+                fontWeight: 700,
                 textTransform: 'none',
-                boxShadow: '0 4px 12px rgba(6, 214, 160, 0.3)',
+                background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+                backgroundSize: '200% 200%',
+                backgroundPosition: '0% 50%',
+                boxShadow: '0 10px 24px rgba(14,165,233,0.32), 0 4px 10px rgba(37,99,235,0.18)',
+                transition: 'all 0.3s ease',
                 mb: 3,
                 '&:hover': {
-                  bgcolor: '#04A777',
-                  boxShadow: '0 6px 16px rgba(6, 214, 160, 0.4)',
+                  backgroundPosition: '100% 50%',
+                  boxShadow: '0 14px 28px rgba(14,165,233,0.40), 0 6px 14px rgba(37,99,235,0.22)',
                   transform: 'translateY(-2px)'
                 },
                 '&:disabled': {
-                  bgcolor: '#CBD5E1',
-                  color: '#FFFFFF'
+                  background: '#CBD5E1',
+                  color: '#FFFFFF',
+                  boxShadow: 'none'
                 }
               }}
             >
@@ -615,14 +619,14 @@ export default function SignupPage() {
                 href="/login"
                 sx={{
                   textTransform: 'none',
-                  color: '#00B4D8',
+                  color: '#0EA5E9',
                   fontSize: '14px',
                   fontWeight: 600,
                   p: 0,
                   minWidth: 'auto',
                   '&:hover': {
                     bgcolor: 'transparent',
-                    color: '#0096C7',
+                    color: '#1D4ED8',
                     textDecoration: 'underline'
                   }
                 }}

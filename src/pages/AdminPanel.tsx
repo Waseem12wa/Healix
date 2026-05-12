@@ -145,11 +145,11 @@ export default function AdminPanel() {
                 width: 48,
                 height: 48,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)',
+                boxShadow: '0 4px 12px rgba(14,165,233, 0.3)',
               }}
             >
               <LocalHospitalIcon sx={{ color: '#ffffff', fontSize: 28 }} />
@@ -159,7 +159,7 @@ export default function AdminPanel() {
                 sx={{
                   fontSize: { xs: '1.75rem', md: '2.5rem' },
                   fontWeight: 900,
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   lineHeight: 1.2,
@@ -176,7 +176,7 @@ export default function AdminPanel() {
           <Stack direction="row" alignItems="center" spacing={2}>
             <Badge badgeContent={unreadCount} color="error" invisible={unreadCount <= 0}>
               <IconButton onClick={() => navigate('/tools/notifications')}>
-                <NotificationsIcon sx={{ color: '#00B4D8' }} />
+                <NotificationsIcon sx={{ color: '#0EA5E9' }} />
               </IconButton>
             </Badge>
 
@@ -201,7 +201,7 @@ export default function AdminPanel() {
               <Avatar
                 src={profileImage || undefined}
                 sx={{
-                  background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                  background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                   width: 40,
                   height: 40,
                 }}
@@ -209,7 +209,7 @@ export default function AdminPanel() {
                 {userName.charAt(0)}
               </Avatar>
               <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#00B4D8' }}>{userName}</Typography>
+                <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, color: '#0EA5E9' }}>{userName}</Typography>
                 <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>Administrator</Typography>
               </Box>
             </Stack>
@@ -284,8 +284,8 @@ export default function AdminPanel() {
                     transition: 'all 0.25s ease',
                     '&:hover': {
                       transform: 'translateY(-4px)',
-                      boxShadow: '0 12px 28px rgba(0, 180, 216, 0.15)',
-                      borderColor: '#00B4D8',
+                      boxShadow: '0 12px 28px rgba(14,165,233, 0.15)',
+                      borderColor: '#0EA5E9',
                     },
                   }}
                 >
@@ -296,7 +296,8 @@ export default function AdminPanel() {
                           width: 48,
                           height: 48,
                           borderRadius: 2,
-                          background: alpha('#00B4D8', 0.1),
+                          background: 'linear-gradient(135deg, rgba(52,211,153,0.14) 0%, rgba(6,182,212,0.14) 50%, rgba(37,99,235,0.14) 100%)',
+                          border: '1px solid rgba(14,165,233,0.22)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',

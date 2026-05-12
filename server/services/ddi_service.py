@@ -7,6 +7,13 @@ retrieves ATC drug classifications, and predicts interaction probabilities.
 Enhanced with local LLM for detailed clinical explanations.
 """
 
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from catboost import CatBoostClassifier

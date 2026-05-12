@@ -68,7 +68,7 @@ export default function ProviderOrdersPage() {
       <Box sx={{ mb: 1.5 }}>
         <BackButton />
       </Box>
-      <Typography variant="h4" sx={{ fontWeight: 800, color: '#00B4D8', mb: 2 }}>
+      <Typography variant="h4" sx={{ fontWeight: 800, color: '#0EA5E9', mb: 2 }}>
         Order Management & Approval
       </Typography>
 

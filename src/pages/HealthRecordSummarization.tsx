@@ -256,22 +256,22 @@ export default function HealthRecordSummarization() {
                             width: 60,
                             height: 60,
                             borderRadius: '20px',
-                            background: 'linear-gradient(135deg, rgba(0, 180, 216, 0.1) 0%, rgba(6, 214, 160, 0.1) 100%)',
+                            background: 'linear-gradient(135deg, rgba(52,211,153,0.14) 0%, rgba(6,182,212,0.14) 50%, rgba(37,99,235,0.14) 100%)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             border: '1px solid',
-                            borderColor: 'rgba(0, 180, 216, 0.2)',
-                            boxShadow: '0 8px 32px rgba(0, 180, 216, 0.1)'
+                            borderColor: 'rgba(14,165,233, 0.2)',
+                            boxShadow: '0 8px 32px rgba(14,165,233, 0.1)'
                         }}>
-                            <SummarizeIcon sx={{ fontSize: 32, color: '#00B4D8' }} />
+                            <SummarizeIcon sx={{ fontSize: 32, color: '#0EA5E9' }} />
                         </Box>
                         <Box>
                             <Typography
                                 variant="h4"
                                 fontWeight={800}
                                 sx={{
-                                    background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                                    background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                                     WebkitBackgroundClip: 'text',
                                     WebkitTextFillColor: 'transparent',
                                     fontSize: { xs: '1.75rem', md: '2.25rem' },
@@ -298,7 +298,7 @@ export default function HealthRecordSummarization() {
                         <CardContent sx={{ p: { xs: 3, md: 4 } }}>
                             <Stack spacing={3}>
                                 <Typography variant="h6" fontWeight={700} sx={{
-                                    background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                                    background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                                     WebkitBackgroundClip: 'text',
                                     WebkitTextFillColor: 'transparent'
                                 }}>
@@ -310,25 +310,25 @@ export default function HealthRecordSummarization() {
                                     sx={{
                                         p: 4,
                                         border: '2px dashed',
-                                        borderColor: fileName ? '#00B4D8' : 'divider',
+                                        borderColor: fileName ? '#0EA5E9' : 'divider',
                                         borderRadius: 3,
                                         textAlign: 'center',
-                                        bgcolor: fileName ? alpha('#00B4D8', 0.05) : alpha(theme.palette.action.hover, 0.5),
+                                        bgcolor: fileName ? alpha('#0EA5E9', 0.05) : alpha(theme.palette.action.hover, 0.5),
                                         transition: 'all 0.3s',
                                         cursor: 'pointer',
                                         '&:hover': {
-                                            borderColor: '#00B4D8',
-                                            bgcolor: alpha('#00B4D8', 0.05)
+                                            borderColor: '#0EA5E9',
+                                            bgcolor: alpha('#0EA5E9', 0.05)
                                         }
                                     }}
                                     onClick={onBrowse}
                                 >
-                                    <CloudUploadIcon sx={{ fontSize: 48, color: '#00B4D8', mb: 2 }} />
+                                    <CloudUploadIcon sx={{ fontSize: 48, color: '#0EA5E9', mb: 2 }} />
                                     {fileName ? (
                                         <Stack spacing={1} alignItems="center">
                                             <Stack direction="row" spacing={1} alignItems="center">
-                                                <DescriptionIcon sx={{ color: '#00B4D8' }} />
-                                                <Typography fontWeight={600} color="#00B4D8">
+                                                <DescriptionIcon sx={{ color: '#0EA5E9' }} />
+                                                <Typography fontWeight={600} color="#0EA5E9">
                                                     {fileName}
                                                 </Typography>
                                             </Stack>
@@ -410,7 +410,7 @@ export default function HealthRecordSummarization() {
                                     <CardContent sx={{ p: { xs: 3, md: 4 } }}>
                                         <Stack spacing={3}>
                                             <Typography variant="h6" fontWeight={700} sx={{
-                                                background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
+                                                background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
                                                 WebkitBackgroundClip: 'text',
                                                 WebkitTextFillColor: 'transparent'
                                             }}>
@@ -430,18 +430,18 @@ export default function HealthRecordSummarization() {
                                             {/* Extracted Entities */}
                                             {entities && (
                                                 <Box>
-                                                    <Typography variant="h6" fontWeight={700} sx={{ mb: 2.5, color: '#00B4D8' }}>
+                                                    <Typography variant="h6" fontWeight={700} sx={{ mb: 2.5, color: '#0EA5E9' }}>
                                                         📋 Key Medical Entities
                                                     </Typography>
                                                     <Stack spacing={2}>
                                                         {entities.medications && entities.medications.length > 0 && (
-                                                            <Paper elevation={0} sx={{ p: 1.5, bgcolor: alpha('#4ECDC4', 0.05), borderRadius: 2, border: `1px solid ${alpha('#4ECDC4', 0.2)}` }}>
-                                                                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: '#4ECDC4' }}>
+                                                            <Paper elevation={0} sx={{ p: 1.5, bgcolor: alpha('#5EEAD4', 0.05), borderRadius: 2, border: `1px solid ${alpha('#5EEAD4', 0.2)}` }}>
+                                                                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: '#5EEAD4' }}>
                                                                     💊 Medications
                                                                 </Typography>
                                                                 <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                                                                     {entities.medications.map((med: string, idx: number) => (
-                                                                        <Chip key={idx} label={med} size="small" sx={{ bgcolor: alpha('#4ECDC4', 0.1), color: '#4ECDC4' }} />
+                                                                        <Chip key={idx} label={med} size="small" sx={{ bgcolor: alpha('#5EEAD4', 0.1), color: '#5EEAD4' }} />
                                                                     ))}
                                                                 </Stack>
                                                             </Paper>
@@ -476,8 +476,8 @@ export default function HealthRecordSummarization() {
 
                                             {medicalSummary && (
                                                 <Box>
-                                                    <Typography variant="h6" fontWeight={700} sx={{ mb: 2.5, color: '#00B4D8', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                        <CheckCircleIcon sx={{ fontSize: 24, color: '#06D6A0' }} />
+                                                    <Typography variant="h6" fontWeight={700} sx={{ mb: 2.5, color: '#0EA5E9', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <CheckCircleIcon sx={{ fontSize: 24, color: '#10B981' }} />
                                                         Clinical Decision Highlights
                                                     </Typography>
 
@@ -505,8 +505,8 @@ export default function HealthRecordSummarization() {
                                                     )}
 
                                                     {medicalSummary.suggested_medications?.length > 0 && (
-                                                        <Paper elevation={0} sx={{ mb: 2.5, p: 2.5, borderLeft: '4px solid #4ECDC4', bgcolor: alpha('#4ECDC4', 0.05), borderRadius: 2 }}>
-                                                            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5, color: '#4ECDC4', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <Paper elevation={0} sx={{ mb: 2.5, p: 2.5, borderLeft: '4px solid #5EEAD4', bgcolor: alpha('#5EEAD4', 0.05), borderRadius: 2 }}>
+                                                            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5, color: '#5EEAD4', display: 'flex', alignItems: 'center', gap: 1 }}>
                                                                 <MedicationIcon sx={{ fontSize: 18 }} /> Suggested Medications
                                                             </Typography>
                                                             <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
@@ -517,9 +517,9 @@ export default function HealthRecordSummarization() {
                                                                         size="small"
                                                                         sx={{ 
                                                                             fontWeight: 600,
-                                                                            bgcolor: alpha('#4ECDC4', 0.1),
-                                                                            color: '#4ECDC4',
-                                                                            border: '1px solid #4ECDC4'
+                                                                            bgcolor: alpha('#5EEAD4', 0.1),
+                                                                            color: '#5EEAD4',
+                                                                            border: '1px solid #5EEAD4'
                                                                         }}
                                                                     />
                                                                 ))}
@@ -569,11 +569,11 @@ export default function HealthRecordSummarization() {
                                                         borderRadius: 3,
                                                         px: 4,
                                                         py: 1.5,
-                                                        background: 'linear-gradient(135deg, #00B4D8 0%, #06D6A0 100%)',
-                                                        boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)',
+                                                        background: 'linear-gradient(135deg, #34D399 0%, #06B6D4 50%, #2563EB 100%)',
+                                                        boxShadow: '0 4px 12px rgba(14,165,233, 0.3)',
                                                         '&:hover': {
-                                                            background: 'linear-gradient(135deg, #0096C7 0%, #05B586 100%)',
-                                                            boxShadow: '0 6px 16px rgba(0, 180, 216, 0.4)'
+                                                            background: 'linear-gradient(135deg, #2563EB 0%, #06B6D4 50%, #34D399 100%)',
+                                                            boxShadow: '0 6px 16px rgba(14,165,233, 0.4)'
                                                         }
                                                     }}
                                                 >
@@ -586,11 +586,11 @@ export default function HealthRecordSummarization() {
                                                         borderRadius: 3,
                                                         px: 4,
                                                         py: 1.5,
-                                                        borderColor: '#00B4D8',
-                                                        color: '#00B4D8',
+                                                        borderColor: '#0EA5E9',
+                                                        color: '#0EA5E9',
                                                         '&:hover': {
-                                                            borderColor: '#0096C7',
-                                                            bgcolor: alpha('#00B4D8', 0.05)
+                                                            borderColor: '#1D4ED8',
+                                                            bgcolor: alpha('#0EA5E9', 0.05)
                                                         }
                                                     }}
                                                 >

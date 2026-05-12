@@ -57,7 +57,7 @@ export default function AdminAnalyticsPage() {
           {analytics && (
             <Chip
               label={`Live sync: ${new Date(analytics.generatedAt).toLocaleTimeString()}`}
-              sx={{ fontWeight: 700, bgcolor: alpha('#00B4D8', 0.1), color: '#0096C7' }}
+              sx={{ fontWeight: 700, bgcolor: alpha('#0EA5E9', 0.1), color: '#1D4ED8' }}
             />
           )}
         </Stack>

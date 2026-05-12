@@ -18,9 +18,9 @@ export default function RoleGuidePlaceholderPage({ roleLabel }: RoleGuidePlaceho
               clickable
               icon={<ArrowBackIcon />}
               label="Back to Guide Page"
-              sx={{ alignSelf: 'flex-start', bgcolor: 'rgba(0, 180, 216, 0.1)', color: '#00B4D8', fontWeight: 600 }}
+              sx={{ alignSelf: 'flex-start', bgcolor: 'rgba(14,165,233, 0.1)', color: '#0EA5E9', fontWeight: 600 }}
             />
-            <Typography sx={{ fontSize: { xs: '1.9rem', md: '2.3rem' }, fontWeight: 700, color: '#1A1A2E' }}>
+            <Typography sx={{ fontSize: { xs: '1.9rem', md: '2.3rem' }, fontWeight: 700, color: '#0F172A' }}>
               {roleLabel} Guide
             </Typography>
             <Typography sx={{ color: '#64748B', lineHeight: 1.7 }}>

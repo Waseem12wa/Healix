@@ -5,6 +5,13 @@ Uses XGBoost model to predict drug-food interactions based on 18 molecular descr
 Enhanced with LLM for detailed explanations.
 """
 
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib

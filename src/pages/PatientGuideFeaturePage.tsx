@@ -14,7 +14,7 @@ export default function PatientGuideFeaturePage() {
       <Box sx={{ width: '100%', maxWidth: 900, mx: 'auto' }}>
         <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: '#E2E8F0' }}>
           <CardContent>
-            <Typography sx={{ fontWeight: 700, color: '#1A1A2E', mb: 1 }}>Guide not found</Typography>
+            <Typography sx={{ fontWeight: 700, color: '#0F172A', mb: 1 }}>Guide not found</Typography>
             <Typography sx={{ color: '#64748B', mb: 2 }}>The requested feature guide is not available.</Typography>
             <Chip
               component={Link}
@@ -22,7 +22,7 @@ export default function PatientGuideFeaturePage() {
               clickable
               icon={<ArrowBackIcon />}
               label="Back to Patient Guide"
-              sx={{ bgcolor: 'rgba(0, 180, 216, 0.1)', color: '#00B4D8', fontWeight: 600 }}
+              sx={{ bgcolor: 'rgba(14,165,233, 0.1)', color: '#0EA5E9', fontWeight: 600 }}
             />
           </CardContent>
         </Card>
@@ -39,15 +39,15 @@ export default function PatientGuideFeaturePage() {
           clickable
           icon={<ArrowBackIcon />}
           label="Back to Patient Guide"
-          sx={{ alignSelf: 'flex-start', bgcolor: 'rgba(0, 180, 216, 0.1)', color: '#00B4D8', fontWeight: 600 }}
+          sx={{ alignSelf: 'flex-start', bgcolor: 'rgba(14,165,233, 0.1)', color: '#0EA5E9', fontWeight: 600 }}
         />
-        <Typography sx={{ fontSize: { xs: '2rem', md: '2.4rem' }, fontWeight: 700, color: '#1A1A2E' }}>{feature.title}</Typography>
+        <Typography sx={{ fontSize: { xs: '2rem', md: '2.4rem' }, fontWeight: 700, color: '#0F172A' }}>{feature.title}</Typography>
         <Typography sx={{ color: '#64748B', fontSize: '1rem' }}>{feature.shortDescription}</Typography>
       </Stack>
 
       <Alert
         severity="info"
-        sx={{ mb: 3, borderRadius: 2, bgcolor: 'rgba(0, 180, 216, 0.08)', color: '#1A1A2E', border: '1px solid rgba(0, 180, 216, 0.2)' }}
+        sx={{ mb: 3, borderRadius: 2, bgcolor: 'rgba(14,165,233, 0.08)', color: '#0F172A', border: '1px solid rgba(14,165,233, 0.2)' }}
       >
         This is a guide-only page. You can learn steps here, but the tool itself is used from your dashboard.
       </Alert>
@@ -55,7 +55,7 @@ export default function PatientGuideFeaturePage() {
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2.5 }}>
         <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: '#E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
           <CardContent sx={{ p: 3 }}>
-            <Typography sx={{ fontWeight: 700, color: '#1A1A2E', mb: 1 }}>Why to use it</Typography>
+            <Typography sx={{ fontWeight: 700, color: '#0F172A', mb: 1 }}>Why to use it</Typography>
             <Typography sx={{ color: '#64748B', lineHeight: 1.7 }}>{feature.whyUse}</Typography>
           </CardContent>
         </Card>
@@ -63,8 +63,8 @@ export default function PatientGuideFeaturePage() {
         <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: '#E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
           <CardContent sx={{ p: 3 }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-              <TipsAndUpdatesIcon sx={{ color: '#06D6A0' }} />
-              <Typography sx={{ fontWeight: 700, color: '#1A1A2E' }}>Helpful Tips</Typography>
+              <TipsAndUpdatesIcon sx={{ color: '#10B981' }} />
+              <Typography sx={{ fontWeight: 700, color: '#0F172A' }}>Helpful Tips</Typography>
             </Stack>
             <Stack spacing={1.2}>
               {feature.tips.map((tip) => (
@@ -79,11 +79,11 @@ export default function PatientGuideFeaturePage() {
 
       <Card sx={{ mt: 2.5, borderRadius: 3, border: '1px solid', borderColor: '#E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         <CardContent sx={{ p: 3 }}>
-          <Typography sx={{ fontWeight: 700, color: '#1A1A2E', mb: 2 }}>How to use it</Typography>
+          <Typography sx={{ fontWeight: 700, color: '#0F172A', mb: 2 }}>How to use it</Typography>
           <Stack spacing={1.4}>
             {feature.steps.map((step, index) => (
               <Stack key={step} direction="row" spacing={1.2} alignItems="flex-start">
-                <CheckCircleIcon sx={{ color: '#00B4D8', mt: '2px' }} fontSize="small" />
+                <CheckCircleIcon sx={{ color: '#0EA5E9', mt: '2px' }} fontSize="small" />
                 <Typography sx={{ color: '#64748B', lineHeight: 1.7 }}>
                   {index + 1}. {step}
                 </Typography>

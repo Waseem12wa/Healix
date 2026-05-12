@@ -18,6 +18,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { clearAuthData } from '../../utils/auth'
+import { BRAND_GRADIENT, colors } from '../../ui/premium'
 
 interface ProviderData {
   _id: string
@@ -284,7 +285,7 @@ export default function ProviderProfile() {
   return (
     <Box sx={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5F5F7 0%, #E8F4F8 100%)',
+      background: 'linear-gradient(140deg, #ECFEFF 0%, #F0FDFA 35%, #EFF6FF 100%)',
       py: { xs: 4, md: 6 },
       px: { xs: 2, md: 4 }
     }}>
@@ -302,11 +303,11 @@ export default function ProviderProfile() {
                 width: 56,
                 height: 56,
                 borderRadius: 2.5,
-                bgcolor: '#00B4D8',
+                background: BRAND_GRADIENT,
+                boxShadow: '0 8px 20px rgba(14,165,233,0.28), 0 2px 6px rgba(37,99,235,0.18)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)'
               }}>
                 <PersonIcon sx={{ fontSize: 32, color: '#FFFFFF' }} />
               </Box>
@@ -315,7 +316,7 @@ export default function ProviderProfile() {
                   variant="h4"
                   fontWeight={800}
                   sx={{
-                    color: '#1A1A2E',
+                    color: '#0F172A',
                     fontSize: { xs: '1.75rem', md: '2.25rem' },
                     lineHeight: 1.2,
                     mb: 0.5
@@ -346,8 +347,8 @@ export default function ProviderProfile() {
 
                 {/* Profile Picture Section */}
                 <Box>
-                  <Typography variant="h6" fontWeight={700} sx={{ color: '#1A1A2E', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <PersonIcon sx={{ color: '#00B4D8' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ color: '#0F172A', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon sx={{ color: '#0EA5E9' }} />
                     Profile Picture
                   </Typography>
                   <Stack direction="row" spacing={3} alignItems="center">
@@ -356,7 +357,7 @@ export default function ProviderProfile() {
                       sx={{
                         width: 100,
                         height: 100,
-                        bgcolor: '#00B4D8',
+                        bgcolor: '#0EA5E9',
                         fontSize: '2.5rem',
                         fontWeight: 700
                       }}
@@ -368,9 +369,9 @@ export default function ProviderProfile() {
                       variant="outlined"
                       startIcon={<CloudUploadIcon />}
                       sx={{
-                        borderColor: '#00B4D8',
-                        color: '#00B4D8',
-                        '&:hover': { borderColor: '#0096C7', bgcolor: '#E0F7FF' }
+                        borderColor: '#0EA5E9',
+                        color: '#0EA5E9',
+                        '&:hover': { borderColor: '#1D4ED8', bgcolor: '#E0F7FF' }
                       }}
                     >
                       Upload Image
@@ -381,8 +382,8 @@ export default function ProviderProfile() {
 
                 {/* Personal Information Section */}
                 <Box>
-                  <Typography variant="h6" fontWeight={700} sx={{ color: '#1A1A2E', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <PersonIcon sx={{ color: '#00B4D8' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ color: '#0F172A', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon sx={{ color: '#0EA5E9' }} />
                     Personal Information
                   </Typography>
                   <Grid container spacing={3}>
@@ -397,8 +398,8 @@ export default function ProviderProfile() {
                             bgcolor: '#F5F5F7',
                             borderRadius: 2,
                             '& fieldset': { borderColor: '#E2E8F0' },
-                            '&:hover fieldset': { borderColor: '#00B4D8' },
-                            '&.Mui-focused fieldset': { borderColor: '#00B4D8' }
+                            '&:hover fieldset': { borderColor: '#0EA5E9' },
+                            '&.Mui-focused fieldset': { borderColor: '#0EA5E9' }
                           }
                         }}
                       />
@@ -435,8 +436,8 @@ export default function ProviderProfile() {
                             bgcolor: '#F5F5F7',
                             borderRadius: 2,
                             '& fieldset': { borderColor: '#E2E8F0' },
-                            '&:hover fieldset': { borderColor: '#00B4D8' },
-                            '&.Mui-focused fieldset': { borderColor: '#00B4D8' }
+                            '&:hover fieldset': { borderColor: '#0EA5E9' },
+                            '&.Mui-focused fieldset': { borderColor: '#0EA5E9' }
                           }
                         }}
                       />
@@ -453,8 +454,8 @@ export default function ProviderProfile() {
                             bgcolor: '#F5F5F7',
                             borderRadius: 2,
                             '& fieldset': { borderColor: '#E2E8F0' },
-                            '&:hover fieldset': { borderColor: '#00B4D8' },
-                            '&.Mui-focused fieldset': { borderColor: '#00B4D8' }
+                            '&:hover fieldset': { borderColor: '#0EA5E9' },
+                            '&.Mui-focused fieldset': { borderColor: '#0EA5E9' }
                           }
                         }}
                       />
@@ -464,8 +465,8 @@ export default function ProviderProfile() {
 
                 {/* Clinic Details Section */}
                 <Box>
-                  <Typography variant="h6" fontWeight={700} sx={{ color: '#1A1A2E', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <LocalHospitalIcon sx={{ color: '#00B4D8' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ color: '#0F172A', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <LocalHospitalIcon sx={{ color: '#0EA5E9' }} />
                     Clinic Details
                   </Typography>
                   <Grid container spacing={3}>
@@ -480,8 +481,8 @@ export default function ProviderProfile() {
                             bgcolor: '#F5F5F7',
                             borderRadius: 2,
                             '& fieldset': { borderColor: '#E2E8F0' },
-                            '&:hover fieldset': { borderColor: '#00B4D8' },
-                            '&.Mui-focused fieldset': { borderColor: '#00B4D8' }
+                            '&:hover fieldset': { borderColor: '#0EA5E9' },
+                            '&.Mui-focused fieldset': { borderColor: '#0EA5E9' }
                           }
                         }}
                       />
@@ -500,8 +501,8 @@ export default function ProviderProfile() {
                             bgcolor: '#F5F5F7',
                             borderRadius: 2,
                             '& fieldset': { borderColor: '#E2E8F0' },
-                            '&:hover fieldset': { borderColor: '#00B4D8' },
-                            '&.Mui-focused fieldset': { borderColor: '#00B4D8' }
+                            '&:hover fieldset': { borderColor: '#0EA5E9' },
+                            '&.Mui-focused fieldset': { borderColor: '#0EA5E9' }
                           }
                         }}
                       />
@@ -511,8 +512,8 @@ export default function ProviderProfile() {
 
                 {/* Pharmacy Details Section */}
                 <Box>
-                  <Typography variant="h6" fontWeight={700} sx={{ color: '#1A1A2E', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <StoreIcon sx={{ color: '#00B4D8' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ color: '#0F172A', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <StoreIcon sx={{ color: '#0EA5E9' }} />
                     Pharmacy Details
                   </Typography>
                   <Grid container spacing={3}>
@@ -527,8 +528,8 @@ export default function ProviderProfile() {
                             bgcolor: '#F5F5F7',
                             borderRadius: 2,
                             '& fieldset': { borderColor: '#E2E8F0' },
-                            '&:hover fieldset': { borderColor: '#00B4D8' },
-                            '&.Mui-focused fieldset': { borderColor: '#00B4D8' }
+                            '&:hover fieldset': { borderColor: '#0EA5E9' },
+                            '&.Mui-focused fieldset': { borderColor: '#0EA5E9' }
                           }
                         }}
                       />
@@ -538,8 +539,8 @@ export default function ProviderProfile() {
 
                 {/* License & Registration Section */}
                 <Box>
-                  <Typography variant="h6" fontWeight={700} sx={{ color: '#1A1A2E', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <VerifiedIcon sx={{ color: '#00B4D8' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ color: '#0F172A', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <VerifiedIcon sx={{ color: '#0EA5E9' }} />
                     License & Registration
                   </Typography>
                   <Grid container spacing={3}>
@@ -555,8 +556,8 @@ export default function ProviderProfile() {
                             bgcolor: '#F5F5F7',
                             borderRadius: 2,
                             '& fieldset': { borderColor: '#E2E8F0' },
-                            '&:hover fieldset': { borderColor: '#00B4D8' },
-                            '&.Mui-focused fieldset': { borderColor: '#00B4D8' }
+                            '&:hover fieldset': { borderColor: '#0EA5E9' },
+                            '&.Mui-focused fieldset': { borderColor: '#0EA5E9' }
                           }
                         }}
                       />
@@ -573,8 +574,8 @@ export default function ProviderProfile() {
                             bgcolor: '#F5F5F7',
                             borderRadius: 2,
                             '& fieldset': { borderColor: '#E2E8F0' },
-                            '&:hover fieldset': { borderColor: '#00B4D8' },
-                            '&.Mui-focused fieldset': { borderColor: '#00B4D8' }
+                            '&:hover fieldset': { borderColor: '#0EA5E9' },
+                            '&.Mui-focused fieldset': { borderColor: '#0EA5E9' }
                           }
                         }}
                       />
@@ -584,8 +585,8 @@ export default function ProviderProfile() {
 
                 {/* Profile Settings, Support & Notifications */}
                 <Box>
-                  <Typography variant="h6" fontWeight={700} sx={{ color: '#1A1A2E', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <MedicalServicesIcon sx={{ color: '#00B4D8' }} />
+                  <Typography variant="h6" fontWeight={700} sx={{ color: '#0F172A', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <MedicalServicesIcon sx={{ color: '#0EA5E9' }} />
                     Profile Settings, Support & Notifications
                   </Typography>
 
@@ -595,7 +596,7 @@ export default function ProviderProfile() {
                         variant="outlined"
                         startIcon={<NotificationsIcon />}
                         onClick={() => navigate('/tools/notifications')}
-                        sx={{ borderColor: '#00B4D8', color: '#00B4D8' }}
+                        sx={{ borderColor: '#0EA5E9', color: '#0EA5E9' }}
                       >
                         Open Notifications
                       </Button>
@@ -603,7 +604,7 @@ export default function ProviderProfile() {
                         variant="outlined"
                         startIcon={<LockIcon />}
                         onClick={() => navigate('/settings')}
-                        sx={{ borderColor: '#00B4D8', color: '#00B4D8' }}
+                        sx={{ borderColor: '#0EA5E9', color: '#0EA5E9' }}
                       >
                         Security & Password Settings
                       </Button>
@@ -620,7 +621,7 @@ export default function ProviderProfile() {
                     <Card variant="outlined" sx={{ borderRadius: 2 }}>
                       <CardContent>
                         <Typography sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <HelpCenterIcon sx={{ color: '#00B4D8' }} />
+                          <HelpCenterIcon sx={{ color: '#0EA5E9' }} />
                           Contact Support / Report Issue
                         </Typography>
                         <Stack spacing={2}>
@@ -644,7 +645,15 @@ export default function ProviderProfile() {
                               startIcon={<HelpCenterIcon />}
                               disabled={supportSending || !supportSubject.trim() || !supportMessage.trim()}
                               onClick={handleSubmitSupport}
-                              sx={{ bgcolor: '#00B4D8', '&:hover': { bgcolor: '#0096C7' } }}
+                              sx={{
+                                background: BRAND_GRADIENT,
+                                backgroundSize: '200% 200%',
+                                backgroundPosition: '0% 50%',
+                                color: '#FFFFFF',
+                                boxShadow: '0 6px 16px rgba(14,165,233,0.28)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': { backgroundPosition: '100% 50%', boxShadow: '0 10px 22px rgba(14,165,233,0.38)' }
+                              }}
                             >
                               {supportSending ? 'Sending...' : 'Send to Admin'}
                             </Button>
@@ -663,22 +672,23 @@ export default function ProviderProfile() {
                     startIcon={<SaveIcon />}
                     disabled={saving}
                     sx={{
-                      bgcolor: '#00B4D8',
+                      background: BRAND_GRADIENT,
+                      backgroundSize: '200% 200%',
+                      backgroundPosition: '0% 50%',
                       color: '#FFFFFF',
+                      transition: 'all 0.3s ease',
+                      '&:hover': { backgroundPosition: '100% 50%' },
                       px: 4,
                       py: 1.5,
                       borderRadius: 2,
                       fontWeight: 700,
                       textTransform: 'none',
                       fontSize: '1rem',
-                      boxShadow: '0 4px 12px rgba(0, 180, 216, 0.3)',
-                      '&:hover': {
-                        bgcolor: '#0096C7',
-                        boxShadow: '0 6px 16px rgba(0, 180, 216, 0.4)'
-                      },
+                      boxShadow: '0 10px 24px rgba(14,165,233,0.32), 0 4px 10px rgba(37,99,235,0.18)',
                       '&:disabled': {
-                        bgcolor: '#B0E0E6',
-                        color: '#ffffff'
+                        background: '#CBD5E1',
+                        color: '#FFFFFF',
+                        boxShadow: 'none'
                       }
                     }}
                   >

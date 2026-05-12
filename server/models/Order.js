@@ -135,13 +135,18 @@ const orderSchema = new mongoose.Schema({
   providerRejectedAt: Date
 });
 
-// Middleware to generate order number
-orderSchema.pre('save', async function(next) {
+// Generate orderNumber BEFORE validation so the `required: true` validator passes.
+orderSchema.pre('validate', function(next) {
   if (!this.orderNumber) {
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     this.orderNumber = `ORD-${timestamp}-${random}`;
   }
+  next();
+});
+
+// Keep updatedAt fresh on every save.
+orderSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   next();
 });

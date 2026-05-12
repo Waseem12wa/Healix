@@ -13,6 +13,13 @@ Models used:
 - Clinical BERT for domain adaptation
 """
 
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import logging
